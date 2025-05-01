@@ -10,8 +10,9 @@ import Header from "./components/Header";
 import { ListProvider } from "./contexts/lists-context";
 import { UserProvider } from "./contexts/user-context";
 import CssBaseline from "@mui/material/CssBaseline";
-import {baseTheme} from "./styles/theme";
-import {ThemeProvider} from "@mui/material";
+import { baseTheme } from "./styles/theme";
+import { ThemeProvider } from "@mui/material";
+import EventList from "./components/Ratings/Ratings";
 
 declare global {
   interface Window {
@@ -21,24 +22,26 @@ declare global {
 
 const App: React.FC = () => {
   return (
-      <ThemeProvider theme={baseTheme} modeStorageKey={'pollerama-color-scheme'}>
-    <AppContextProvider>
-      <UserProvider>
-        <ListProvider>
-          <CssBaseline />
-          <Router>
-            <Header />
-            <Routes>
-              <Route path="/create" element={<PollCreator />} />
-              <Route path="/respond/:eventId" element={<PollResponse />} />
-              <Route path="/result/:eventId" element={<PollResults />} />
-              <Route index path="/" element={<PrepareFeed />} />
-            </Routes>
-          </Router>
-        </ListProvider>
-      </UserProvider>
-    </AppContextProvider>
-      </ThemeProvider>
+    <ThemeProvider theme={baseTheme} modeStorageKey={"pollerama-color-scheme"}>
+      <AppContextProvider>
+        <UserProvider>
+          <ListProvider>
+            <CssBaseline />
+            <Router>
+              <Header />
+              <Routes>
+                <Route path="/create" element={<PollCreator />} />
+                <Route path="/respond/:eventId" element={<PollResponse />} />
+                <Route path="/result/:eventId" element={<PollResults />} />
+                <Route path="/ratings" element={<EventList />} />
+
+                <Route index path="/" element={<PrepareFeed />} />
+              </Routes>
+            </Router>
+          </ListProvider>
+        </UserProvider>
+      </AppContextProvider>
+    </ThemeProvider>
   );
 };
 
