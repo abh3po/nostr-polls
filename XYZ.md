@@ -1,42 +1,27 @@
-# NIP-XYZ: Event Rating Protocol
-
-| Field   | Value                       |
-| ------- | --------------------------- |
-| NIP     | XYZ                         |
-| Title   | Event Rating Protocol       |
-| Author  | <Your Name or Nostr Pubkey> |
-| Status  | Draft                       |
-| Type    | Standard                    |
-| Created | 2025-04-30                  |
-| License | MIT                         |
-
 ## Summary
 
-This NIP defines a standard for rating Nostr events. It introduces a new event kind where users can rate any existing event using a normalized score. Ratings are tied to the target event and include metadata that ensures validity and enables aggregation.
-
-## Motivation
-
-There is currently no native way to express subjective feedback (like ratings) on Nostr events. This NIP allows users to submit structured ratings, enabling use cases such as content ranking, quality scoring, recommendation systems, and decentralized reputation.
+This NIP defines a standard for rating Nostr anything and everything. Ratings are tallied against a unique id.
 
 ## Definitions
 
-- **Rating**: A user-assigned value indicating the perceived quality or relevance of a target event.
-- **Normalized Rating**: A rating expressed as a fraction (`rating` / `out_of`), enabling fair comparison across ratings with different scales.
+- **Rating**: A user-assigned value indicating the perceived quality or relevance of a target event, normalized to be a value between 0 and 1
+- **m** : mark : A tag used to specify the type of entity being rated. Example values could include 'event', 'profile', 'relay', 'hashtag', 'books', 'movies', etc. If empty it is asssumed to be a nostr event.
 
 ## Event Kind
 
-A new event kind (suggested: `KIND 30090`) is introduced for submitting ratings.
+A new event kind (suggested: `KIND 34259`) is introduced for submitting ratings.
 
 ## Event Structure
 
 ```json
 {
-  "kind": 30090,
-  "content": "",
+  "kind": 34259,
+  "content": "Optional Comment",
   "tags": [
-    ["e", "<target_event_id>"],
-    ["rating", "<integer_rating_value>"],
-    ["outOf", "<integer_denominator>"]
+    ["d", "<Id of entity being rated>"],
+    ["m", "type of entity being rated, example: event, profile, relay, etc."]
+    ["rating", "<Number less than 1 and greater than 0>"]
   ]
+  ...
 }
 ```

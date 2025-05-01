@@ -16,6 +16,7 @@ import Likes from "../Common/Likes/likes";
 import Zap from "../Common/Zaps/zaps";
 import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
+import Rate from "../Ratings/Rate";
 
 interface NotesProps {
   event: Event;
@@ -68,7 +69,9 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
             {referencedEventId ? (
               <>
                 <Typography style={{ fontSize: 10 }}>replying to: </Typography>
-                <PrepareNote eventId={referencedEventId} />
+                <div style={{ borderRadius: "1px", borderColor: "grey" }}>
+                  <PrepareNote eventId={referencedEventId} />
+                </div>
               </>
             ) : null}
 
@@ -77,6 +80,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
         </Card>
         <CardContent>
           <div style={{ display: "flex" }}>
+            <Rate entityId={event.id} entityType="event" />
             <PollComments pollEventId={event.id} />
             <Likes pollEvent={event} />
             <Zap pollEvent={event} />

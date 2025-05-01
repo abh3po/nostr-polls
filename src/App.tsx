@@ -4,7 +4,7 @@ import { PollCreator } from "./components/PollCreator";
 import { PollResponse } from "./components/PollResponse";
 import { PollResults } from "./components/PollResults";
 import type { WindowNostr } from "nostr-tools/lib/types/nip07";
-import { PrepareFeed } from "./components/Feed";
+import PrepareFeed from "./components/Feed";
 import { AppContextProvider } from "./contexts/app-context";
 import Header from "./components/Header";
 import { ListProvider } from "./contexts/lists-context";
@@ -12,7 +12,7 @@ import { UserProvider } from "./contexts/user-context";
 import CssBaseline from "@mui/material/CssBaseline";
 import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
-import EventList from "./components/Ratings/Ratings";
+import EventList from "./components/Ratings/RatingsFeed";
 
 declare global {
   interface Window {
