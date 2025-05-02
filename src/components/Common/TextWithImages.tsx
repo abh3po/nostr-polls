@@ -37,6 +37,7 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
                     maxWidth: "100%",
                     marginBottom: "0.5rem",
                     marginRight: "0.5rem",
+                    maxHeight: "400px",
                   }}
                 />
               );

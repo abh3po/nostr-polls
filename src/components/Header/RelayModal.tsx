@@ -29,7 +29,7 @@ export const RelayModal: React.FC<RelayModalProps> = ({
   let { poolRef } = useAppContext();
   const { user } = useUserContext();
   const fetchRelayList = async () => {
-    if (!user) return;
+    if (!user || !isOpen) return;
 
     let filters = {
       kinds: [10002],

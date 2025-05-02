@@ -13,13 +13,13 @@ import { RelayModal } from "./RelayModal";
 import { useUserContext } from "../../hooks/useUserContext";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { bytesToHex } from "@noble/hashes/utils";
-import {ANONYMOUS_USER_NAME} from "../../contexts/user-context";
-import {ColorSchemeToggle} from "../ColorScheme";
-import {styled} from "@mui/system";
+import { ANONYMOUS_USER_NAME } from "../../contexts/user-context";
+import { ColorSchemeToggle } from "../ColorScheme";
+import { styled } from "@mui/system";
 
-const ListItem = styled('li')(() => ({
-  padding: '0 16px'
-}))
+const ListItem = styled("li")(() => ({
+  padding: "0 16px",
+}));
 
 const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -108,13 +108,17 @@ const UserMenu: React.FC = () => {
           <div>
             <MenuItem onClick={handleRelays}>Your Relays</MenuItem>
             <MenuItem onClick={handleLogOut}>Log Out</MenuItem>
-            <ListItem ><ColorSchemeToggle /></ListItem>
+            <ListItem>
+              <ColorSchemeToggle />
+            </ListItem>
           </div>
         ) : (
           <div>
             <MenuItem onClick={handleLogin}>Log In Via Extension</MenuItem>
             <MenuItem onClick={handleTempId}>Use Temp Id</MenuItem>
-            <ListItem ><ColorSchemeToggle /></ListItem>
+            <ListItem>
+              <ColorSchemeToggle />
+            </ListItem>
           </div>
         )}
       </Menu>

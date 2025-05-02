@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { defaultRelays } from "../../nostr";
-import { Event } from "nostr-tools/lib/types/core";
-import { Filter } from "nostr-tools/lib/types/filter";
+import { Event, Filter } from "nostr-tools";
 import { Feed } from "./Feed";
 import { useAppContext } from "../../hooks/useAppContext";
-import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
 import { Select, MenuItem, Button, CircularProgress } from "@mui/material";
 import { styled } from "@mui/system";
+import { SubCloser } from "nostr-tools/lib/types/pool";
 
 const StyledSelect = styled(Select)`
   &::before,
@@ -17,7 +16,7 @@ const StyledSelect = styled(Select)`
   }
 `;
 
-export const PrepareFeed = () => {
+export const PollFeed = () => {
   const [pollEvents, setPollEvents] = useState<Event[] | undefined>();
   const [userResponses, setUserResponses] = useState<Event[] | undefined>();
   let KIND_FILTER = "Polls";
