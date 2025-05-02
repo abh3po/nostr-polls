@@ -19,7 +19,7 @@ const ProfilesFeed: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [until, setUntil] = useState<number | undefined>(undefined); // for pagination
   const [modalOpen, setModalOpen] = useState(false);
-  const { user } = useUserContext();
+  const { user, requestLogin } = useUserContext();
 
   const fetchProfiles = () => {
     if (!user || !user.follows || user.follows.length === 0) return;
@@ -78,6 +78,7 @@ const ProfilesFeed: React.FC = () => {
       <Card
         onClick={() => setModalOpen(true)}
         sx={{ cursor: "pointer", mb: 2 }}
+        variant="outlined"
       >
         <CardContent>
           <Typography variant="h6">Rate any profile</Typography>
@@ -87,16 +88,23 @@ const ProfilesFeed: React.FC = () => {
         </CardContent>
       </Card>
 
+      <Typography>People you follow</Typography>
       {sortedProfiles.map((e) => (
         <ProfileCard key={e.id} event={e} />
       ))}
       <div style={{ textAlign: "center", margin: 20 }}>
         <Button
-          onClick={fetchProfiles}
+          onClick={!!user ? fetchProfiles : requestLogin}
           variant="contained"
           disabled={loadingMore}
         >
-          {loadingMore ? <CircularProgress size={24} /> : "Load More"}
+          {loadingMore ? (
+            <CircularProgress size={24} />
+          ) : !!user ? (
+            "Load More"
+          ) : (
+            "login"
+          )}
         </Button>
       </div>
       <RateProfileModal open={modalOpen} onClose={() => setModalOpen(false)} />

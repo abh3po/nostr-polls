@@ -83,10 +83,11 @@ const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
           <>
             <TextField
               fullWidth
-              label="nostr:nevent1..."
+              label="nevent1..."
               variant="outlined"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              placeholder="nevent1..."
               sx={{ mb: 2 }}
             />
             <Button variant="contained" fullWidth onClick={fetchEvent}>

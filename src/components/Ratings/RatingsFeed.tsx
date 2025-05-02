@@ -3,7 +3,6 @@ import { Box, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
 import NotesFeed from "./NotesFeed";
 import ProfilesFeed from "./ProfileFeed";
 import HashtagsFeed from "./HashtagsFeed";
-import { useUserContext } from "../../hooks/useUserContext";
 import { PollFeed } from "../Feed/PollFeed";
 
 type FeedType = "polls" | "notes" | "profiles" | "hashtags";
@@ -18,11 +17,10 @@ const feedOptions: { value: FeedType; label: string }[] = [
 
 const RatingFeed: React.FC = () => {
   const [feedType, setFeedType] = useState<FeedType>("polls");
-  const { user } = useUserContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  if (!user) return <div>Login to view this feed</div>;
+  // if (!user) return <div>Login to view this feed</div>;
 
   return (
     <Box maxWidth={800} mx="auto" px={2}>
@@ -42,9 +40,11 @@ const RatingFeed: React.FC = () => {
           },
         }}
       >
-        {feedOptions.map((option) => (
-          <Tab key={option.value} label={option.label} value={option.value} />
-        ))}
+        {feedOptions.map((option) => {
+          return (
+            <Tab key={option.value} label={option.label} value={option.value} />
+          );
+        })}
       </Tabs>
 
       {feedType === "notes" && <NotesFeed />}

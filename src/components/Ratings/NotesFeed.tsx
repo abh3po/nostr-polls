@@ -3,7 +3,7 @@ import { Event, Filter, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import { Notes } from "../Notes";
 import { useUserContext } from "../../hooks/useUserContext";
-import { Button, CircularProgress } from "@mui/material";
+import { Button, CircularProgress, Typography } from "@mui/material";
 import RateEventCard from "./RateEventCard";
 import RateEventModal from "./RateEventModal";
 
@@ -12,7 +12,7 @@ const NOTES_BATCH_SIZE = 10;
 const NotesFeed: React.FC = () => {
   const [events, setEvents] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
-  const { user } = useUserContext();
+  const { user, requestLogin } = useUserContext();
   const [modalOpen, setModalOpen] = useState(false);
 
   const fetchNotes = async () => {
@@ -42,6 +42,7 @@ const NotesFeed: React.FC = () => {
   };
   useEffect(() => {
     if (!events.size && user) fetchNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleLoadMore = () => {
@@ -57,16 +58,24 @@ const NotesFeed: React.FC = () => {
   return (
     <>
       <RateEventCard onClick={() => setModalOpen(true)} />
+
+      <Typography>Notes from people you follow</Typography>
       {sortedEvents.map((e) => (
         <Notes key={e.id} event={e} />
       ))}
       <div style={{ textAlign: "center", margin: 20 }}>
         <Button
-          onClick={handleLoadMore}
+          onClick={!!user ? handleLoadMore : requestLogin}
           variant="contained"
           disabled={loadingMore}
         >
-          {loadingMore ? <CircularProgress size={24} /> : "Load More"}
+          {loadingMore ? (
+            <CircularProgress size={24} />
+          ) : !!user ? (
+            "Load More"
+          ) : (
+            "login"
+          )}
         </Button>
       </div>
       <RateEventModal open={modalOpen} onClose={() => setModalOpen(false)} />
