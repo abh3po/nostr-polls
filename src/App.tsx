@@ -4,7 +4,6 @@ import { PollCreator } from "./components/PollCreator";
 import { PollResponse } from "./components/PollResponse";
 import { PollResults } from "./components/PollResults";
 import type { WindowNostr } from "nostr-tools/lib/types/nip07";
-import PrepareFeed from "./components/Feed";
 import { AppContextProvider } from "./contexts/app-context";
 import Header from "./components/Header";
 import { ListProvider } from "./contexts/lists-context";
@@ -14,6 +13,7 @@ import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
 import EventList from "./components/Ratings/RatingsFeed";
 import { RatingProvider } from "./components/Ratings/RatingProvider";
+import RatingFeed from "./components/Ratings/RatingsFeed";
 
 declare global {
   interface Window {
@@ -37,7 +37,7 @@ const App: React.FC = () => {
                   <Route path="/result/:eventId" element={<PollResults />} />
                   <Route path="/ratings" element={<EventList />} />
 
-                  <Route index path="/" element={<PrepareFeed />} />
+                  <Route index path="/" element={<RatingFeed />} />
                 </Routes>
               </Router>
             </RatingProvider>
