@@ -8,9 +8,7 @@ const HashtagCard: React.FC<{ tag: string }> = ({ tag }) => (
       <Typography
         variant="h6"
         style={{ textUnderlineOffset: "0.1em", cursor: "pointer" }}
-        onClick={() =>
-          window.open(`https://zapddit.com/t;topic=${tag}`, "_blank")
-        }
+        onClick={() => window.open(`https://snort.social/t/${tag}`, "_blank")}
       >
         {tag}
       </Typography>
