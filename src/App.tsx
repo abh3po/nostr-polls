@@ -13,6 +13,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
 import EventList from "./components/Ratings/RatingsFeed";
+import { RatingProvider } from "./components/Ratings/RatingProvider";
 
 declare global {
   interface Window {
@@ -26,18 +27,20 @@ const App: React.FC = () => {
       <AppContextProvider>
         <UserProvider>
           <ListProvider>
-            <CssBaseline />
-            <Router>
-              <Header />
-              <Routes>
-                <Route path="/create" element={<PollCreator />} />
-                <Route path="/respond/:eventId" element={<PollResponse />} />
-                <Route path="/result/:eventId" element={<PollResults />} />
-                <Route path="/ratings" element={<EventList />} />
+            <RatingProvider>
+              <CssBaseline />
+              <Router>
+                <Header />
+                <Routes>
+                  <Route path="/create" element={<PollCreator />} />
+                  <Route path="/respond/:eventId" element={<PollResponse />} />
+                  <Route path="/result/:eventId" element={<PollResults />} />
+                  <Route path="/ratings" element={<EventList />} />
 
-                <Route index path="/" element={<PrepareFeed />} />
-              </Routes>
-            </Router>
+                  <Route index path="/" element={<PrepareFeed />} />
+                </Routes>
+              </Router>
+            </RatingProvider>
           </ListProvider>
         </UserProvider>
       </AppContextProvider>

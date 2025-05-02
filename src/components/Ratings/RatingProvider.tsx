@@ -63,36 +63,36 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
+    if (!poolRef) return;
     const interval = setInterval(() => {
       const ids = Array.from(trackedIdsRef.current);
       const hasChanged =
         ids.length !== lastTrackedIds.current.length ||
         ids.some((id, i) => id !== lastTrackedIds.current[i]);
+      console.log("Checking for changes", hasChanged, ids);
+      if (!hasChanged) return;
+      lastTrackedIds.current = ids;
 
-      if (hasChanged) {
-        lastTrackedIds.current = ids;
-
-        if (subscriptionRef.current) {
-          subscriptionRef.current.close();
-        }
-
-        if (ids.length === 0) return;
-
-        const filters = [
-          {
-            kinds: [34259],
-            "#d": ids,
-          },
-        ];
-
-        subscriptionRef.current = poolRef.current.subscribeMany(
-          defaultRelays,
-          filters,
-          {
-            onevent: handleEvent,
-          }
-        );
+      if (subscriptionRef.current) {
+        subscriptionRef.current.close();
       }
+
+      if (ids.length === 0) return;
+
+      const filters = [
+        {
+          kinds: [34259],
+          "#d": ids,
+        },
+      ];
+
+      subscriptionRef.current = poolRef.current.subscribeMany(
+        defaultRelays,
+        filters,
+        {
+          onevent: handleEvent,
+        }
+      );
     }, 3000); // Adjust frequency as needed
 
     return () => {

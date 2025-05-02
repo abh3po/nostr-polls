@@ -1,62 +1,44 @@
 import React, { useEffect, useState } from "react";
-import { Event, SimplePool } from "nostr-tools";
+import { Event, Filter, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import { Notes } from "../Notes";
 import { useUserContext } from "../../hooks/useUserContext";
 import { Button, CircularProgress } from "@mui/material";
 
-const NOTES_BATCH_SIZE = 40;
+const NOTES_BATCH_SIZE = 10;
 
 const NotesFeed: React.FC = () => {
   const [events, setEvents] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
-  const [until, setUntil] = useState<number | undefined>(undefined);
   const { user } = useUserContext();
 
-  const fetchNotes = () => {
+  const fetchNotes = async () => {
     if (!user || !user.follows || user.follows.length === 0) return;
+    if (loadingMore) return;
 
+    setLoadingMore(true);
     const pool = new SimplePool();
-    let eventCount = 0;
 
-    const filter = {
+    const filter: Filter = {
       kinds: [1],
       authors: Array.from(user.follows),
-      ...(until && { until }),
+      limit: NOTES_BATCH_SIZE,
     };
-
-    const sub = pool.subscribeMany(defaultRelays, [filter], {
-      onevent: (event) => {
-        setEvents((prev) => {
-          if (prev.has(event.id)) return prev;
-
-          const updated = new Map(prev);
-          updated.set(event.id, event);
-
-          return updated;
-        });
-
-        // Track oldest timestamp for pagination
-        if (!until || event.created_at < until) {
-          setUntil(event.created_at);
-        }
-
-        eventCount++;
-        if (eventCount >= NOTES_BATCH_SIZE) {
-          sub.close(); // 🔒 Force-close after limit
-          setLoadingMore(false);
-        }
-      },
-      oneose: () => {
-        sub.close(); // safety net
-        setLoadingMore(false);
-      },
+    if (events.size > 0)
+      // Calculate the "since" parameter based on the latest event in the current events map
+      filter.until = Array.from(events.values()).sort(
+        (a, b) => a.created_at - b.created_at
+      )[0].created_at;
+    const fetchedEvents = await pool.querySync(defaultRelays, filter);
+    setEvents((prev) => {
+      const updated = new Map(prev);
+      fetchedEvents.forEach((e) => updated.set(e.id, e));
+      return updated;
     });
+    setLoadingMore(false);
   };
-
   useEffect(() => {
-    fetchNotes(); // initial load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!events.size && user) fetchNotes();
   }, [user]);
 
   const handleLoadMore = () => {

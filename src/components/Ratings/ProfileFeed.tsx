@@ -3,14 +3,22 @@ import { Event, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import ProfileCard from "./ProfileCard";
 import { useUserContext } from "../../hooks/useUserContext";
-import { Button, CircularProgress } from "@mui/material";
+import {
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Typography,
+} from "@mui/material";
+import RateProfileModal from "./RateProfileModal";
 
-const BATCH_SIZE = 30;
+const BATCH_SIZE = 20;
 
 const ProfilesFeed: React.FC = () => {
   const [profiles, setProfiles] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
   const [until, setUntil] = useState<number | undefined>(undefined); // for pagination
+  const [modalOpen, setModalOpen] = useState(false);
   const { user } = useUserContext();
 
   const fetchProfiles = () => {
@@ -24,6 +32,7 @@ const ProfilesFeed: React.FC = () => {
       kinds: [0],
       authors: Array.from(user.follows),
       ...(until && { until }),
+      limit: 10,
     };
 
     const sub = pool.subscribeMany(defaultRelays, [filter], {
@@ -66,6 +75,18 @@ const ProfilesFeed: React.FC = () => {
 
   return (
     <>
+      <Card
+        onClick={() => setModalOpen(true)}
+        sx={{ cursor: "pointer", mb: 2 }}
+      >
+        <CardContent>
+          <Typography variant="h6">Rate any profile</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Click to enter an npub and rate someone outside your feed.
+          </Typography>
+        </CardContent>
+      </Card>
+
       {sortedProfiles.map((e) => (
         <ProfileCard key={e.id} event={e} />
       ))}
@@ -78,6 +99,7 @@ const ProfilesFeed: React.FC = () => {
           {loadingMore ? <CircularProgress size={24} /> : "Load More"}
         </Button>
       </div>
+      <RateProfileModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 };

@@ -25,3 +25,23 @@ A new event kind (suggested: `KIND 34259`) is introduced for submitting ratings.
   ...
 }
 ```
+
+## Notes
+
+For d-tags that have identifiers that are not unique, the id should be prefixed by the m-tag value. For example: If you want to rate a hashtag use `hashtag:<tag>` as the identifier for the d-tag. This will help in differentiating between different types of entities with the same ID. For example:
+`hasthag:books` this will help distinguish the events from other contexts like market listings or other categories.
+
+## Example Event
+
+```json
+{
+  "kind": 34259,
+  "content": "Great event!",
+  "tags": [
+    ["d", "hashtag:books"],
+    ["m", "event"],
+    ["rating", ""0.8""]
+  ]
+
+}
+```
