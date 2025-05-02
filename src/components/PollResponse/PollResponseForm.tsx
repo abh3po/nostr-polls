@@ -32,7 +32,8 @@ import { bytesToHex } from "@noble/hashes/utils";
 import dayjs from "dayjs";
 import { useMiningWorker } from "../../hooks/useMiningWorker";
 import PollTimer from "./PollTimer";
-import {getColorsWithTheme} from "../../styles/theme";
+import { getColorsWithTheme } from "../../styles/theme";
+import Rate from "../Ratings/Rate";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -214,7 +215,9 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                       setIsDetailsOpen(!isDetailsOpen);
                       setAnchorEl(e.currentTarget);
                     }}
-                    sx={(theme) => ({...getColorsWithTheme(theme, { color: "#000000" })})}
+                    sx={(theme) => ({
+                      ...getColorsWithTheme(theme, { color: "#000000" }),
+                    })}
                     variant="text"
                   >
                     <MoreVertIcon />
@@ -299,10 +302,19 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
           </Card>
         </form>
         <CardContent>
-          <div style={{ display: "flex" }}>
-            <PollComments pollEventId={pollEvent.id} />
-            <Likes pollEvent={pollEvent} />
-            <Zap pollEvent={pollEvent} />
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div>
+              <Rate entityId={pollEvent.id} entityType="event" />
+            </div>
+            <div>
+              <PollComments pollEventId={pollEvent.id} />
+            </div>
+            <div>
+              <Likes pollEvent={pollEvent} />
+            </div>
+            <div>
+              <Zap pollEvent={pollEvent} />
+            </div>
           </div>
         </CardContent>
       </Card>

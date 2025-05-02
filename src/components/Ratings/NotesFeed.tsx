@@ -4,6 +4,8 @@ import { defaultRelays } from "../../nostr";
 import { Notes } from "../Notes";
 import { useUserContext } from "../../hooks/useUserContext";
 import { Button, CircularProgress } from "@mui/material";
+import RateEventCard from "./RateEventCard";
+import RateEventModal from "./RateEventModal";
 
 const NOTES_BATCH_SIZE = 10;
 
@@ -11,6 +13,7 @@ const NotesFeed: React.FC = () => {
   const [events, setEvents] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
   const { user } = useUserContext();
+  const [modalOpen, setModalOpen] = useState(false);
 
   const fetchNotes = async () => {
     if (!user || !user.follows || user.follows.length === 0) return;
@@ -53,6 +56,7 @@ const NotesFeed: React.FC = () => {
 
   return (
     <>
+      <RateEventCard onClick={() => setModalOpen(true)} />
       {sortedEvents.map((e) => (
         <Notes key={e.id} event={e} />
       ))}
@@ -65,6 +69,7 @@ const NotesFeed: React.FC = () => {
           {loadingMore ? <CircularProgress size={24} /> : "Load More"}
         </Button>
       </div>
+      <RateEventModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 };

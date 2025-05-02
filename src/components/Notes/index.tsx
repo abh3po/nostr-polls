@@ -79,11 +79,19 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
           </CardContent>
         </Card>
         <CardContent>
-          <div style={{ display: "flex" }}>
-            <Rate entityId={event.id} entityType="event" />
-            <PollComments pollEventId={event.id} />
-            <Likes pollEvent={event} />
-            <Zap pollEvent={event} />
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div>
+              <Rate entityId={event.id} entityType="event" />
+            </div>
+            <div>
+              <PollComments pollEventId={event.id} />
+            </div>
+            <div>
+              <Likes pollEvent={event} />
+            </div>
+            <div>
+              <Zap pollEvent={event} />
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Box, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
 import NotesFeed from "./NotesFeed";
 import ProfilesFeed from "./ProfileFeed";
 import HashtagsFeed from "./HashtagsFeed";
@@ -8,24 +8,45 @@ import { PollFeed } from "../Feed/PollFeed";
 
 type FeedType = "polls" | "notes" | "profiles" | "hashtags";
 
+const feedOptions: { value: FeedType; label: string }[] = [
+  { value: "polls", label: "Polls" },
+  { value: "notes", label: "Notes" },
+  { value: "profiles", label: "Profiles" },
+  { value: "hashtags", label: "Hashtags" },
+  // Add more here easily in future
+];
+
 const RatingFeed: React.FC = () => {
   const [feedType, setFeedType] = useState<FeedType>("polls");
   const { user } = useUserContext();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   if (!user) return <div>Login to view this feed</div>;
+
   return (
-    <Box maxWidth={800} mx="auto">
-      <ToggleButtonGroup
+    <Box maxWidth={800} mx="auto" px={2}>
+      <Tabs
         value={feedType}
-        exclusive
-        onChange={(_, val) => val && setFeedType(val)}
-        sx={{ mb: 2 }}
+        onChange={(_, newValue: FeedType) => setFeedType(newValue)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        sx={{
+          mb: 2,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          "& .MuiTab-root": {
+            textTransform: "none",
+            minWidth: isMobile ? 80 : 120,
+            fontWeight: 500,
+          },
+        }}
       >
-        <ToggleButton value="notes">Polls</ToggleButton>
-        <ToggleButton value="notes">Notes</ToggleButton>
-        <ToggleButton value="profiles">Profiles</ToggleButton>
-        <ToggleButton value="hashtags">Hashtags</ToggleButton>
-      </ToggleButtonGroup>
+        {feedOptions.map((option) => (
+          <Tab key={option.value} label={option.label} value={option.value} />
+        ))}
+      </Tabs>
+
       {feedType === "notes" && <NotesFeed />}
       {feedType === "profiles" && <ProfilesFeed />}
       {feedType === "hashtags" && <HashtagsFeed />}
