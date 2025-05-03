@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
-import HashtagCard from "./HashtagCard";
-import RateHashtagModal from "./RateHashtagModal";
-import {
-  Button,
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  CardActionArea,
-} from "@mui/material";
+import HashtagCard from "../Hashtag/HashtagCard";
+import RateHashtagModal from "../Ratings/RateHashtagModal";
+import { Card, CardContent, Typography } from "@mui/material";
 
 const HashtagsFeed: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
@@ -34,6 +27,7 @@ const HashtagsFeed: React.FC = () => {
     );
 
     return () => sub.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

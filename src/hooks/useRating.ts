@@ -1,9 +1,9 @@
 // hooks/useRating.ts
 import { useContext, useEffect, useRef } from "react";
 import { getEventHash } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
-import { RatingContext } from "./RatingProvider";
-import { useAppContext } from "../../hooks/useAppContext";
+import { defaultRelays } from "../nostr";
+import { RatingContext } from "../contexts/RatingProvider";
+import { useAppContext } from "./useAppContext";
 
 export const useRating = (entityId: string) => {
   const { ratings, registerEntityId } = useContext(RatingContext);

@@ -20,11 +20,8 @@ import { SingleChoiceOptions } from "./SingleChoiceOptions";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { useAppContext } from "../../hooks/useAppContext";
-import PollComments from "../Common/Comments/PollComments";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { TextWithImages } from "../Common/TextWithImages";
-import Likes from "../Common/Likes/likes";
-import Zap from "../Common/Zaps/zaps";
 import { Filters } from "./Filter";
 import { useUserContext } from "../../hooks/useUserContext";
 import { ProofofWorkModal } from "./ProofofWorkModal";
@@ -33,7 +30,7 @@ import dayjs from "dayjs";
 import { useMiningWorker } from "../../hooks/useMiningWorker";
 import PollTimer from "./PollTimer";
 import { getColorsWithTheme } from "../../styles/theme";
-import Rate from "../Ratings/Rate";
+import { FeedbackMenu } from "../FeedbackMenu";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -301,22 +298,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
             </CardContent>
           </Card>
         </form>
-        <CardContent>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <Rate entityId={pollEvent.id} entityType="event" />
-            </div>
-            <div>
-              <PollComments pollEventId={pollEvent.id} />
-            </div>
-            <div>
-              <Likes pollEvent={pollEvent} />
-            </div>
-            <div>
-              <Zap pollEvent={pollEvent} />
-            </div>
-          </div>
-        </CardContent>
+        <FeedbackMenu event={pollEvent} />
       </Card>
       <ProofofWorkModal
         show={showPoWModal}

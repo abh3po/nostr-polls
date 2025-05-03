@@ -11,9 +11,9 @@ import { UserProvider } from "./contexts/user-context";
 import CssBaseline from "@mui/material/CssBaseline";
 import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
-import EventList from "./components/Ratings/RatingsFeed";
-import { RatingProvider } from "./components/Ratings/RatingProvider";
-import RatingFeed from "./components/Ratings/RatingsFeed";
+import EventList from "./components/Feed/RatingsFeed";
+import { RatingProvider } from "./contexts/RatingProvider";
+import RatingFeed from "./components/Feed/RatingsFeed";
 
 declare global {
   interface Window {

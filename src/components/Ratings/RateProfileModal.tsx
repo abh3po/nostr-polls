@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { nip19, Event, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
-import ProfileCard from "./ProfileCard";
+import ProfileCard from "../Profile/ProfileCard";
 
 interface RateProfileModalProps {
   open: boolean;

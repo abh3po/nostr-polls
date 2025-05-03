@@ -4,8 +4,8 @@ import { defaultRelays } from "../../nostr";
 import { Notes } from "../Notes";
 import { useUserContext } from "../../hooks/useUserContext";
 import { Button, CircularProgress, Typography } from "@mui/material";
-import RateEventCard from "./RateEventCard";
-import RateEventModal from "./RateEventModal";
+import RateEventCard from "../Ratings/RateEventCard";
+import RateEventModal from "../Ratings/RateEventModal";
 
 const NOTES_BATCH_SIZE = 10;
 
