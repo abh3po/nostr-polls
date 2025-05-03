@@ -3,7 +3,7 @@ import { Box, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
 import NotesFeed from "./NotesFeed";
 import ProfilesFeed from "./ProfileFeed";
 import HashtagsFeed from "./HashtagsFeed";
-import { PollFeed } from "../Feed/PollFeed";
+import { PollFeed } from "./PollFeed";
 
 type FeedType = "polls" | "notes" | "profiles" | "hashtags";
 

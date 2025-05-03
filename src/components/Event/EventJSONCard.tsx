@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent, Typography } from "@mui/material";
-import Rate from "./Rate";
+import Rate from "../Ratings/Rate";
 
 interface Props {
   event: any;

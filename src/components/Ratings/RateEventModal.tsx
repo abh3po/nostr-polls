@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { nip19, SimplePool, Event } from "nostr-tools";
-import EventJsonCard from "./EventJSONCard";
+import EventJsonCard from "../Event/EventJSONCard";
 import { defaultRelays } from "../../nostr";
 import { Notes } from "../Notes";
 

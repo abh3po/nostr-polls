@@ -1,7 +1,7 @@
 import React, { createContext, useEffect, useRef, useState } from "react";
 import { Event as NostrEvent } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
-import { useAppContext } from "../../hooks/useAppContext";
+import { defaultRelays } from "../nostr";
+import { useAppContext } from "../hooks/useAppContext";
 import { count } from "console";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating

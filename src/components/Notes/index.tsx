@@ -11,12 +11,9 @@ import { useEffect } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { openProfileTab } from "../../nostr";
-import PollComments from "../Common/Comments/PollComments";
-import Likes from "../Common/Likes/likes";
-import Zap from "../Common/Zaps/zaps";
 import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
-import Rate from "../Ratings/Rate";
+import { FeedbackMenu } from "../FeedbackMenu";
 
 interface NotesProps {
   event: Event;
@@ -38,7 +35,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
   return (
     <div>
       <Card
-        variant="elevation"
+        variant="outlined"
         className="poll-response-form"
         style={{ margin: 10 }}
       >
@@ -64,7 +61,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
           subheader={timeAgo}
           style={{ margin: 0, padding: 0, marginLeft: 10, marginTop: 10 }}
         ></CardHeader>
-        <Card>
+        <Card variant="outlined">
           <CardContent>
             {referencedEventId ? (
               <>
@@ -78,22 +75,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
             <TextWithImages content={event.content}></TextWithImages>
           </CardContent>
         </Card>
-        <CardContent>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <Rate entityId={event.id} entityType="event" />
-            </div>
-            <div>
-              <PollComments pollEventId={event.id} />
-            </div>
-            <div>
-              <Likes pollEvent={event} />
-            </div>
-            <div>
-              <Zap pollEvent={event} />
-            </div>
-          </div>
-        </CardContent>
+        <FeedbackMenu event={event} />
       </Card>
     </div>
   );

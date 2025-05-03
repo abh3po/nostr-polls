@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
-import ProfileCard from "./ProfileCard";
+import ProfileCard from "../Profile/ProfileCard";
 import { useUserContext } from "../../hooks/useUserContext";
 import {
   Button,
@@ -10,7 +10,7 @@ import {
   CircularProgress,
   Typography,
 } from "@mui/material";
-import RateProfileModal from "./RateProfileModal";
+import RateProfileModal from "../Ratings/RateProfileModal";
 
 const BATCH_SIZE = 20;
 

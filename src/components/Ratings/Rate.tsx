@@ -1,6 +1,6 @@
 import React from "react";
 import { Typography, Rating, Box } from "@mui/material";
-import { useRating } from "./useRating"; // custom hook from context
+import { useRating } from "../../hooks/useRating"; // custom hook from context
 
 interface Props {
   entityId: string;

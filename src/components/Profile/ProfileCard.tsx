@@ -1,7 +1,7 @@
 import React from "react";
 import { Event } from "nostr-tools";
 import { Avatar, Card, CardContent, Typography } from "@mui/material";
-import Rate from "./Rate";
+import Rate from "../Ratings/Rate";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 
 const ProfileCard: React.FC<{ event: Event }> = ({ event }) => {
