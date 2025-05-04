@@ -12,6 +12,7 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
   const [text, setText] = useState<string>(content);
   useEffect(() => {
     if (!text) setText(content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content]);
   const processContent = () => {
     // Split the content by spaces and new lines to process each segment

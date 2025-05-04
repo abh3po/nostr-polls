@@ -26,8 +26,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
       />
       {totalRatings ? (
         <Typography variant="caption" color="text.secondary">
-          Rated: {(averageRating! * 5).toFixed(2)} / 5 from {totalRatings}{" "}
-          rating
+          Rated: {(averageRating! * 5).toFixed(2)} from {totalRatings} rating
           {totalRatings !== 1 ? "s" : ""}
         </Typography>
       ) : null}
