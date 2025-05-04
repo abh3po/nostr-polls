@@ -44,10 +44,15 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
     zapsMap?.get(pollEvent.id)?.forEach((e) => {
       let zapRequestTag = e.tags.find((t) => t[0] === "description");
       if (zapRequestTag && zapRequestTag[1]) {
-        const zapRequest = JSON.parse(zapRequestTag[1]);
-        let requestAmount =
-          zapRequest.tags.find((t: any) => t[0] === "amount")?.[1] / 1000 || 0;
-        amount += requestAmount;
+        try {
+          const zapRequest = JSON.parse(zapRequestTag[1]);
+          let requestAmount =
+            zapRequest.tags.find((t: any) => t[0] === "amount")?.[1] / 1000 ||
+            0;
+          amount += requestAmount;
+        } catch (e) {
+          return;
+        }
       }
     });
     return amount.toString();

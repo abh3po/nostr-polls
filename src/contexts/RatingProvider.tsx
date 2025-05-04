@@ -2,7 +2,6 @@ import React, { createContext, useEffect, useRef, useState } from "react";
 import { Event as NostrEvent } from "nostr-tools";
 import { defaultRelays } from "../nostr";
 import { useAppContext } from "../hooks/useAppContext";
-import { count } from "console";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating
 
@@ -69,7 +68,6 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
       const hasChanged =
         ids.length !== lastTrackedIds.current.length ||
         ids.some((id, i) => id !== lastTrackedIds.current[i]);
-      console.log("Checking for changes", hasChanged, ids);
       if (!hasChanged) return;
       lastTrackedIds.current = ids;
 
