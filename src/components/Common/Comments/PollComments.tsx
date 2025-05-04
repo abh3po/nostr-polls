@@ -14,12 +14,12 @@ import { defaultRelays, signEvent } from "../../../nostr";
 import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import CommentIcon from "@mui/icons-material/Comment";
-import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { TextWithImages } from "../TextWithImages";
 import { calculateTimeAgo } from "../../../utils/common";
 import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
+import { SubCloser } from "nostr-tools/lib/types/pool";
 
 interface PollCommentsProps {
   pollEventId: string;

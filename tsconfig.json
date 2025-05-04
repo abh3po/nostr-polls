@@ -17,7 +17,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/*"]
+      "*": ["node_modules/*"],
+      "nostr-tools/nip46": ["node_modules/nostr-tools/lib/types/nip46.d.ts"]
     }
   },
   "include": ["src"]
