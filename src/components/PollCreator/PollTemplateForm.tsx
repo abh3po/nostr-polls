@@ -20,6 +20,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
+import { useSigner } from "../../contexts/signer-context";
 
 export type PollTypes =
   | "singlechoice"
@@ -36,6 +37,7 @@ const PollTemplateForm = () => {
 
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
+  const { signer, requestLogin } = useSigner();
   let navigate = useNavigate();
 
   function generateOptionId() {
@@ -57,17 +59,15 @@ const PollTemplateForm = () => {
     setOptions(updatedOptions);
   };
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    if (!window.nostr && !user?.privateKey) {
-      alert(
-        "Could not find a nostr extension on your browser, use temp id to login or install extension"
-      );
-      return;
-    }
     e.preventDefault();
     publishPoll(user?.privateKey);
   };
 
   const publishPoll = async (secret?: string) => {
+    if (!signer && !secret) {
+      requestLogin();
+      return;
+    }
     const pollEvent = {
       kind: 1068,
       content: pollContent,
@@ -84,7 +84,7 @@ const PollTemplateForm = () => {
     if (expiration) {
       pollEvent.tags.push(["endsAt", expiration.toString()]);
     }
-    let signedEvent = await signEvent(pollEvent, secret);
+    let signedEvent = await signEvent(pollEvent, signer, secret);
     poolRef.current.publish(defaultRelays, signedEvent!);
     navigate("/");
   };

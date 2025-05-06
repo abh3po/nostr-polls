@@ -11,14 +11,6 @@ import {
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useSigner } from "../../contexts/signer-context";
-import {
-  setKeysInLocalStorage,
-  removeKeysFromLocalStorage,
-} from "../../utils/localStorage";
-import { fetchUserProfile } from "../../nostr";
-import { DEFAULT_IMAGE_URL } from "../../utils/constants";
-import { ANONYMOUS_USER_NAME } from "../../contexts/user-context";
-import { Event } from "nostr-tools";
 
 interface Props {
   open: boolean;
@@ -61,8 +53,8 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
           <Button onClick={handleLoginWithNip07} variant="contained" fullWidth>
             Log In via Extension (NIP-07)
           </Button>
-          <Button onClick={handleLoginWithNip46} variant="outlined" fullWidth>
-            Log In via Remote (NIP-46)
+          <Button onClick={handleLoginWithNip46} variant="contained" fullWidth>
+            Log In via Remote Signer (NIP-46)
           </Button>
         </Stack>
       </DialogContent>

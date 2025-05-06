@@ -8,6 +8,7 @@ import { nip57 } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { styled } from "@mui/system";
 import { getColorsWithTheme } from "../../../styles/theme";
+import { useSigner } from "../../../contexts/signer-context";
 
 interface ZapProps {
   pollEvent: Event;
@@ -22,6 +23,7 @@ const Wrapper = styled("div")(({ theme }) => ({
 const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const { fetchZapsThrottled, zapsMap, profiles } = useAppContext();
   const { user } = useUserContext();
+  const { signer } = useSigner();
   const [hasZapped, setHasZapped] = useState<boolean>(false);
   useEffect(() => {
     // Fetch existing zaps for the poll event
@@ -82,7 +84,7 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
       relays: defaultRelays,
     });
     let serializedZapEvent = encodeURI(
-      JSON.stringify(signEvent(zapRequestEvent, user.privateKey))
+      JSON.stringify(signEvent(zapRequestEvent, signer, user.privateKey))
     );
     let zapEndpoint = await nip57.getZapEndpoint(recipient.event);
     const zaprequestUrl =

@@ -6,6 +6,7 @@ import {
   SimplePool,
 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
+import { NostrSigner } from "../components/Signer/types";
 
 export const defaultRelays = [
   "wss://relay.damus.io/",
@@ -83,26 +84,22 @@ export const getATagFromEvent = (event: Event) => {
   return a_tag;
 };
 
-export const findPubkey = async (secret?: string) => {
-  let secretKey;
-  let pubkey;
-  if (secret) {
-    secretKey = hexToBytes(secret);
-    pubkey = getPublicKey(secretKey);
-  } else {
-    pubkey = await window.nostr?.getPublicKey();
-  }
-  return pubkey;
-};
-
-export const signEvent = async (event: EventTemplate, secret?: string) => {
+export const signEvent = async (
+  event: EventTemplate,
+  signer?: NostrSigner | null,
+  secret?: string,
+  requestLogin?: () => void
+) => {
   let signedEvent;
   let secretKey;
-  if (secret) secretKey = hexToBytes(secret);
-  if (secretKey) {
+  if (!signer && !secret) {
+    requestLogin?.();
+    return;
+  }
+  if (signer) return await signer.signEvent(event);
+  if (secret) {
+    secretKey = hexToBytes(secret);
     signedEvent = finalizeEvent(event, secretKey);
-  } else {
-    signedEvent = await window.nostr?.signEvent(event);
   }
   return signedEvent;
 };

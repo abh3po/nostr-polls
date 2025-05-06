@@ -31,6 +31,7 @@ import { useMiningWorker } from "../../hooks/useMiningWorker";
 import PollTimer from "./PollTimer";
 import { getColorsWithTheme } from "../../styles/theme";
 import { FeedbackMenu } from "../FeedbackMenu";
+import { useSigner } from "../../contexts/signer-context";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -52,6 +53,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const [showPoWModal, setShowPoWModal] = useState<boolean>(false);
   const { profiles, poolRef, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
+  const { signer } = useSigner();
   const difficulty = Number(
     pollEvent.tags.filter((t) => t[0] === "PoW")?.[0]?.[1]
   );
@@ -136,7 +138,11 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     }
 
     setShowPoWModal(false);
-    const signedResponse = await signEvent(useEvent, responseUser!.privateKey);
+    const signedResponse = await signEvent(
+      useEvent,
+      signer,
+      responseUser!.privateKey
+    );
     let relays = pollEvent.tags
       .filter((t) => t[0] === "relay")
       .map((t) => t[1]);
