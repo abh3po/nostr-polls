@@ -14,12 +14,13 @@ import { defaultRelays, signEvent } from "../../../nostr";
 import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import CommentIcon from "@mui/icons-material/Comment";
-import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { TextWithImages } from "../TextWithImages";
 import { calculateTimeAgo } from "../../../utils/common";
 import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
+import { SubCloser } from "nostr-tools/lib/types/pool";
+import { useSigner } from "../../../contexts/signer-context";
 
 interface PollCommentsProps {
   pollEventId: string;
@@ -42,6 +43,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
   );
 
   const { user } = useUserContext();
+  const { signer } = useSigner();
 
   const fetchComments = () => {
     let filter = {
@@ -88,7 +90,11 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
       created_at: Math.floor(Date.now() / 1000),
     };
 
-    const signedComment = await signEvent(commentEvent, user.privateKey);
+    const signedComment = await signEvent(
+      commentEvent,
+      signer,
+      user.privateKey
+    );
     poolRef.current.publish(defaultRelays, signedComment!);
     setReplyTo(null);
   };

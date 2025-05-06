@@ -14,6 +14,7 @@ import { ThemeProvider } from "@mui/material";
 import EventList from "./components/Feed/RatingsFeed";
 import { RatingProvider } from "./contexts/RatingProvider";
 import RatingFeed from "./components/Feed/RatingsFeed";
+import { SignerProvider } from "./contexts/signer-context";
 
 declare global {
   interface Window {
@@ -26,22 +27,27 @@ const App: React.FC = () => {
     <ThemeProvider theme={baseTheme} modeStorageKey={"pollerama-color-scheme"}>
       <AppContextProvider>
         <UserProvider>
-          <ListProvider>
-            <RatingProvider>
-              <CssBaseline />
-              <Router>
-                <Header />
-                <Routes>
-                  <Route path="/create" element={<PollCreator />} />
-                  <Route path="/respond/:eventId" element={<PollResponse />} />
-                  <Route path="/result/:eventId" element={<PollResults />} />
-                  <Route path="/ratings" element={<EventList />} />
+          <SignerProvider>
+            <ListProvider>
+              <RatingProvider>
+                <CssBaseline />
+                <Router>
+                  <Header />
+                  <Routes>
+                    <Route path="/create" element={<PollCreator />} />
+                    <Route
+                      path="/respond/:eventId"
+                      element={<PollResponse />}
+                    />
+                    <Route path="/result/:eventId" element={<PollResults />} />
+                    <Route path="/ratings" element={<EventList />} />
 
-                  <Route index path="/" element={<RatingFeed />} />
-                </Routes>
-              </Router>
-            </RatingProvider>
-          </ListProvider>
+                    <Route index path="/" element={<RatingFeed />} />
+                  </Routes>
+                </Router>
+              </RatingProvider>
+            </ListProvider>
+          </SignerProvider>
         </UserProvider>
       </AppContextProvider>
     </ThemeProvider>

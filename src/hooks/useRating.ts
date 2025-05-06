@@ -1,14 +1,16 @@
 // hooks/useRating.ts
 import { useContext, useEffect, useRef } from "react";
 import { getEventHash } from "nostr-tools";
-import { defaultRelays } from "../nostr";
+import { defaultRelays, signEvent } from "../nostr";
 import { RatingContext } from "../contexts/RatingProvider";
 import { useAppContext } from "./useAppContext";
+import { useSigner } from "../contexts/signer-context";
 
 export const useRating = (entityId: string) => {
   const { ratings, registerEntityId } = useContext(RatingContext);
   const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
+  const { signer } = useSigner();
 
   // Register entityId with the RatingsProvider
   useEffect(() => {
@@ -40,16 +42,9 @@ export const useRating = (entityId: string) => {
     };
 
     try {
-      if (window.nostr) {
-        const signed = await window.nostr.signEvent(ratingEvent);
-        ratingEvent.id = getEventHash(signed);
-        ratingEvent.pubkey = signed.pubkey;
-        ratingEvent.sig = signed.sig;
+      const signed = await signEvent(ratingEvent, signer);
 
-        poolRef.current.publish(defaultRelays, ratingEvent);
-      } else {
-        alert("Nostr signer not found");
-      }
+      poolRef.current.publish(defaultRelays, signed);
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {

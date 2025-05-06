@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import RateProfileModal from "../Ratings/RateProfileModal";
+import { useSigner } from "../../contexts/signer-context";
 
 const BATCH_SIZE = 20;
 
@@ -19,7 +20,8 @@ const ProfilesFeed: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [until, setUntil] = useState<number | undefined>(undefined); // for pagination
   const [modalOpen, setModalOpen] = useState(false);
-  const { user, requestLogin } = useUserContext();
+  const { user } = useUserContext();
+  const { requestLogin } = useSigner();
 
   const fetchProfiles = () => {
     if (!user || !user.follows || user.follows.length === 0) return;

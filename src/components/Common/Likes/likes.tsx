@@ -6,6 +6,7 @@ import { Event, EventTemplate } from "nostr-tools/lib/types/core";
 import { defaultRelays, signEvent } from "../../../nostr";
 import { Favorite } from "@mui/icons-material";
 import { useUserContext } from "../../../hooks/useUserContext";
+import { useSigner } from "../../../contexts/signer-context";
 
 interface LikesProps {
   pollEvent: Event;
@@ -14,6 +15,8 @@ interface LikesProps {
 const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const { likesMap, fetchLikesThrottled, poolRef, addEventToMap } =
     useAppContext();
+
+  const { signer } = useSigner();
   const { user } = useUserContext();
 
   const addLike = async () => {
@@ -27,7 +30,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       tags: [["e", pollEvent.id, defaultRelays[0]]],
       created_at: Math.floor(Date.now() / 1000),
     };
-    let finalEvent = await signEvent(event, user.privateKey);
+    let finalEvent = await signEvent(event, signer, user.privateKey);
     poolRef.current.publish(defaultRelays, finalEvent!);
     addEventToMap(finalEvent!);
   };
@@ -49,10 +52,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   }, [pollEvent.id, likesMap, fetchLikesThrottled, user]);
 
   const handleLike = async () => {
-    if (!window.nostr) {
-      alert("Nostr Signer Extension Is Required.");
-      return;
-    }
     if (hasLiked()) {
       //await removeLike(pollEvent.id, userPublicKey);
       //setLikes((prevLikes) => prevLikes.filter((like) => like !== userPublicKey));
@@ -62,7 +61,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   };
 
   return (
-    <div style={{  marginLeft: 20 }}>
+    <div style={{ marginLeft: 20 }}>
       <Tooltip
         onClick={handleLike}
         style={{ color: "black" }}
@@ -78,10 +77,11 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
                 return {
                   color: "#FAD13F",
                   "& path": {
-                    stroke: theme.palette.mode === "light" ? "#000000" : "#ffffff",
+                    stroke:
+                      theme.palette.mode === "light" ? "#000000" : "#ffffff",
                     strokeWidth: 3,
                   },
-                }
+                };
               }}
               style={{ display: "block" }}
             />

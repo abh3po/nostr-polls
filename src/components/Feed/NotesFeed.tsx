@@ -6,13 +6,15 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { Button, CircularProgress, Typography } from "@mui/material";
 import RateEventCard from "../Ratings/RateEventCard";
 import RateEventModal from "../Ratings/RateEventModal";
+import { useSigner } from "../../contexts/signer-context";
 
 const NOTES_BATCH_SIZE = 10;
 
 const NotesFeed: React.FC = () => {
   const [events, setEvents] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
-  const { user, requestLogin } = useUserContext();
+  const { user } = useUserContext();
+  const { requestLogin } = useSigner();
   const [modalOpen, setModalOpen] = useState(false);
 
   const fetchNotes = async () => {
