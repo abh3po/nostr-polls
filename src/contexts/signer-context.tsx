@@ -45,9 +45,10 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
   };
   useEffect(() => {
     // Fetch user profile when component mounts
-    const initializeUser = () => {
+    const initializeUser = async () => {
       const keys = getKeysFromLocalStorage();
-      if (Object.keys(keys).length !== 0 && !user) {
+      const bunkerUri = getBunkerUriInLocalStorage();
+      if (!!keys.secret && !user && Object.keys(bunkerUri).length === 0) {
         fetchUserProfile(keys.pubkey, poolRef.current).then(
           (kind0: Event | null) => {
             if (!kind0) {
@@ -71,15 +72,22 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         );
         return;
-      }
-      const bunkerUri = getBunkerUriInLocalStorage();
-      if (Object.keys(bunkerUri).length !== 0 && !user) {
-        loginWithNip46(bunkerUri.bunkerUri);
+      } else if (Object.keys(bunkerUri).length !== 0 && !user) {
+        await loginWithNip46(bunkerUri.bunkerUri);
+        return;
+      } else if (
+        Object.keys(keys.pubkey).length !== 0 &&
+        !keys.secret &&
+        Object.keys(bunkerUri).length === 0
+      ) {
+        await loginWithNip07();
+        return;
       } else {
         setUser(null);
       }
     };
     if (!user) initializeUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loginWithNip07 = async () => {
@@ -107,6 +115,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const loginWithNip46 = async (bunkerUri: string) => {
+    console.log("INSIDE LOGIN WITH NIP46");
     try {
       const remoteSigner = await createNip46Signer(bunkerUri);
       const pubkey = await remoteSigner.getPublicKey();
