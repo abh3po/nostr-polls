@@ -1,4 +1,3 @@
-// components/UserMenu.tsx
 import React from "react";
 import { Avatar, Menu, MenuItem } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -40,22 +39,24 @@ export const UserMenu: React.FC = () => {
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
-        {user ? (
-          <>
-            <MenuItem onClick={() => setShowRelays(true)}>Your Relays</MenuItem>
-            <MenuItem onClick={handleLogOut}>Log Out</MenuItem>
-            <ListItem>
-              <ColorSchemeToggle />
-            </ListItem>
-          </>
-        ) : (
-          <>
-            <MenuItem onClick={() => setShowLoginModal(true)}>Log In</MenuItem>
-            <ListItem>
-              <ColorSchemeToggle />
-            </ListItem>
-          </>
-        )}
+        {user
+          ? [
+              <MenuItem onClick={() => setShowRelays(true)}>
+                Your Relays
+              </MenuItem>,
+              <MenuItem onClick={handleLogOut}>Log Out</MenuItem>,
+              <ListItem>
+                <ColorSchemeToggle />
+              </ListItem>,
+            ]
+          : [
+              <MenuItem onClick={() => setShowLoginModal(true)}>
+                Log In
+              </MenuItem>,
+              <ListItem>
+                <ColorSchemeToggle />
+              </ListItem>,
+            ]}
       </Menu>
       <RelayModal
         showRelays={showRelays}

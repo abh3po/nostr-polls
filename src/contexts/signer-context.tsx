@@ -76,7 +76,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
         await loginWithNip46(bunkerUri.bunkerUri);
         return;
       } else if (
-        Object.keys(keys.pubkey).length !== 0 &&
+        keys.pubkey &&
         !keys.secret &&
         Object.keys(bunkerUri).length === 0
       ) {
