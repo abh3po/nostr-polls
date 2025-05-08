@@ -8,7 +8,9 @@ interface Props {
 }
 
 const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
-  const { averageRating, totalRatings, submitRating } = useRating(entityId);
+  const { averageRating, totalRatings, submitRating } = useRating(
+    `${entityType}:${entityId}`
+  );
   const handleRatingChange = (_: any, newRating: number | null) => {
     if (newRating != null) {
       submitRating(newRating, 5, entityType);
