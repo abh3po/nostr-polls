@@ -10,6 +10,18 @@ const HashtagsFeed: React.FC = () => {
   const seen = new Set<string>();
   const [modalOpen, setModalOpen] = useState(false);
 
+  function parseRatingDTag(dTagValue: string): { type: string; id: string } {
+    const colonIndex = dTagValue.indexOf(":");
+
+    if (colonIndex !== -1) {
+      const type = dTagValue.slice(0, colonIndex);
+      const id = dTagValue.slice(colonIndex + 1);
+      return { type, id };
+    } else {
+      return { type: "event", id: dTagValue };
+    }
+  }
+
   useEffect(() => {
     const pool = new SimplePool();
     const sub = pool.subscribeMany(
@@ -44,9 +56,11 @@ const HashtagsFeed: React.FC = () => {
           </Typography>
         </CardContent>
       </Card>
-      {tags.map((tag) => (
-        <HashtagCard key={tag} tag={tag} />
-      ))}
+      {tags.map((tag) => {
+        const parsed = parseRatingDTag(tag);
+        if (parsed.type !== "hashtag") return;
+        return <HashtagCard key={parsed.id} tag={parsed.id} />;
+      })}
       <RateHashtagModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );

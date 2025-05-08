@@ -35,7 +35,7 @@ export const useRating = (entityId: string) => {
         ["m", entityType],
         ["rating", normalizedRating.toFixed(3)],
       ],
-      content: "Rated via Nostr",
+      content: "",
       pubkey: "",
       id: "",
       sig: "",
