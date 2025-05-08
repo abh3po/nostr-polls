@@ -56,9 +56,11 @@ const HashtagsFeed: React.FC = () => {
           </Typography>
         </CardContent>
       </Card>
-      {tags.map((tag) => (
-        <HashtagCard key={tag} tag={parseRatingDTag(tag).id} />
-      ))}
+      {tags.map((tag) => {
+        const parsed = parseRatingDTag(tag);
+        if (parsed.type !== "hashtag") return;
+        return <HashtagCard key={parsed.id} tag={parsed.id} />;
+      })}
       <RateHashtagModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
