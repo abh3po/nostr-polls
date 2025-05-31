@@ -1,5 +1,10 @@
-import { isImageUrl } from "../../utils/common";
 import React, { useEffect, useState } from "react";
+import { PrepareNote } from "../Notes/PrepareNote";
+import { nip19 } from "nostr-tools";
+import { isImageUrl } from "../../utils/common";
+import { useAppContext } from "../../hooks/useAppContext";
+import { DEFAULT_IMAGE_URL } from "../../utils/constants";
+import { EventPointer } from "nostr-tools/lib/types/nip19";
 
 interface TextWithImagesProps {
   content: string;
@@ -7,15 +12,20 @@ interface TextWithImagesProps {
 
 const urlRegex = /((http|https):\/\/[^\s]+)/g;
 const hashtagRegex = /#(\w+)/g;
+// const nostrRegex = /nostr:([a-z0-9]+)/gi;
+
+const isVideoUrl = (url: string) =>
+  /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/.test(url);
 
 export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
   const [text, setText] = useState<string>(content);
+  const { fetchUserProfileThrottled, profiles } = useAppContext();
+
   useEffect(() => {
     if (!text) setText(content);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content]);
+  }, [content, text]);
+
   const processContent = () => {
-    // Split the content by spaces and new lines to process each segment
     const lines = text?.split(/\n/) || [];
 
     return lines.map((line, lineIndex) => {
@@ -27,7 +37,7 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
           style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
         >
           {parts.map((part, index) => {
-            // Check if the part is an image URL
+            // --- Image ---
             if (isImageUrl(part)) {
               return (
                 <img
@@ -44,7 +54,23 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
               );
             }
 
-            // Check if the part is a URL
+            // --- Video ---
+            if (isVideoUrl(part)) {
+              return (
+                <video
+                  key={index}
+                  src={part}
+                  controls
+                  style={{
+                    maxWidth: "100%",
+                    marginBottom: "0.5rem",
+                    maxHeight: "400px",
+                  }}
+                />
+              );
+            }
+
+            // --- URL ---
             if (urlRegex.test(part)) {
               const url = part.match(urlRegex)?.[0];
               if (url)
@@ -54,21 +80,19 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
                     key={index}
                     rel="noopener noreferrer"
                     target="_blank"
-                    style={{
-                      color: "#FAD13F",
-                    }}
+                    style={{ color: "#FAD13F" }}
                   >
-                    {" "}
                     {part}
                   </a>
                 );
             }
-            // Check if the part is a hashtag
+
+            // --- Hashtag ---
             if (hashtagRegex.test(part)) {
               return (
                 <React.Fragment key={index}>
                   <a
-                    href={`/search?q=${part}`}
+                    href={`https://snort.social/t/${part}`}
                     style={{ color: "#FAD13F", textDecoration: "underline" }}
                   >
                     {part}
@@ -77,13 +101,73 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
               );
             }
 
+            // --- Nostr Links ---
+            if (part.startsWith("nostr:")) {
+              try {
+                const encoded = part.replace("nostr:", "");
+                const { type, data } = nip19.decode(encoded);
+
+                if (type === "nevent" || type === "note") {
+                  return (
+                    <div key={index} style={{ marginTop: "0.5rem" }}>
+                      <PrepareNote eventId={(data as EventPointer).id} />
+                    </div>
+                  );
+                }
+
+                if (type === "nprofile" || type === "npub") {
+                  const pubkey = type === "nprofile" ? data.pubkey : data;
+                  // Optionally fetch profile if not already available
+                  if (!profiles?.has(pubkey)) {
+                    fetchUserProfileThrottled(pubkey);
+                  }
+
+                  const profile = profiles?.get(pubkey);
+                  const name =
+                    profile?.name ||
+                    profile?.username ||
+                    profile?.nip05 ||
+                    pubkey.slice(0, 8) + "...";
+
+                  return (
+                    <a
+                      key={index}
+                      href={`https://njump.me/${encoded}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#FAD13F",
+                        textDecoration: "underline",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.3rem",
+                      }}
+                    >
+                      <div>
+                        <img
+                          src={profile?.picture || DEFAULT_IMAGE_URL}
+                          alt={name}
+                          width={18}
+                          height={18}
+                          style={{ borderRadius: "50%" }}
+                        />
+                        {name}
+                      </div>
+                    </a>
+                  );
+                }
+              } catch (err) {
+                // Not a valid nip19 encoded string
+                return <span key={index}>{part}</span>;
+              }
+            }
+            // --- Default ---
             return <React.Fragment key={index}>{part}</React.Fragment>;
           })}
-          <br /> {/* Preserve line breaks */}
+          <br />
         </div>
       );
     });
   };
-
   return <>{processContent()}</>;
 };
