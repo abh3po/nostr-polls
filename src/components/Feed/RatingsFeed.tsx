@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
-import NotesFeed from "./NotesFeed";
+import NotesFeed from "./NotesFeed/components";
 import ProfilesFeed from "./ProfileFeed";
 import HashtagsFeed from "./HashtagsFeed";
 import { PollFeed } from "./PollFeed";
