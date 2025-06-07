@@ -4,6 +4,7 @@ import {
   MenuItem,
   CircularProgress,
   Typography,
+  Button,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
@@ -13,43 +14,48 @@ const LOCAL_STORAGE_KEY = "ai-settings";
 export const AISettings: React.FC = () => {
   const { aiSettings, setAISettings } = useAppContext();
 
-  const [endpoint, setEndpoint] = useState(aiSettings.endpoint || "");
-  const [model, setModel] = useState(aiSettings.model || "");
+  const [localEndpoint, setLocalEndpoint] = useState(aiSettings.endpoint || "");
+  const [localModel, setLocalModel] = useState(aiSettings.model || "");
+
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  // Auto-save settings
-  useEffect(() => {
-    const newSettings = { endpoint, model };
-    setAISettings(newSettings);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newSettings));
-  }, [endpoint, model, setAISettings]);
-
-  // Fetch models whenever endpoint is a full URL
+  // Load models when endpoint changes
   useEffect(() => {
     const fetchModels = async () => {
-      if (!endpoint.startsWith("http")) return;
+      if (!localEndpoint.startsWith("http")) return;
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${endpoint}/v1/models`);
+        const res = await fetch(`${localEndpoint}/v1/models`);
         const data = await res.json();
         if (data.data && Array.isArray(data.data)) {
           const models = data.data.map((m: any) => m.id);
           setAvailableModels(models);
+          setError(null);
         } else {
           throw new Error("Invalid model response");
         }
       } catch (err) {
         setError("⚠️ Failed to fetch models");
         setAvailableModels([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchModels();
-  }, [endpoint]);
+  }, [localEndpoint]);
+
+  const handleSave = () => {
+    const newSettings = { endpoint: localEndpoint, model: localModel };
+    setAISettings(newSettings);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newSettings));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000); // feedback disappears after 2 sec
+  };
 
   return (
     <Box p={2} sx={{ bgcolor: "background.paper", color: "text.primary" }}>
@@ -58,15 +64,18 @@ export const AISettings: React.FC = () => {
       <TextField
         label="AI Endpoint"
         fullWidth
-        value={endpoint}
-        onChange={(e) => setEndpoint(e.target.value)}
+        value={localEndpoint}
+        onChange={(e) => {
+          setLocalEndpoint(e.target.value);
+          setSaved(false);
+        }}
         margin="normal"
       />
 
       {loading ? (
-        <Box mt={2}>
+        <Box mt={2} display="flex" alignItems="center">
           <CircularProgress size={20} />
-          <Typography variant="body2" ml={1} display="inline">
+          <Typography variant="body2" ml={1}>
             Fetching models…
           </Typography>
         </Box>
@@ -76,8 +85,11 @@ export const AISettings: React.FC = () => {
             select
             label="Select Model"
             fullWidth
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
+            value={localModel}
+            onChange={(e) => {
+              setLocalModel(e.target.value);
+              setSaved(false);
+            }}
             margin="normal"
           >
             {availableModels.map((m) => (
@@ -94,6 +106,17 @@ export const AISettings: React.FC = () => {
           {error}
         </Typography>
       )}
+
+      <Box mt={2} display="flex" alignItems="center" gap={2}>
+        <Button variant="contained" onClick={handleSave}>
+          Save
+        </Button>
+        {saved && (
+          <Typography variant="body2" color="success.main">
+            ✅ Settings saved
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 };

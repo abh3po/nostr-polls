@@ -37,15 +37,45 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
-
-    // Language detection
-    const langCode3 = franc(event.content);
-    const langCode1 = iso6393to1[langCode3] || "und";
-    console.log("LANGCODE 1 IS", langCode1, "BROWSER LANG IS", browserLang)
-    if (langCode1 !== browserLang) {
-      setShouldShowTranslate(true);
-    }
   }, [event.content, event.pubkey, fetchUserProfileThrottled, profiles]);
+
+  useEffect(() => {
+    if (!profiles?.has(event.pubkey)) {
+      fetchUserProfileThrottled(event.pubkey);
+    }
+
+    const detectLanguage = async () => {
+      try {
+        const res = await fetch(`${aiSettings.endpoint}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: aiSettings.model,
+            prompt: `Detect the ISO 639-1 language code of the following text. Ignore hashes, urls or random text, Only respond with the two-letter code (e.g., "en", "fr", "es"), If cannot detect, default to en:\n\n${event.content}`,
+            stream: false,
+          }),
+        });
+
+        const rawText = await res.text();
+        const data = JSON.parse(rawText);
+        const detectedLang = data.response.trim().slice(0, 2).toLowerCase();
+        if (detectedLang !== browserLang) {
+          setShouldShowTranslate(true);
+        }
+      } catch (err) {
+        console.error("Language detection failed:", err);
+      }
+    };
+
+    detectLanguage();
+  }, [
+    event.content,
+    event.pubkey,
+    fetchUserProfileThrottled,
+    profiles,
+    aiSettings,
+    browserLang,
+  ]);
 
   const handleTranslate = async () => {
     setIsTranslating(true);
@@ -55,18 +85,20 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: aiSettings.model,
-          prompt: `Translate the following to ${browserLang}:\n\n${event.content}`,
+          prompt: `Your job is to translate, the text might contain, random hashes, urls, nostr: ids, feel free to ignore it. Translate the following to ${browserLang}. \n:\n\n${event.content}`,
           stream: false,
         }),
       });
-  
+
       const rawText = await res.text();
       console.log("Raw response text from Ollama:", rawText);
-  
+
       if (!res.ok) {
-        throw new Error(`API returned error status: ${res.status} ${res.statusText}`);
+        throw new Error(
+          `API returned error status: ${res.status} ${res.statusText}`
+        );
       }
-  
+
       const data = JSON.parse(rawText);
       setTranslatedText(data.response);
     } catch (err) {
@@ -75,11 +107,14 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     }
     setIsTranslating(false);
   };
-  
 
   return (
     <div>
-      <Card variant="outlined" className="poll-response-form" style={{ margin: 10 }}>
+      <Card
+        variant="outlined"
+        className="poll-response-form"
+        style={{ margin: 10 }}
+      >
         <CardHeader
           avatar={
             <Avatar
@@ -114,7 +149,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
             {shouldShowTranslate && (
               <div style={{ marginTop: 10 }}>
                 <Button
-                  variant="outlined"
+                  variant="text"
                   onClick={handleTranslate}
                   disabled={isTranslating}
                 >
