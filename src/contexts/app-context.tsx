@@ -31,10 +31,9 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   );
   const [likesMap, setLikesMap] = useState<Map<string, Event[]>>(new Map());
   const [zapsMap, setZapsMap] = useState<Map<string, Event[]>>(new Map());
-  const [aiSettings, setAISettings] = useState({
-    model: "",
-    endpoint: "", // default fallback
-  });
+  const [aiSettings, setAISettings] = useState(
+    JSON.parse(localStorage.getItem("ai-settings") || "{}")
+  );
   const poolRef = useRef(new SimplePool());
 
   const addEventToProfiles = (event: Event) => {
