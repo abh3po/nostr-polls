@@ -6,10 +6,10 @@ import {
   removeBunkerUriFromLocalStorage,
   removeKeysFromLocalStorage,
 } from "../../utils/localStorage";
-import { RelayModal } from "./RelayModal";
 import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
+import { SettingsModal } from "./SettingsModal";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -17,8 +17,8 @@ const ListItem = styled("li")(() => ({
 
 export const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [showRelays, setShowRelays] = React.useState(false);
   const [showLoginModal, setShowLoginModal] = React.useState(false);
+  const [showSettings, setShowSettings] = React.useState(false);
   const { user, setUser } = useUserContext();
 
   const handleLogOut = () => {
@@ -41,9 +41,7 @@ export const UserMenu: React.FC = () => {
       >
         {user
           ? [
-              <MenuItem onClick={() => setShowRelays(true)}>
-                Your Relays
-              </MenuItem>,
+            <MenuItem onClick={() => setShowSettings(true)}>Settings</MenuItem>,
               <MenuItem onClick={handleLogOut}>Log Out</MenuItem>,
               <ListItem>
                 <ColorSchemeToggle />
@@ -58,10 +56,7 @@ export const UserMenu: React.FC = () => {
               </ListItem>,
             ]}
       </Menu>
-      <RelayModal
-        showRelays={showRelays}
-        onClose={() => setShowRelays(false)}
-      />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
       <LoginModal
         open={showLoginModal}
         onClose={() => setShowLoginModal(false)}
