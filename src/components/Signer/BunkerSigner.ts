@@ -1,5 +1,5 @@
 // nip46.ts
-import { generateSecretKey, Event as NostrEvent } from "nostr-tools";
+import { EventTemplate } from "nostr-tools";
 import {
   BunkerSignerParams,
   BunkerPointer,
@@ -31,7 +31,7 @@ export async function createNip46Signer(
   await bunker.connect();
   const wrapper: NostrSigner = {
     getPublicKey: async () => await bunker.getPublicKey(),
-    signEvent: async (event: NostrEvent) => {
+    signEvent: async (event: EventTemplate) => {
       // client-pubkey is baked into the conversation, remote returns correctly‐signed user-event
       return bunker.signEvent(event);
     },

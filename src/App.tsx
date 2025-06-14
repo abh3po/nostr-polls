@@ -15,6 +15,7 @@ import EventList from "./components/Feed/RatingsFeed";
 import { RatingProvider } from "./contexts/RatingProvider";
 import RatingFeed from "./components/Feed/RatingsFeed";
 import { SignerProvider } from "./contexts/signer-context";
+import MoviePage from "./components/Movies/MoviePage";
 
 declare global {
   interface Window {
@@ -41,7 +42,7 @@ const App: React.FC = () => {
                     />
                     <Route path="/result/:eventId" element={<PollResults />} />
                     <Route path="/ratings" element={<EventList />} />
-
+                    <Route path="/movies/:imdbId" element={<MoviePage />}  />
                     <Route index path="/" element={<RatingFeed />} />
                   </Routes>
                 </Router>
