@@ -96,7 +96,12 @@ export const signEvent = async (
     requestLogin?.();
     return;
   }
-  if (signer) return await signer.signEvent(event);
+  if (signer) {
+    console.log("ATTEMPTING TO SIGN!!")
+    signedEvent = await signer.signEvent(event);
+    console.log("THE EVENT IS SIGNED THIS IS THE EVEBT", signedEvent )
+    return signedEvent
+  }
   if (secret) {
     secretKey = hexToBytes(secret);
     signedEvent = finalizeEvent(event, secretKey);

@@ -1,7 +1,8 @@
 import React, { createContext, useEffect, useRef, useState } from "react";
-import { Event as NostrEvent } from "nostr-tools";
+import { Event } from "nostr-tools";
 import { defaultRelays } from "../nostr";
 import { useAppContext } from "../hooks/useAppContext";
+import { useUserContext } from "../hooks/useUserContext";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating
 
@@ -9,6 +10,7 @@ interface RatingContextType {
   registerEntityId: (id: string) => void;
   getAverageRating: (id: string) => { avg: number; count: number } | null;
   ratings: RatingMap;
+  userRatingEvent?: Event
 }
 
 export const RatingContext = createContext<RatingContextType>({
@@ -24,11 +26,14 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const { poolRef } = useAppContext();
   const [ratings, setRatings] = useState<RatingMap>(new Map());
+  const [userRatingEvent, setUserRatingEvent]= useState<Event>()
   const trackedIdsRef = useRef<Set<string>>(new Set());
   const lastTrackedIds = useRef<string[]>([]);
   const subscriptionRef = useRef<ReturnType<
     typeof poolRef.current.subscribeMany
   > | null>(null);
+
+  const { user } = useUserContext();
 
   const registerEntityId = (id: string) => {
     trackedIdsRef.current.add(id);
@@ -43,10 +48,13 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
     return { avg, count: values.length };
   };
 
-  const handleEvent = (ev: NostrEvent) => {
+  const handleEvent = (ev: Event) => {
     const dTag = ev.tags.find((t) => t[0] === "d")?.[1];
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
+    if(user && user.pubkey === ev.pubkey) {
+      setUserRatingEvent(ev as Event)
+    }
 
     if (!dTag || !ratingTag || !pubkey) return;
     const value = parseFloat(ratingTag);
@@ -97,11 +105,11 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
       clearInterval(interval);
       if (subscriptionRef.current) subscriptionRef.current.close();
     };
-  }, [poolRef]);
+  }, [poolRef, user]);
 
   return (
     <RatingContext.Provider
-      value={{ registerEntityId, getAverageRating, ratings }}
+      value={{ registerEntityId, getAverageRating, ratings, userRatingEvent }}
     >
       {children}
     </RatingContext.Provider>

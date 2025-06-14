@@ -1,63 +1,116 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, Typography, Box } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  CardMedia,
+  Typography,
+  Button,
+} from "@mui/material";
+import { nip19, SimplePool, UnsignedEvent as NostrEvent, UnsignedEvent } from "nostr-tools";
+import { defaultRelays } from "../../nostr";
+import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
 
-interface Movie {
-  id: number;
-  title: string;
-  imdb_id: string;
-  year: string;
-  poster?: string;
+interface MovieCardProps {
+  imdbId: string;
+  metadataEvent?: UnsignedEvent;
+  previewMode?: boolean;
 }
 
-const fetchMovie = async (imdbId: string) => {
-  try {
-    const res = await fetch(`https://moviesapi.ir/api/v1/movies/${imdbId}`);
-    if (!res.ok) throw new Error("Failed to fetch movie");
-
-    // This line reads the body exactly once
-    const data = await res.json();
-    console.log("Got result as ", data, res);
-    return data[0] || null; // API returns an array with movie object(s)
-  } catch (error) {
-    console.error("Fetch movie error:", error);
-    return null;
-  }
-};
-
-const MovieCard: React.FC<{ imdbId: string }> = ({ imdbId }) => {
-  const [movie, setMovie] = useState<Movie | null>(null);
+const MovieCard: React.FC<MovieCardProps> = ({
+  imdbId,
+  metadataEvent,
+  previewMode = false,
+}) => {
+  const [event, setEvent] = useState<UnsignedEvent | null>(metadataEvent || null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchMovie(imdbId).then(setMovie);
-  }, [imdbId]);
+    if (event || previewMode) return;
+
+    const pool = new SimplePool();
+    const unsub = pool.subscribeMany(
+      defaultRelays,
+      [
+        {
+          kinds: [30300],
+          "#d": [`movie:${imdbId}`],
+        },
+      ],
+      {
+        onevent(e) {
+          setEvent(e);
+          unsub.close(); // stop after first event
+        },
+        oneose() {
+          // optional: handle "end of stream"
+        },
+      }
+    );
+
+    return () => unsub.close();
+  }, [imdbId, event, previewMode]);
+
+  const title = event?.content || "Untitled";
+  const poster = event?.tags.find((t) => t[0] === "poster")?.[1];
+  const year = event?.tags.find((t) => t[0] === "year")?.[1];
+  const summary = event?.tags.find((t) => t[0] === "summary")?.[1];
+  const pubkey = event?.pubkey;
 
   return (
-    <Card sx={{ mb: 2 }}>
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {movie?.poster && (
-            <img
-              src={movie.poster}
-              alt={`${movie.title} Poster`}
-              style={{ width: 60, borderRadius: 4 }}
-            />
-          )}
-          <Box>
-            <Typography
-              variant="h6"
-              sx={{ cursor: "pointer" }}
-              onClick={() =>
-                window.open(`https://www.imdb.com/title/${imdbId}`, "_blank")
-              }
-            >
-              {movie?.title || imdbId} {movie?.year ? `(${movie.year})` : ""}
-            </Typography>
-            <Rate entityId={imdbId} entityType="movie" />
-          </Box>
+    <>
+      <Card sx={{ display: "flex", mb: 2 }}>
+        {poster && (
+          <CardMedia
+            component="img"
+            sx={{ width: 120 }}
+            image={poster}
+            alt={title}
+          />
+        )}
+        <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <CardContent>
+            <Typography variant="h6">{title}</Typography>
+            {year && (
+              <Typography variant="body2" color="text.secondary">
+                {year}
+              </Typography>
+            )}
+            {summary && (
+              <Typography variant="body2" mt={1}>
+                {summary}
+              </Typography>
+            )}
+            {pubkey && (
+              <Typography variant="caption" color="text.secondary">
+                Metadata by {nip19.npubEncode(pubkey)}
+              </Typography>
+            )}
+            {
+              !previewMode && (
+                <Rate entityId={imdbId} entityType="movie" />
+              )
+            }
+            {!event && !previewMode && (
+              <Button
+                variant="outlined"
+                sx={{ mt: 2 }}
+                onClick={() => setModalOpen(true)}
+              >
+                Add Movie Info?
+              </Button>
+            )}
+          </CardContent>
         </Box>
-      </CardContent>
-    </Card>
+      </Card>
+
+      <MovieMetadataModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        imdbId={imdbId}
+      />
+    </>
   );
 };
 

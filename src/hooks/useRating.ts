@@ -7,7 +7,7 @@ import { useAppContext } from "./useAppContext";
 import { useSigner } from "../contexts/signer-context";
 
 export const useRating = (entityId: string) => {
-  const { ratings, registerEntityId } = useContext(RatingContext);
+  const { ratings, registerEntityId, userRatingEvent } = useContext(RatingContext);
   const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
   const { signer } = useSigner();
@@ -20,7 +20,8 @@ export const useRating = (entityId: string) => {
   const submitRating = async (
     newRating: number,
     outOf: number = 5,
-    entityType: string = "event"
+    entityType: string = "event",
+    content?: string
   ) => {
     if (hasSubmittedRef.current) return; // prevent duplicate submission
     hasSubmittedRef.current = true;
@@ -35,15 +36,16 @@ export const useRating = (entityId: string) => {
         ["m", entityType],
         ["rating", normalizedRating.toFixed(3)],
       ],
-      content: "",
+      content: content || "",
       pubkey: "",
       id: "",
       sig: "",
     };
+    if(content) ratingEvent.tags.push(["c", "true"])
 
     try {
       const signed = await signEvent(ratingEvent, signer);
-
+      if(!signed) throw new Error("Signer couldn't sign Event")
       poolRef.current.publish(defaultRelays, signed);
     } catch (err) {
       console.error("Error publishing rating:", err);
@@ -63,5 +65,6 @@ export const useRating = (entityId: string) => {
     averageRating: average,
     totalRatings: entityRatings?.size || 0,
     submitRating,
+    userRatingEvent
   };
 };
