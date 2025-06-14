@@ -4,14 +4,16 @@ import NotesFeed from "./NotesFeed/components";
 import ProfilesFeed from "./ProfileFeed";
 import HashtagsFeed from "./HashtagsFeed";
 import { PollFeed } from "./PollFeed";
+import MoviesFeed from "./MoviesFeed";
 
-type FeedType = "polls" | "notes" | "profiles" | "hashtags";
+type FeedType = "polls" | "notes" | "profiles" | "hashtags" | "movies";
 
 const feedOptions: { value: FeedType; label: string }[] = [
   { value: "polls", label: "Polls" },
   { value: "notes", label: "Notes" },
   { value: "profiles", label: "Profiles" },
   { value: "hashtags", label: "Hashtags" },
+  { value: "movies", label: "Movies" },
   // Add more here easily in future
 ];
 
@@ -51,6 +53,7 @@ const RatingFeed: React.FC = () => {
       {feedType === "profiles" && <ProfilesFeed />}
       {feedType === "hashtags" && <HashtagsFeed />}
       {feedType === "polls" && <PollFeed />}
+      {feedType === "movies" && <MoviesFeed />}
     </Box>
   );
 };
