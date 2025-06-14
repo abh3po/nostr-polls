@@ -6,6 +6,7 @@ import { defaultRelays } from "../../nostr";
 import MovieCard from "./MovieCard";
 import ReviewCard from "../Ratings/ReviewCard"; // You’ll define this next
 import { useUserContext } from "../..//hooks/useUserContext";
+import { useAppContext } from "../../hooks/useAppContext";
 
 const MoviePage = () => {
   const { imdbId } = useParams<{ imdbId: string }>();

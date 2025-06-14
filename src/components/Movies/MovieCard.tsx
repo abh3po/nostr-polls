@@ -7,10 +7,16 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-import { nip19, SimplePool, UnsignedEvent as NostrEvent, UnsignedEvent } from "nostr-tools";
+import {
+  nip19,
+  SimplePool,
+  UnsignedEvent as NostrEvent,
+  UnsignedEvent,
+} from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
+import { useAppContext } from "../../hooks/useAppContext";
 
 interface MovieCardProps {
   imdbId: string;
@@ -23,8 +29,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
   metadataEvent,
   previewMode = false,
 }) => {
-  const [event, setEvent] = useState<UnsignedEvent | null>(metadataEvent || null);
+  const [event, setEvent] = useState<UnsignedEvent | null>(
+    metadataEvent || null
+  );
   const [modalOpen, setModalOpen] = useState(false);
+  const { fetchUserProfileThrottled, profiles } = useAppContext();
 
   useEffect(() => {
     if (event || previewMode) return;
@@ -57,6 +66,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const year = event?.tags.find((t) => t[0] === "year")?.[1];
   const summary = event?.tags.find((t) => t[0] === "summary")?.[1];
   const pubkey = event?.pubkey;
+  let metadataUser;
+  if (pubkey) {
+    metadataUser = profiles?.get(pubkey);
+    if (!metadataUser) fetchUserProfileThrottled(pubkey);
+  }
 
   return (
     <>
@@ -84,14 +98,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
             )}
             {pubkey && (
               <Typography variant="caption" color="text.secondary">
-                Metadata by {nip19.npubEncode(pubkey)}
+                Metadata by {metadataUser?.name}
               </Typography>
             )}
-            {
-              !previewMode && (
-                <Rate entityId={imdbId} entityType="movie" />
-              )
-            }
+            {<Rate entityId={imdbId} entityType="movie" />}
             {!event && !previewMode && (
               <Button
                 variant="outlined"

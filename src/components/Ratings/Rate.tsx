@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Button,
   TextField,
   Rating as MuiRating,
+  Alert,
 } from "@mui/material";
 import { useRating } from "../../hooks/useRating";
 
@@ -15,23 +16,35 @@ interface Props {
 
 const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   const ratingKey = `${entityType}:${entityId}`;
-  const { averageRating, totalRatings, submitRating, userRatingEvent } = useRating(ratingKey);
-
-  const existingRating =
-    parseFloat(userRatingEvent?.tags.find(t => t[0] === "rating")?.[1] || "0") * 5;
+  const { averageRating, totalRatings, submitRating, userRatingEvent } =
+    useRating(ratingKey);
 
   const [ratingValue, setRatingValue] = useState<number | null>(null);
   const [content, setContent] = useState("");
   const [showContentInput, setShowContentInput] = useState(false);
+  const [error, setError] = useState("");
 
   const hasExistingRating = !!userRatingEvent;
   const hasExistingContent = !!userRatingEvent?.content?.trim();
 
-  const handleSubmit = () => {
-    if (ratingValue !== null) {
-      submitRating(ratingValue, 5, entityType, content);
-      setShowContentInput(false);
+  useEffect(() => {
+    if (hasExistingRating) {
+      const userRating = userRatingEvent.tags.find((t) => t[0] === "rating")?.[1];
+      if (userRating) {
+        console.log("USER RATING IS", userRating)
+        setRatingValue(parseFloat(userRating)*5);
+      }
     }
+  }, [userRatingEvent])
+
+  const handleSubmit = () => {
+    if (ratingValue === null) {
+      setError("Please give a rating before submitting a review.");
+      return;
+    }
+    setError("");
+    submitRating(ratingValue, 5, entityType, content);
+    setShowContentInput(false);
   };
 
   return (
@@ -42,7 +55,12 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
         max={5}
         precision={0.1}
         onChange={(_, newValue) => {
-          setRatingValue(newValue);
+          if (newValue != null) {
+            setRatingValue(newValue);
+            setError("");
+            console.log("NEW VALUE IS", newValue)
+            submitRating(newValue, 5, entityType);
+          }
         }}
       />
 
@@ -53,7 +71,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
         </Typography>
       ) : null}
 
-      {hasExistingRating && !hasExistingContent && !showContentInput && (
+      {(!hasExistingRating || !hasExistingContent) && !showContentInput && (
         <Button
           variant="text"
           sx={{ mt: 1 }}
@@ -82,6 +100,12 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
             Submit Review
           </Button>
         </>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
       )}
     </Box>
   );
