@@ -53,6 +53,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
     if(user && user.pubkey === ev.pubkey) {
+      if(userRatingEvent && userRatingEvent.created_at > ev.created_at) return
       setUserRatingEvent(ev as Event)
     }
 

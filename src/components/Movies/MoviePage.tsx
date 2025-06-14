@@ -95,7 +95,7 @@ const MoviePage = () => {
             label="Filter"
           >
             <MenuItem value="everyone">Everyone</MenuItem>
-            <MenuItem value="following">People I Follow</MenuItem>
+            <MenuItem value="following" disabled={!!!user?.follows}>People I Follow</MenuItem>
           </Select>
         </FormControl>
       </Box>
