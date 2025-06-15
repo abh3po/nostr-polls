@@ -11,9 +11,9 @@ type FeedType = "polls" | "notes" | "profiles" | "hashtags" | "movies";
 const feedOptions: { value: FeedType; label: string }[] = [
   { value: "polls", label: "Polls" },
   { value: "notes", label: "Notes" },
+  { value: "movies", label: "Movies" },
   { value: "profiles", label: "Profiles" },
   { value: "hashtags", label: "Hashtags" },
-  { value: "movies", label: "Movies" },
   // Add more here easily in future
 ];
 
