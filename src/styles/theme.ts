@@ -76,6 +76,14 @@ const baseThemeOptions:  Parameters<typeof createTheme>[0] = {
         },
       },
     },
+    MuiModal: {
+      styleOverrides: {
+        root: {
+          // Ensures modal takes full height and scrolls when needed
+          overflowY: "auto",
+        },
+      },
+    }
   },
 }
 
