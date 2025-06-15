@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { useSigner } from "../../contexts/signer-context";
 import { defaultRelays, signEvent } from "../../nostr";
-import { UnsignedEvent, SimplePool } from "nostr-tools";
+import { SimplePool, Event } from "nostr-tools";
 import MovieCard from "./MovieCard";
 
 interface MovieMetadataModalProps {
@@ -30,7 +30,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
   const [year, setYear] = useState("");
   const [summary, setSummary] = useState("");
   const [tab, setTab] = useState(0);
-  const [previewEvent, setPreviewEvent] = useState<UnsignedEvent>();
+  const [previewEvent, setPreviewEvent] = useState<Event>();
   const { signer } = useSigner();
 
   useEffect(() => {
@@ -40,7 +40,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
         setPreviewEvent(await buildPreviewEvent());
       }
     };
-    initialize()
+    initialize();
   }, [title, poster, year, summary, signer]);
   if (!signer) {
     return (
@@ -69,14 +69,16 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
     ...(summary ? [["summary", summary]] : []),
   ];
 
-  const buildPreviewEvent = async (): Promise<UnsignedEvent> => {
+  const buildPreviewEvent = async (): Promise<Event> => {
     const pubkey = await signer.getPublicKey();
     return {
+      id: "Random",
       kind: 30300,
       content: title || "Untitled",
       tags: buildTags(),
       created_at: Math.floor(Date.now() / 1000),
       pubkey,
+      sig: "kok"
     };
   };
 
@@ -174,8 +176,9 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
           mt: "5%",
         }}
       >
-        <Typography variant="h6" mb={2}>
-          Add Movie Metadata
+        <Typography variant="h6">Add Movie Metadata</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
+          IMDb ID: <code>{imdbId}</code>
         </Typography>
 
         <Tabs value={tab} onChange={(_, val) => setTab(val)} sx={{ mb: 2 }}>
