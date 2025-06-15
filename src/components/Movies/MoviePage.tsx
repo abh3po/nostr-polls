@@ -15,13 +15,16 @@ import { defaultRelays } from "../../nostr";
 import MovieCard from "./MovieCard";
 import ReviewCard from "../Ratings/ReviewCard";
 import { useUserContext } from "../../hooks/useUserContext";
+import { selectBestMetadataEvent } from "./utils";
 
 const MoviePage = () => {
   const { imdbId } = useParams<{ imdbId: string }>();
   const [metadata, setMetadata] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviewMap, setReviewMap] = useState<Map<string, Event>>(new Map());
-  const [filterMode, setFilterMode] = useState<"everyone" | "following">("everyone");
+  const [filterMode, setFilterMode] = useState<"everyone" | "following">(
+    "everyone"
+  );
   const { user } = useUserContext();
 
   const fetchReviews = useCallback(() => {
@@ -48,7 +51,9 @@ const MoviePage = () => {
     const sub = pool.subscribeMany(defaultRelays, filters, {
       onevent(e) {
         if (e.kind === 30300) {
-          setMetadata(e);
+          setMetadata((prev) =>
+            selectBestMetadataEvent([...(prev ? [prev] : []), e], user?.follows)
+          );
         } else if (e.kind === 34259) {
           if (!newReviewMap.has(e.id)) {
             newReviewMap.set(e.id, e);
@@ -69,8 +74,10 @@ const MoviePage = () => {
     fetchReviews();
   }, [fetchReviews]);
 
-  const handleFilterChange = (event: SelectChangeEvent<"everyone" | "following">) => {
-    setFilterMode(event.target.value  as "everyone" | "following");
+  const handleFilterChange = (
+    event: SelectChangeEvent<"everyone" | "following">
+  ) => {
+    setFilterMode(event.target.value as "everyone" | "following");
   };
 
   if (loading) return <CircularProgress />;
@@ -95,7 +102,9 @@ const MoviePage = () => {
             label="Filter"
           >
             <MenuItem value="everyone">Everyone</MenuItem>
-            <MenuItem value="following" disabled={!!!user?.follows}>People I Follow</MenuItem>
+            <MenuItem value="following" disabled={!!!user?.follows}>
+              People I Follow
+            </MenuItem>
           </Select>
         </FormControl>
       </Box>

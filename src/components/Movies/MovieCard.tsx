@@ -18,6 +18,7 @@ import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
+import { selectBestMetadataEvent } from "./utils";
 
 interface MovieCardProps {
   imdbId: string;
@@ -60,20 +61,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
   }, [imdbId, previewMode]);
 
   // Sorted event list by follows + created_at
-  const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => {
-      const follows = user?.follows || [];
-      const aFollowed = follows.includes(a.pubkey);
-      const bFollowed = follows.includes(b.pubkey);
-
-      if (aFollowed && !bFollowed) return -1;
-      if (!aFollowed && bFollowed) return 1;
-
-      return b.created_at - a.created_at;
-    });
-  }, [events, user]);
-
-  const activeEvent = sortedEvents[0] || null;
+ const activeEvent = useMemo(
+    () => selectBestMetadataEvent(events, user?.follows),
+    [events, user?.follows]
+  );
 
   const title = activeEvent?.content || `No Metadata - ${imdbId}`;
   const poster = activeEvent?.tags.find((t) => t[0] === "poster")?.[1];
