@@ -1,4 +1,4 @@
-import { Event } from "nostr-tools";
+import { Event, EventTemplate } from "nostr-tools";
 import { NostrSigner } from "./types"; // Adjust the path as needed
 
 export const nip07Signer: NostrSigner = {
@@ -7,7 +7,7 @@ export const nip07Signer: NostrSigner = {
     return window.nostr.getPublicKey();
   },
 
-  signEvent: async (event: Event): Promise<Event> => {
+  signEvent: async (event: EventTemplate): Promise<Event> => {
     if (!window.nostr) throw new Error("NIP-07 signer not found");
     return window.nostr.signEvent(event);
   },
