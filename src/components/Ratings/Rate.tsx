@@ -46,12 +46,12 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     submitRating(ratingValue, 5, entityType, content);
     setShowContentInput(false);
   };
-
+  console.log("RATING VALUE IS, VALUE GOING IS", ratingValue, ratingValue ?? (averageRating ? averageRating * 5 : null))
   return (
     <Box>
       <MuiRating
         name={`rating-${entityId}`}
-        value={ratingValue ?? (averageRating ? averageRating * 5 : null)}
+        value={averageRating ? averageRating * 5 : null}
         max={5}
         precision={0.1}
         onChange={(_, newValue) => {
@@ -101,7 +101,6 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
           </Button>
         </>
       )}
-
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {error}
