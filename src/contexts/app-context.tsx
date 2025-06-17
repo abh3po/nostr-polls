@@ -16,6 +16,11 @@ type AppContextInterface = {
   fetchCommentsThrottled: (pollEventId: string) => void;
   fetchLikesThrottled: (pollEventId: string) => void;
   fetchZapsThrottled: (pollEventId: string) => void;
+  aiSettings: {
+    model: string;
+    endpoint: string;
+  };
+  setAISettings: (settings: { model: string; endpoint: string }) => void;
 };
 export const AppContext = createContext<AppContextInterface | null>(null);
 
@@ -26,6 +31,9 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   );
   const [likesMap, setLikesMap] = useState<Map<string, Event[]>>(new Map());
   const [zapsMap, setZapsMap] = useState<Map<string, Event[]>>(new Map());
+  const [aiSettings, setAISettings] = useState(
+    JSON.parse(localStorage.getItem("ai-settings") || "{}")
+  );
   const poolRef = useRef(new SimplePool());
 
   const addEventToProfiles = (event: Event) => {
@@ -123,6 +131,8 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         fetchLikesThrottled,
         fetchZapsThrottled,
         zapsMap,
+        aiSettings,
+        setAISettings,
       }}
     >
       {children}

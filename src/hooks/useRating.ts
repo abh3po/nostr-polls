@@ -1,6 +1,5 @@
 // hooks/useRating.ts
 import { useContext, useEffect, useRef } from "react";
-import { getEventHash } from "nostr-tools";
 import { defaultRelays, signEvent } from "../nostr";
 import { RatingContext } from "../contexts/RatingProvider";
 import { useAppContext } from "./useAppContext";
