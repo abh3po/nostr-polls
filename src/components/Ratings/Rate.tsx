@@ -77,20 +77,22 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   };
   return (
     <Box>
-      <MuiRating
-        name={`rating-${entityId}`}
-        value={averageRating ? averageRating * 5 : null}
-        max={5}
-        precision={0.1}
-        onChange={handleRatingChange}
-      />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <MuiRating
+          name={`rating-${entityId}`}
+          value={averageRating ? averageRating * 5 : null}
+          max={5}
+          precision={0.1}
+          onChange={handleRatingChange}
+        />
 
       {totalRatings ? (
-        <Typography variant="caption" color="text.secondary">
-          Rated: {(averageRating! * 5).toFixed(2)} from {totalRatings} rating
-          {totalRatings !== 1 ? "s" : ""}
-        </Typography>
-      ) : null}
+          <Typography variant="caption" color="text.secondary">
+            Rated: {(averageRating! * 5).toFixed(2)} from {totalRatings} rating
+            {totalRatings !== 1 ? "s" : ""}
+          </Typography>
+        ) : null}
+      </Box>
 
       {(!hasExistingRating || !hasExistingContent) && !showContentInput && (
         <Button
