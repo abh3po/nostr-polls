@@ -5,7 +5,8 @@ import { Feed } from "./Feed";
 import { useAppContext } from "../../hooks/useAppContext";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
-import { Select, MenuItem, Button, CircularProgress } from "@mui/material";
+import { Select, MenuItem, Button, CircularProgress, Container, Box } from "@mui/material";
+import Grid from '@mui/material/Grid2';
 import { styled } from "@mui/system";
 import { SubCloser } from "nostr-tools/lib/types/pool";
 
@@ -15,6 +16,23 @@ const StyledSelect = styled(Select)`
     border-bottom: none !important;
   }
 `;
+
+const CenteredBox = styled(Box)`
+  display: flex;
+  justify-content: center;
+`;
+
+const FULL_WIDTH_GRID = { xs: 12 };
+const GRID_SPACING = { xs: 2, sm: 3, md: 4 };
+const CONTAINER_SPACING = {
+  mt: { xs: 1, sm: 2, md: 3 },
+  px: { xs: 1, sm: 2, md: 3 }
+};
+const BUTTON_SPACING = { mt: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } };
+const SELECT_SIZING = {
+  maxWidth: { xs: 300, sm: 400, md: 600 },
+  width: "auto"
+};
 
 export const PollFeed = () => {
   const [pollEvents, setPollEvents] = useState<Event[] | undefined>();
@@ -156,46 +174,48 @@ export const PollFeed = () => {
   }, [user, poolRef]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignContent: "center",
-        alignItems: "center",
-        marginTop: 10,
-        rowGap: 10,
-      }}
-    >
-      <div>
-        <StyledSelect
-          variant={"standard"}
-          onChange={(e) =>
-            setEventSource(e.target.value as "global" | "following")
-          }
-          style={{ maxWidth: 600 }}
-          value={eventSource}
-        >
-          <MenuItem value="global">global polls</MenuItem>
-          <MenuItem
-            value="following"
-            disabled={!user || !user.follows || user.follows.length === 0}
-          >
-            polls from people you follow
-          </MenuItem>
-        </StyledSelect>
-      </div>
-      <Feed
-        events={pollEvents || []}
-        userResponses={getUniqueLatestEvents(userResponses || [])}
-      />
-      <Button
-        onClick={loadMore}
-        variant="contained"
-        style={{ margin: 10 }}
-        disabled={loadingMore}
-      >
-        {loadingMore ? <CircularProgress size={24} /> : "Load More"}
-      </Button>
-    </div>
+    <Container maxWidth="lg" sx={CONTAINER_SPACING}>
+      <Grid container spacing={GRID_SPACING}>
+        <Grid size={FULL_WIDTH_GRID}>
+          <CenteredBox>
+            <StyledSelect
+              variant={"standard"}
+              onChange={(e) =>
+                setEventSource(e.target.value as "global" | "following")
+              }
+              sx={SELECT_SIZING}
+              value={eventSource}
+            >
+              <MenuItem value="global">global polls</MenuItem>
+              <MenuItem
+                value="following"
+                disabled={!user || !user.follows || user.follows.length === 0}
+              >
+                polls from people you follow
+              </MenuItem>
+            </StyledSelect>
+          </CenteredBox>
+        </Grid>
+
+        <Grid size={FULL_WIDTH_GRID}>
+          <Feed
+            events={pollEvents || []}
+            userResponses={getUniqueLatestEvents(userResponses || [])}
+          />
+        </Grid>
+
+        <Grid size={FULL_WIDTH_GRID}>
+          <CenteredBox sx={BUTTON_SPACING}>
+            <Button
+              onClick={loadMore}
+              variant="contained"
+              disabled={loadingMore}
+            >
+              {loadingMore ? <CircularProgress size={24} /> : "Load More"}
+            </Button>
+          </CenteredBox>
+        </Grid>
+      </Grid>
+    </Container>
   );
 };
