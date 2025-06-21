@@ -78,7 +78,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
       tags: buildTags(),
       created_at: Math.floor(Date.now() / 1000),
       pubkey,
-      sig: "kok"
+      sig: "kok",
     };
   };
 
@@ -175,6 +175,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
           mx: "auto",
           mt: "5%",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <Typography variant="h6">Add Movie Metadata</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
