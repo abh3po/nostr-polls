@@ -33,13 +33,15 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
 
   useEffect(() => {
     if (hasExistingRating) {
-      const userRating = userRatingEvent.tags.find((t) => t[0] === "rating")?.[1];
+      const userRating = userRatingEvent.tags.find(
+        (t) => t[0] === "rating"
+      )?.[1];
       if (userRating) {
-        console.log("USER RATING IS", userRating)
-        setRatingValue(parseFloat(userRating)*5);
+        console.log("USER RATING IS", userRating);
+        setRatingValue(parseFloat(userRating) * 5);
       }
     }
-  }, [userRatingEvent])
+  }, [userRatingEvent]);
 
   const handleSubmit = () => {
     if (!signer) {
@@ -55,7 +57,10 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     setShowContentInput(false);
   };
 
-  const handleRatingChange = (_: React.SyntheticEvent, newValue: number | null) => {
+  const handleRatingChange = (
+    _: React.SyntheticEvent,
+    newValue: number | null
+  ) => {
     if (!signer) {
       setShowLoginModal(true);
       return;
@@ -63,7 +68,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     if (newValue != null) {
       setRatingValue(newValue);
       setError("");
-      console.log("NEW VALUE IS", newValue)
+      console.log("NEW VALUE IS", newValue);
       submitRating(newValue, 5, entityType);
     }
   };
@@ -83,10 +88,18 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
           value={averageRating ? averageRating * 5 : null}
           max={5}
           precision={0.1}
-          onChange={handleRatingChange}
+          onChange={(e, newValue) => {
+            e.stopPropagation();
+            if (newValue != null) {
+              setRatingValue(newValue);
+              setError("");
+              console.log("NEW VALUE IS", newValue);
+              submitRating(newValue, 5, entityType);
+            }
+          }}
         />
 
-      {totalRatings ? (
+        {totalRatings ? (
           <Typography variant="caption" color="text.secondary">
             Rated: {(averageRating! * 5).toFixed(2)} from {totalRatings} rating
             {totalRatings !== 1 ? "s" : ""}
@@ -98,7 +111,10 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
         <Button
           variant="text"
           sx={{ mt: 1 }}
-          onClick={handleAddReviewClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAddReviewClick();
+          }}
         >
           Add review to your rating?
         </Button>
@@ -115,11 +131,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
             onChange={(e) => setContent(e.target.value)}
             sx={{ mt: 2 }}
           />
-          <Button
-            variant="contained"
-            sx={{ mt: 1 }}
-            onClick={handleSubmit}
-          >
+          <Button variant="contained" sx={{ mt: 1 }} onClick={handleSubmit}>
             Submit Review
           </Button>
         </>

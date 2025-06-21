@@ -7,12 +7,7 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-import {
-  nip19,
-  SimplePool,
-  Event as NostrEvent,
-  Filter,
-} from "nostr-tools";
+import { nip19, SimplePool, Event as NostrEvent, Filter } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
@@ -61,7 +56,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
   }, [imdbId, previewMode]);
 
   // Sorted event list by follows + created_at
- const activeEvent = useMemo(
+  const activeEvent = useMemo(
     () => selectBestMetadataEvent(events, user?.follows),
     [events, user?.follows]
   );
@@ -72,7 +67,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const summary = activeEvent?.tags.find((t) => t[0] === "summary")?.[1];
   const pubkey = activeEvent?.pubkey;
   const metadataUser = pubkey
-    ? profiles?.get(pubkey) || (() => { fetchUserProfileThrottled(pubkey); return null; })()
+    ? profiles?.get(pubkey) ||
+      (() => {
+        fetchUserProfileThrottled(pubkey);
+        return null;
+      })()
     : null;
 
   return (
@@ -86,7 +85,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               image={poster}
               alt={title}
             />
-            { activeEvent && (
+            {activeEvent && (
               <Button
                 size="small"
                 variant="text"
@@ -143,8 +142,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             )}
             {pubkey && (
               <Typography variant="caption" color="text.secondary">
-                Metadata by{" "}
-                {metadataUser?.name || nip19.npubEncode(pubkey)}
+                Metadata by {metadataUser?.name || nip19.npubEncode(pubkey)}
               </Typography>
             )}
             <Rate entityId={imdbId} entityType="movie" />
@@ -152,7 +150,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
               <Button
                 variant="outlined"
                 sx={{ mt: 2 }}
-                onClick={() => setModalOpen(true)}
+                onClick={(e: any) => {
+                  e.stopPropagation();
+                  setModalOpen(true);
+                }}
               >
                 Add Movie Info?
               </Button>
