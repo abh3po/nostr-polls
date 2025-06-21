@@ -16,7 +16,7 @@ export const FeedbackMenu: React.FC<FeedbackMenuProps> = ({ event }) => {
         <CardContent>
           <div
             style={{
-              justifyContent: "center",
+              justifyContent: "flex-start",
               display: "flex",
               marginBottom: 10,
             }}
