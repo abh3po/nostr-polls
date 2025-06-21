@@ -5,7 +5,7 @@ import MovieCard from "../Movies/MovieCard";
 import RateMovieModal from "../Ratings/RateMovieModal";
 import { Card, CardContent, Typography } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
-import { Link } from "react-router-dom/dist";
+import { useNavigate } from "react-router-dom/dist";
 
 const BATCH_SIZE = 10;
 
@@ -17,26 +17,27 @@ const MoviesFeed: React.FC = () => {
   const [cursor, setCursor] = useState<number | undefined>(undefined); // UNIX timestamp
   const { user } = useUserContext();
   const seen = useRef<Set<string>>(new Set());
+  const navigate = useNavigate();
 
   const fetchBatch = () => {
     if (loading || !hasMore) return;
     setLoading(true);
-  
+
     const pool = new SimplePool();
     const now = Math.floor(Date.now() / 1000);
     const newIds: Set<string> = new Set();
-  
+
     const filter: Filter = {
       kinds: [34259],
       "#m": ["movie"],
       limit: BATCH_SIZE,
       until: cursor || now,
     };
-  
+
     if (user?.follows?.length) {
       filter.authors = user.follows;
     }
-  
+
     const sub = pool.subscribeMany(defaultRelays, [filter], {
       onevent: (event) => {
         const dTag = event.tags.find((t) => t[0] === "d");
@@ -47,28 +48,32 @@ const MoviesFeed: React.FC = () => {
             newIds.add(imdbId);
           }
         }
-  
+
         // Move cursor back to paginate older events
         if (!cursor || event.created_at < cursor) {
           setCursor(event.created_at);
         }
       },
       oneose: () => {
-        setMovieIds((prev) => new Set(Array.from(prev).concat(Array.from(newIds))));
-  
+        setMovieIds(
+          (prev) => new Set(Array.from(prev).concat(Array.from(newIds)))
+        );
+
         // ✅ Key line: Stop loading if we didn’t get a full batch
         if (newIds.size < BATCH_SIZE) {
           setHasMore(false);
         }
-  
+
         setLoading(false);
         sub.close();
       },
     });
-  
+
     // Timeout fallback
     setTimeout(() => {
-      setMovieIds((prev) => new Set(Array.from(prev).concat(Array.from(newIds))));
+      setMovieIds(
+        (prev) => new Set(Array.from(prev).concat(Array.from(newIds)))
+      );
       if (newIds.size < BATCH_SIZE) {
         setHasMore(false);
       }
@@ -76,11 +81,10 @@ const MoviesFeed: React.FC = () => {
       sub.close();
     }, 3000);
   };
-  
 
   useEffect(() => {
     fetchBatch();
-  }, [fetchBatch]);
+  }, []);
 
   return (
     <>
@@ -98,9 +102,13 @@ const MoviesFeed: React.FC = () => {
       </Card>
 
       {Array.from(movieIds).map((id) => (
-        <Link key={id} to={`/movies/${id}`} style={{ textDecoration: "none" }}>
+        <div
+          key={id}
+          onClick={() => navigate(`/movies/${id}`)}
+          style={{ cursor: "pointer" }}
+        >
           <MovieCard imdbId={id} />
-        </Link>
+        </div>
       ))}
 
       {hasMore && (
@@ -111,7 +119,12 @@ const MoviesFeed: React.FC = () => {
         </Card>
       )}
 
-      <RateMovieModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <RateMovieModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+        }}
+      />
     </>
   );
 };
