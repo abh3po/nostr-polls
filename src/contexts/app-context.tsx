@@ -32,8 +32,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     if (profiles.has(event.pubkey)) return;
     try {
       let content = JSON.parse(event.content);
-      profiles.set(event.pubkey, { ...content, event: event });
-      setProfiles(profiles);
+      setProfiles(new Map(profiles.set(event.pubkey, { ...content, event: event })));
     } catch (e) {
       console.error("Error parsing event", e);
     }
