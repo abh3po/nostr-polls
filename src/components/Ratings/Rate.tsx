@@ -90,12 +90,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
           precision={0.1}
           onChange={(e, newValue) => {
             e.stopPropagation();
-            if (newValue != null) {
-              setRatingValue(newValue);
-              setError("");
-              console.log("NEW VALUE IS", newValue);
-              submitRating(newValue, 5, entityType);
-            }
+            handleRatingChange(e, newValue);
           }}
         />
 

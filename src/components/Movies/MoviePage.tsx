@@ -15,11 +15,9 @@ import { defaultRelays } from "../../nostr";
 import MovieCard from "./MovieCard";
 import ReviewCard from "../Ratings/ReviewCard";
 import { useUserContext } from "../../hooks/useUserContext";
-import { selectBestMetadataEvent } from "./utils";
 
 const MoviePage = () => {
   const { imdbId } = useParams<{ imdbId: string }>();
-  const [metadata, setMetadata] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviewMap, setReviewMap] = useState<Map<string, Event>>(new Map());
   const [filterMode, setFilterMode] = useState<"everyone" | "following">(
@@ -35,10 +33,6 @@ const MoviePage = () => {
 
     const filters: Filter[] = [
       {
-        kinds: [30300],
-        "#d": [`movie:${imdbId}`],
-      },
-      {
         kinds: [34259],
         "#d": [`movie:${imdbId}`],
         "#c": ["true"],
@@ -50,14 +44,8 @@ const MoviePage = () => {
 
     const sub = pool.subscribeMany(defaultRelays, filters, {
       onevent(e) {
-        if (e.kind === 30300) {
-          setMetadata((prev) =>
-            selectBestMetadataEvent([...(prev ? [prev] : []), e], user?.follows)
-          );
-        } else if (e.kind === 34259) {
-          if (!newReviewMap.has(e.id)) {
-            newReviewMap.set(e.id, e);
-          }
+        if (!newReviewMap.has(e.id)) {
+          newReviewMap.set(e.id, e);
         }
       },
       oneose() {
@@ -84,12 +72,7 @@ const MoviePage = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      {metadata ? (
-        <MovieCard imdbId={imdbId!} metadataEvent={metadata} previewMode />
-      ) : (
-        <Typography variant="h6">No metadata available</Typography>
-      )}
-
+      <MovieCard imdbId={imdbId!} />
       <Box mt={4} mb={2} display="flex" alignItems="center" gap={2}>
         <Typography variant="h5">Reviews</Typography>
 
