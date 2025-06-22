@@ -119,8 +119,6 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
       return;
     }
 
-    setError("");
-    
     let responseUser = user;
     if (!user) {
       alert("login not found, submitting anonymously");
