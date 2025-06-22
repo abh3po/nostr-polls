@@ -4,6 +4,7 @@ import {
   Route,
   Routes,
   Outlet,
+  Navigate,
 } from "react-router-dom";
 import { PollCreator } from "./components/PollCreator";
 import { PollResponse } from "./components/PollResponse";
@@ -18,7 +19,6 @@ import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
 import EventList from "./components/Feed/FeedsLayout";
 import { RatingProvider } from "./contexts/RatingProvider";
-import RatingFeed from "./components/Feed/FeedsLayout";
 import { SignerProvider } from "./contexts/signer-context";
 import MoviePage from "./components/Movies/MoviePage";
 import NotesFeed from "./components/Feed/NotesFeed/components";
@@ -58,7 +58,7 @@ const App: React.FC = () => {
                       <Route path="notes" element={<NotesFeed />} />
                       <Route path="profiles" element={<ProfilesFeed />} />
                       <Route path="hashtags" element={<HashtagsFeed />} />
-                      <Route path="polls" element={<PollFeed />} />
+                      <Route path="polls" index={true} element={<PollFeed />} />
 
                       {/* Wrap the movies routes inside MovieMetadataProvider */}
                       <Route
@@ -75,7 +75,11 @@ const App: React.FC = () => {
                       {/* default route inside feeds */}
                       <Route index element={<PollFeed />} />
                     </Route>
-                    <Route index path="/" element={<RatingFeed />} />
+                    <Route
+                      index
+                      path="/"
+                      element={<Navigate to="/feeds/polls" replace />}
+                    />
                   </Routes>
                 </Router>
               </RatingProvider>
