@@ -65,6 +65,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({
 
   const calculatePercentages = (counts: number[]) => {
     const total = counts.reduce((acc, count) => acc + count, 0);
+    if (total === 0) {
+      return counts.map(() => "0.00");
+    }
     return counts.map((count) => ((count / total) * 100).toFixed(2));
   };
 
