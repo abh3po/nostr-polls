@@ -22,18 +22,6 @@ const CenteredBox = styled(Box)`
   justify-content: center;
 `;
 
-const FULL_WIDTH_GRID = { xs: 12 };
-const GRID_SPACING = { xs: 2, sm: 3, md: 4 };
-const CONTAINER_SPACING = {
-  mt: { xs: 1, sm: 2, md: 3 },
-  px: { xs: 1, sm: 2, md: 3 }
-};
-const BUTTON_SPACING = { mt: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } };
-const SELECT_SIZING = {
-  maxWidth: { xs: 300, sm: 400, md: 600 },
-  width: "auto"
-};
-
 export const PollFeed = () => {
   const [pollEvents, setPollEvents] = useState<Event[] | undefined>();
   const [userResponses, setUserResponses] = useState<Event[] | undefined>();
@@ -174,16 +162,15 @@ export const PollFeed = () => {
   }, [user, poolRef]);
 
   return (
-    <Container maxWidth="lg" sx={CONTAINER_SPACING}>
-      <Grid container spacing={GRID_SPACING}>
-        <Grid size={FULL_WIDTH_GRID}>
+    <Container maxWidth="lg">
+      <Grid container spacing={2}>
+        <Grid size={12}>
           <CenteredBox>
             <StyledSelect
               variant={"standard"}
               onChange={(e) =>
                 setEventSource(e.target.value as "global" | "following")
               }
-              sx={SELECT_SIZING}
               value={eventSource}
             >
               <MenuItem value="global">global polls</MenuItem>
@@ -197,15 +184,15 @@ export const PollFeed = () => {
           </CenteredBox>
         </Grid>
 
-        <Grid size={FULL_WIDTH_GRID}>
+        <Grid size={12}>
           <Feed
             events={pollEvents || []}
             userResponses={getUniqueLatestEvents(userResponses || [])}
           />
         </Grid>
 
-        <Grid size={FULL_WIDTH_GRID}>
-          <CenteredBox sx={BUTTON_SPACING}>
+        <Grid size={12}>
+          <CenteredBox sx={{ mt: 2, mb: 2 }}>
             <Button
               onClick={loadMore}
               variant="contained"
