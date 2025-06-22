@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -7,65 +7,44 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-import { nip19, SimplePool, Event as NostrEvent, Filter } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
+import { Event, nip19 } from "nostr-tools";
 import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { selectBestMetadataEvent } from "./utils";
+import { useMovieMetadata } from "./context/MovieMetadataProvider";
 
 interface MovieCardProps {
   imdbId: string;
-  metadataEvent?: NostrEvent;
-  previewMode?: boolean;
+  metadataEvent?: Event;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({
-  imdbId,
-  metadataEvent,
-  previewMode = false,
-}) => {
-  const [events, setEvents] = useState<NostrEvent[]>(
-    metadataEvent ? [metadataEvent] : []
-  );
+const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const { fetchUserProfileThrottled, profiles } = useAppContext();
   const { user } = useUserContext();
+  const { registerMovie, metadata } = useMovieMetadata();
 
-  // Fetch metadata events
   useEffect(() => {
-    if (previewMode) return;
+    registerMovie(imdbId);
+  }, [imdbId]);
 
-    const pool = new SimplePool();
-    const filter: Filter = {
-      kinds: [30300],
-      "#d": [`movie:${imdbId}`],
-    };
+  let activeEvent;
+  if (!metadataEvent) {
+    const events = metadata.get(imdbId) ?? [];
 
-    const unsub = pool.subscribeMany(defaultRelays, [filter], {
-      onevent(e: NostrEvent) {
-        setEvents((prev) => {
-          const exists = prev.find((evt) => evt.id === e.id);
-          return exists ? prev : [...prev, e];
-        });
-      },
-    });
-
-    return () => unsub.close();
-  }, [imdbId, previewMode]);
-
-  // Sorted event list by follows + created_at
-  const activeEvent = useMemo(
-    () => selectBestMetadataEvent(events, user?.follows),
-    [events, user?.follows]
-  );
+    activeEvent = selectBestMetadataEvent(events, user?.follows);
+  } else {
+    activeEvent = metadataEvent;
+  }
 
   const title = activeEvent?.content || `No Metadata - ${imdbId}`;
   const poster = activeEvent?.tags.find((t) => t[0] === "poster")?.[1];
   const year = activeEvent?.tags.find((t) => t[0] === "year")?.[1];
   const summary = activeEvent?.tags.find((t) => t[0] === "summary")?.[1];
   const pubkey = activeEvent?.pubkey;
+
   const metadataUser = pubkey
     ? profiles?.get(pubkey) ||
       (() => {
@@ -85,46 +64,42 @@ const MovieCard: React.FC<MovieCardProps> = ({
               image={poster}
               alt={title}
             />
-            {activeEvent && (
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setModalOpen(true)}
-                sx={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  minWidth: "auto",
-                  p: 0.5,
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setModalOpen(true)}
+              sx={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                minWidth: "auto",
+                p: 0.5,
+                backgroundColor: "black",
+                borderRadius: "50%",
+                "&:hover": {
                   backgroundColor: "black",
-                  borderRadius: "50%",
-                  "&:hover": {
-                    backgroundColor: "black",
-                  },
-                }}
-                title="Edit Metadata"
-              >
-                ✏️
-              </Button>
-            )}
+                },
+              }}
+              title="Edit Metadata"
+            >
+              ✏️
+            </Button>
           </Box>
         ) : (
-          activeEvent && (
-            <Box
-              sx={{
-                width: 120,
-                height: 180,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                bgcolor: "grey.200",
-              }}
-            >
-              <Button size="small" onClick={() => setModalOpen(true)}>
-                Edit Metadata
-              </Button>
-            </Box>
-          )
+          <Box
+            sx={{
+              width: 120,
+              height: 180,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "grey.200",
+            }}
+          >
+            <Button size="small" onClick={() => setModalOpen(true)}>
+              {activeEvent ? "Edit Metadata" : "Add Metadata"}
+            </Button>
+          </Box>
         )}
 
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
@@ -146,18 +121,6 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </Typography>
             )}
             <Rate entityId={imdbId} entityType="movie" />
-            {!previewMode && !activeEvent && (
-              <Button
-                variant="outlined"
-                sx={{ mt: 2 }}
-                onClick={(e: any) => {
-                  e.stopPropagation();
-                  setModalOpen(true);
-                }}
-              >
-                Add Movie Info?
-              </Button>
-            )}
           </CardContent>
         </Box>
       </Card>

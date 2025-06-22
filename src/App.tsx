@@ -1,5 +1,10 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Outlet,
+} from "react-router-dom";
 import { PollCreator } from "./components/PollCreator";
 import { PollResponse } from "./components/PollResponse";
 import { PollResults } from "./components/PollResults";
@@ -11,11 +16,18 @@ import { UserProvider } from "./contexts/user-context";
 import CssBaseline from "@mui/material/CssBaseline";
 import { baseTheme } from "./styles/theme";
 import { ThemeProvider } from "@mui/material";
-import EventList from "./components/Feed/RatingsFeed";
+import EventList from "./components/Feed/FeedsLayout";
 import { RatingProvider } from "./contexts/RatingProvider";
-import RatingFeed from "./components/Feed/RatingsFeed";
+import RatingFeed from "./components/Feed/FeedsLayout";
 import { SignerProvider } from "./contexts/signer-context";
 import MoviePage from "./components/Movies/MoviePage";
+import NotesFeed from "./components/Feed/NotesFeed/components";
+import ProfilesFeed from "./components/Feed/ProfileFeed";
+import HashtagsFeed from "./components/Feed/HashtagsFeed";
+import { PollFeed } from "./components/Feed/PollFeed";
+import MoviesFeed from "./components/Feed/MoviesFeed";
+import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadataProvider";
+import FeedsLayout from "./components/Feed/FeedsLayout";
 
 declare global {
   interface Window {
@@ -42,7 +54,27 @@ const App: React.FC = () => {
                     />
                     <Route path="/result/:eventId" element={<PollResults />} />
                     <Route path="/ratings" element={<EventList />} />
-                    <Route path="/movies/:imdbId" element={<MoviePage />}  />
+                    <Route path="/feeds" element={<FeedsLayout />}>
+                      <Route path="notes" element={<NotesFeed />} />
+                      <Route path="profiles" element={<ProfilesFeed />} />
+                      <Route path="hashtags" element={<HashtagsFeed />} />
+                      <Route path="polls" element={<PollFeed />} />
+
+                      {/* Wrap the movies routes inside MovieMetadataProvider */}
+                      <Route
+                        element={
+                          <MovieMetadataProvider>
+                            <Outlet />
+                          </MovieMetadataProvider>
+                        }
+                      >
+                        <Route path="movies" element={<MoviesFeed />} />
+                        <Route path="movies/:imdbId" element={<MoviePage />} />
+                      </Route>
+
+                      {/* default route inside feeds */}
+                      <Route index element={<PollFeed />} />
+                    </Route>
                     <Route index path="/" element={<RatingFeed />} />
                   </Routes>
                 </Router>

@@ -151,7 +151,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
         Preview:
       </Typography>
       <Divider sx={{ mb: 2 }} />
-      <MovieCard imdbId={imdbId} previewMode metadataEvent={previewEvent} />
+      <MovieCard imdbId={imdbId} metadataEvent={previewEvent} />
       <Button
         fullWidth
         variant="outlined"

@@ -1,3 +1,4 @@
+// components/Feed/MoviesFeed.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { Filter, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
@@ -14,10 +15,10 @@ const MoviesFeed: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [cursor, setCursor] = useState<number | undefined>(undefined); // UNIX timestamp
+  const [cursor, setCursor] = useState<number | undefined>(undefined);
   const { user } = useUserContext();
-  const seen = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
+  const seen = useRef<Set<string>>(new Set());
 
   const fetchBatch = () => {
     if (loading || !hasMore) return;
@@ -49,34 +50,25 @@ const MoviesFeed: React.FC = () => {
           }
         }
 
-        // Move cursor back to paginate older events
         if (!cursor || event.created_at < cursor) {
           setCursor(event.created_at);
         }
       },
       oneose: () => {
         setMovieIds(
-          (prev) => new Set(Array.from(prev).concat(Array.from(newIds)))
+          (prev) => new Set([...Array.from(prev), ...Array.from(newIds)])
         );
-
-        // ✅ Key line: Stop loading if we didn’t get a full batch
-        if (newIds.size < BATCH_SIZE) {
-          setHasMore(false);
-        }
-
+        if (newIds.size < BATCH_SIZE) setHasMore(false);
         setLoading(false);
         sub.close();
       },
     });
 
-    // Timeout fallback
     setTimeout(() => {
       setMovieIds(
-        (prev) => new Set(Array.from(prev).concat(Array.from(newIds)))
+        (prev) => new Set([...Array.from(prev), ...Array.from(newIds)])
       );
-      if (newIds.size < BATCH_SIZE) {
-        setHasMore(false);
-      }
+      if (newIds.size < BATCH_SIZE) setHasMore(false);
       setLoading(false);
       sub.close();
     }, 3000);
@@ -104,7 +96,7 @@ const MoviesFeed: React.FC = () => {
       {Array.from(movieIds).map((id) => (
         <div
           key={id}
-          onClick={() => navigate(`/movies/${id}`)}
+          onClick={() => navigate(`${id}`)}
           style={{ cursor: "pointer" }}
         >
           <MovieCard imdbId={id} />
@@ -119,12 +111,7 @@ const MoviesFeed: React.FC = () => {
         </Card>
       )}
 
-      <RateMovieModal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-        }}
-      />
+      <RateMovieModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 };
