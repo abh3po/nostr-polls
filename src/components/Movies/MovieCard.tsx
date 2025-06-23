@@ -93,7 +93,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "grey.200",
+              bgcolor: "action.hover"
             }}
           >
             <Button size="small" onClick={() => setModalOpen(true)}>
