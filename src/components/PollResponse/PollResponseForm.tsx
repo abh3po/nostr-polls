@@ -11,6 +11,7 @@ import {
   CardHeader,
   Avatar,
   Typography,
+  Alert,
 } from "@mui/material";
 import { Event } from "nostr-tools/lib/types/core";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
@@ -48,6 +49,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   );
   const [showResults, setShowResults] = useState<boolean>(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [filterPubkeys, setFilterPubkeys] = useState<string[]>([]);
   const [showPoWModal, setShowPoWModal] = useState<boolean>(false);
@@ -94,6 +96,10 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   ]);
 
   const handleResponseChange = (optionValue: string) => {
+    if (error) {
+      setError("");
+    }
+    
     if (pollType === "singlechoice") {
       setResponses([optionValue]);
     } else if (pollType === "multiplechoice") {
@@ -107,6 +113,12 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
 
   const handleSubmitResponse = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (responses.length === 0) {
+      setError("Please select at least one option before submitting.");
+      return;
+    }
+
     let responseUser = user;
     if (!user) {
       alert("login not found, submitting anonymously");
@@ -267,6 +279,11 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                   />
                 )}
               </FormControl>
+              {error && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {error}
+                </Alert>
+              )}
               <CardActions>
                 <div
                   style={{
