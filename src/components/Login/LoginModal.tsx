@@ -8,8 +8,6 @@ import {
   Button,
   Stack,
 } from "@mui/material";
-import { useAppContext } from "../../hooks/useAppContext";
-import { useUserContext } from "../../hooks/useUserContext";
 import { useSigner } from "../../contexts/signer-context";
 
 interface Props {
@@ -18,9 +16,7 @@ interface Props {
 }
 
 export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
-  const { poolRef, addEventToProfiles } = useAppContext();
-  const { setUser } = useUserContext();
-  const { signer, loginWithNip07, loginWithNip46 } = useSigner();
+  const { loginWithNip07, loginWithNip46 } = useSigner();
 
   const handleLoginWithNip07 = async () => {
     try {

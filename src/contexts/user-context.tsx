@@ -1,5 +1,4 @@
-import { createContext, ReactNode, useEffect, useState } from "react";
-import { LoginModal } from "../components/Login/LoginModal";
+import { createContext, ReactNode, useState } from "react";
 
 export type User = {
   name?: string;

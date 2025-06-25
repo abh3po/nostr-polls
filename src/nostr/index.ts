@@ -1,10 +1,4 @@
-import {
-  Event,
-  EventTemplate,
-  finalizeEvent,
-  getPublicKey,
-  SimplePool,
-} from "nostr-tools";
+import { Event, EventTemplate, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { NostrSigner } from "../components/Signer/types";
 
@@ -97,10 +91,10 @@ export const signEvent = async (
     return;
   }
   if (signer) {
-    console.log("ATTEMPTING TO SIGN!!")
+    console.log("ATTEMPTING TO SIGN!!");
     signedEvent = await signer.signEvent(event);
-    console.log("THE EVENT IS SIGNED THIS IS THE EVEBT", signedEvent )
-    return signedEvent
+    console.log("THE EVENT IS SIGNED THIS IS THE EVEBT", signedEvent);
+    return signedEvent;
   }
   if (secret) {
     secretKey = hexToBytes(secret);

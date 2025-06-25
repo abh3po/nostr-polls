@@ -1,5 +1,5 @@
-import React, { Ref, useState } from "react";
-import { Button, Popover, Typography } from "@mui/material";
+import React from "react";
+import { Popover, Typography } from "@mui/material";
 
 export const TranslationPopover: React.FC<{
   translatedText: string | null;
@@ -7,8 +7,6 @@ export const TranslationPopover: React.FC<{
   open: boolean;
   onClose: () => void;
 }> = ({ translatedText, buttonRef, open, onClose }) => {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(buttonRef);
-
   const id = open ? "translation-popover" : undefined;
 
   return (
