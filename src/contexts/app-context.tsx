@@ -18,9 +18,8 @@ type AppContextInterface = {
   fetchZapsThrottled: (pollEventId: string) => void;
   aiSettings: {
     model: string;
-    endpoint: string;
   };
-  setAISettings: (settings: { model: string; endpoint: string }) => void;
+  setAISettings: (settings: { model: string }) => void;
 };
 export const AppContext = createContext<AppContextInterface | null>(null);
 
@@ -40,7 +39,9 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     if (profiles.has(event.pubkey)) return;
     try {
       let content = JSON.parse(event.content);
-      setProfiles(new Map(profiles.set(event.pubkey, { ...content, event: event })));
+      setProfiles(
+        new Map(profiles.set(event.pubkey, { ...content, event: event }))
+      );
     } catch (e) {
       console.error("Error parsing event", e);
     }

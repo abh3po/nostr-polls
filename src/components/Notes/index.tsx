@@ -15,9 +15,6 @@ import { openProfileTab } from "../../nostr";
 import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
-import { franc } from "franc";
-// @ts-ignore
-const iso6393to1 = require("iso-639-3-to-1");
 
 interface NotesProps {
   event: Event;
@@ -31,35 +28,32 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
 
   const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
   const timeAgo = calculateTimeAgo(event.created_at);
-  const browserLang = navigator.language.slice(0, 2); // e.g., "en"
+  const browserLang = navigator.language.slice(0, 2).toLowerCase();
+
+  const hasOllama =
+    typeof window !== "undefined" &&
+    window.ollama &&
+    typeof window.ollama.generate === "function";
 
   useEffect(() => {
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
-  }, [event.content, event.pubkey, fetchUserProfileThrottled, profiles]);
 
-  useEffect(() => {
-    if (!profiles?.has(event.pubkey)) {
-      fetchUserProfileThrottled(event.pubkey);
-    }
+    if (!hasOllama) return;
 
     const detectLanguage = async () => {
+      const prompt = `Detect the ISO 639-1 language code of the following text. Ignore hashes, URLs, or random text. Respond ONLY with the two-letter code (e.g., "en"). If unsure, default to "en":\n\n${event.content}`;
       try {
-        const res = await fetch(`${aiSettings.endpoint}/api/generate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: aiSettings.model,
-            prompt: `Detect the ISO 639-1 language code of the following text. Ignore hashes, urls or random text, Only respond with the two-letter code (e.g., "en", "fr", "es"), If cannot detect, default to en:\n\n${event.content}`,
-            stream: false,
-          }),
+        const result = await window.ollama!.generate!({
+          model: aiSettings.model,
+          prompt,
+          stream: false,
         });
 
-        const rawText = await res.text();
-        const data = JSON.parse(rawText);
-        const detectedLang = data.response.trim().slice(0, 2).toLowerCase();
-        if (detectedLang !== browserLang) {
+        if (!result.success) throw new Error(result.error);
+        const lang = result.data.response.trim().slice(0, 2).toLowerCase();
+        if (lang !== browserLang) {
           setShouldShowTranslate(true);
         }
       } catch (err) {
@@ -75,51 +69,42 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     profiles,
     aiSettings,
     browserLang,
+    hasOllama,
   ]);
 
   const handleTranslate = async () => {
     setIsTranslating(true);
+    const prompt = `Translate the following to ${browserLang}. The text may contain hashes, URLs, or nostr IDs; ignore them.\n\n${event.content}`;
+
     try {
-      const res = await fetch(`${aiSettings.endpoint}/api/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: aiSettings.model,
-          prompt: `Your job is to translate, the text might contain, random hashes, urls, nostr: ids, feel free to ignore it. Translate the following to ${browserLang}. \n:\n\n${event.content}`,
-          stream: false,
-        }),
+      const result = await window.ollama!.generate!({
+        model: aiSettings.model || "llama3",
+        prompt,
+        stream: false,
       });
 
-      const rawText = await res.text();
-      console.log("Raw response text from Ollama:", rawText);
-
-      if (!res.ok) {
-        throw new Error(
-          `API returned error status: ${res.status} ${res.statusText}`
-        );
+      if (!result.success) {
+        throw new Error(result.error || "Ollama failed");
       }
 
-      const data = JSON.parse(rawText);
-      setTranslatedText(data.response);
+      setTranslatedText(result.data.response);
     } catch (err) {
       console.error("Translation failed:", err);
       setTranslatedText("⚠️ Translation failed.");
+    } finally {
+      setIsTranslating(false);
     }
-    setIsTranslating(false);
   };
 
   return (
     <div>
-      <Card
-        variant="outlined"
-        className="poll-response-form"
-        style={{ margin: 10 }}
-      >
+      <Card variant="outlined" style={{ margin: 10 }}>
         <CardHeader
           avatar={
             <Avatar
               src={profiles?.get(event.pubkey)?.picture || DEFAULT_IMAGE_URL}
               onClick={() => openProfileTab(nip19.npubEncode(event.pubkey))}
+              sx={{ cursor: "pointer" }}
             />
           }
           title={
@@ -130,23 +115,20 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
           }
           titleTypographyProps={{ fontSize: 18, fontWeight: "bold" }}
           subheader={timeAgo}
-          style={{ margin: 0, padding: 0, marginLeft: 10, marginTop: 10 }}
+          sx={{ m: 0, p: 0, ml: 1, mt: 1 }}
         />
         <Card variant="outlined">
           <CardContent>
             {referencedEventId && (
               <>
-                <Typography style={{ fontSize: 10 }}>replying to: </Typography>
-                <div style={{ borderRadius: "1px", borderColor: "grey" }}>
-                  <PrepareNote eventId={referencedEventId} />
-                </div>
+                <Typography variant="caption">replying to:</Typography>
+                <PrepareNote eventId={referencedEventId} />
               </>
             )}
 
             <TextWithImages content={event.content} />
 
-            {/* Translate Button */}
-            {shouldShowTranslate && (
+            {hasOllama && shouldShowTranslate && (
               <div style={{ marginTop: 10 }}>
                 <Button
                   variant="text"
@@ -158,9 +140,8 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
               </div>
             )}
 
-            {/* Translated Output */}
             {translatedText && (
-              <Typography style={{ marginTop: 10, fontStyle: "italic" }}>
+              <Typography mt={2} fontStyle="italic">
                 {translatedText}
               </Typography>
             )}
