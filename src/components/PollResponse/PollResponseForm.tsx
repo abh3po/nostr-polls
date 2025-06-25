@@ -99,7 +99,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     if (error) {
       setError("");
     }
-    
+
     if (pollType === "singlechoice") {
       setResponses([optionValue]);
     } else if (pollType === "multiplechoice") {
@@ -255,7 +255,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                 fontWeight: "bold",
               }}
             ></CardHeader>
-            <CardContent>
+            <CardContent style={{ display: "flex", flexDirection: "column" }}>
               <FormControl component="fieldset">
                 {!showResults ? (
                   pollType === "singlechoice" ? (
