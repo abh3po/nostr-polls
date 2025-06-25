@@ -19,6 +19,7 @@ export const MultipleChoiceOptions: React.FC<MultipleChoiceOptionsProps> = ({
         control={<Checkbox />}
         label={<TextWithImages content={option[2]} />}
         value={option[1]}
+        className="radio-label"
         checked={response.includes(option[1])}
         onChange={() => handleResponseChange(option[1])}
       />

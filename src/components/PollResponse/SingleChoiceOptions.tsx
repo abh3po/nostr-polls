@@ -1,5 +1,6 @@
 import { FormControlLabel, Radio, RadioGroup } from "@mui/material";
 import { TextWithImages } from "../Common/TextWithImages";
+import "./style.css";
 
 interface SingleChoiceOptionsProps {
   options: Array<[string, string, string]>;
@@ -22,6 +23,8 @@ export const SingleChoiceOptions: React.FC<SingleChoiceOptionsProps> = ({
         key={option[1]}
         value={option[1]}
         control={<Radio />}
+        style={{ flex: 1 }}
+        className="radio-label"
         label={<TextWithImages content={option[2]} />}
       />
     ))}

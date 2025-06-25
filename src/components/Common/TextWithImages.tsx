@@ -5,8 +5,9 @@ import { isImageUrl } from "../../utils/common";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
-import { Button, Typography } from "@mui/material";
+import { IconButton, Tooltip, Typography } from "@mui/material";
 import { TranslationPopover } from "./TranslationPopover";
+import TranslateIcon from "@mui/icons-material/Translate";
 
 interface TextWithImagesProps {
   content: string;
@@ -79,6 +80,7 @@ Text:\n\n${content}`;
 
     detectLang();
   }, [content, aiSettings.model, browserLang, hasOllama]);
+
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
@@ -231,21 +233,31 @@ Text:\n\n${content}`;
   };
 
   return (
-    <>
-      {renderContent(displayedText)}
-
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <div>{renderContent(displayedText)}</div>
       {hasOllama && shouldShowTranslate && (
-        <Button
-          ref={translateButtonRef}
-          onClick={handleTranslate}
-          disabled={isTranslating}
-          variant="text"
-          style={{ marginTop: "0.5rem" }}
-        >
-          {isTranslating ? "Translating..." : "Translate"}
-        </Button>
+        <div>
+          <Tooltip title="Translate">
+            <span>
+              <IconButton
+                ref={translateButtonRef}
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                size="small"
+                color="primary"
+              >
+                <TranslateIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </div>
       )}
-
       <TranslationPopover
         translatedText={translatedText}
         buttonRef={translateButtonRef.current}
@@ -254,6 +266,6 @@ Text:\n\n${content}`;
           setTranslatedText(null);
         }}
       />
-    </>
+    </div>
   );
 };
