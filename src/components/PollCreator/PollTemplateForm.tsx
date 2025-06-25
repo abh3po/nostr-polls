@@ -21,6 +21,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import { useSigner } from "../../contexts/signer-context";
+import { useNotification } from "../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
 export type PollTypes =
   | "singlechoice"
@@ -34,6 +36,7 @@ const PollTemplateForm = () => {
   const [pollType, setPollType] = useState<PollTypes>("singlechoice");
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
+  const { showNotification } = useNotification();
 
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
@@ -161,7 +164,7 @@ const PollTemplateForm = () => {
                   onChange={(value: dayjs.Dayjs | null) => {
                     if (!value) return;
                     if (value?.isBefore(now)) {
-                      alert("You cannot select a past date/time.");
+                      showNotification(NOTIFICATION_MESSAGES.PAST_DATE_ERROR, "error");
                       setExpiration(null);
                       return;
                     } else if (value.isValid()) {

@@ -7,6 +7,8 @@ import { defaultRelays, signEvent } from "../../../nostr";
 import { Favorite } from "@mui/icons-material";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { useSigner } from "../../../contexts/signer-context";
+import { useNotification } from "../../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 
 interface LikesProps {
   pollEvent: Event;
@@ -15,13 +17,14 @@ interface LikesProps {
 const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const { likesMap, fetchLikesThrottled, poolRef, addEventToMap } =
     useAppContext();
+  const { showNotification } = useNotification();
 
   const { signer } = useSigner();
   const { user } = useUserContext();
 
   const addLike = async () => {
     if (!user) {
-      alert("Login To Like!");
+      showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_LIKE, "warning");
       return;
     }
     let event: EventTemplate = {
