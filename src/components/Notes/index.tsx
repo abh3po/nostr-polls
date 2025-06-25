@@ -4,11 +4,10 @@ import {
   CardContent,
   CardHeader,
   Typography,
-  Button,
 } from "@mui/material";
 import { Event, nip19 } from "nostr-tools";
 import { TextWithImages } from "../Common/TextWithImages";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { openProfileTab } from "../../nostr";
@@ -21,90 +20,32 @@ interface NotesProps {
 }
 
 export const Notes: React.FC<NotesProps> = ({ event }) => {
-  const { profiles, fetchUserProfileThrottled, aiSettings } = useAppContext();
-  const [translatedText, setTranslatedText] = useState<string | null>(null);
-  const [shouldShowTranslate, setShouldShowTranslate] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
-
-  const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
-  const timeAgo = calculateTimeAgo(event.created_at);
-  const browserLang = navigator.language.slice(0, 2).toLowerCase();
-
-  const hasOllama =
-    typeof window !== "undefined" &&
-    window.ollama &&
-    typeof window.ollama.generate === "function";
+  let { profiles, fetchUserProfileThrottled } = useAppContext();
+  let referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
 
   useEffect(() => {
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    if (!hasOllama) return;
-
-    const detectLanguage = async () => {
-      const prompt = `Detect the ISO 639-1 language code of the following text. Ignore hashes, URLs, or random text. Respond ONLY with the two-letter code (e.g., "en"). If unsure, default to "en":\n\n${event.content}`;
-      try {
-        const result = await window.ollama!.generate!({
-          model: aiSettings.model,
-          prompt,
-          stream: false,
-        });
-
-        if (!result.success) throw new Error(result.error);
-        const lang = result.data.response.trim().slice(0, 2).toLowerCase();
-        if (lang !== browserLang) {
-          setShouldShowTranslate(true);
-        }
-      } catch (err) {
-        console.error("Language detection failed:", err);
-      }
-    };
-
-    detectLanguage();
-  }, [
-    event.content,
-    event.pubkey,
-    fetchUserProfileThrottled,
-    profiles,
-    aiSettings,
-    browserLang,
-    hasOllama,
-  ]);
-
-  const handleTranslate = async () => {
-    setIsTranslating(true);
-    const prompt = `Translate the following to ${browserLang}. The text may contain hashes, URLs, or nostr IDs; ignore them.\n\n${event.content}`;
-
-    try {
-      const result = await window.ollama!.generate!({
-        model: aiSettings.model || "llama3",
-        prompt,
-        stream: false,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || "Ollama failed");
-      }
-
-      setTranslatedText(result.data.response);
-    } catch (err) {
-      console.error("Translation failed:", err);
-      setTranslatedText("⚠️ Translation failed.");
-    } finally {
-      setIsTranslating(false);
-    }
-  };
+  const timeAgo = calculateTimeAgo(event.created_at);
 
   return (
     <div>
-      <Card variant="outlined" style={{ margin: 10 }}>
+      <Card
+        variant="outlined"
+        className="poll-response-form"
+        style={{ margin: 10 }}
+      >
         <CardHeader
           avatar={
             <Avatar
               src={profiles?.get(event.pubkey)?.picture || DEFAULT_IMAGE_URL}
-              onClick={() => openProfileTab(nip19.npubEncode(event.pubkey))}
-              sx={{ cursor: "pointer" }}
+              onClick={() => {
+                openProfileTab(nip19.npubEncode(event.pubkey));
+              }}
             />
           }
           title={
@@ -113,38 +54,25 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
             profiles?.get(event.pubkey)?.nip05 ||
             nip19.npubEncode(event.pubkey).slice(0, 10) + "..."
           }
-          titleTypographyProps={{ fontSize: 18, fontWeight: "bold" }}
+          titleTypographyProps={{
+            fontSize: 18,
+            fontWeight: "bold",
+          }}
           subheader={timeAgo}
-          sx={{ m: 0, p: 0, ml: 1, mt: 1 }}
-        />
+          style={{ margin: 0, padding: 0, marginLeft: 10, marginTop: 10 }}
+        ></CardHeader>
         <Card variant="outlined">
           <CardContent>
-            {referencedEventId && (
+            {referencedEventId ? (
               <>
-                <Typography variant="caption">replying to:</Typography>
-                <PrepareNote eventId={referencedEventId} />
+                <Typography style={{ fontSize: 10 }}>replying to: </Typography>
+                <div style={{ borderRadius: "1px", borderColor: "grey" }}>
+                  <PrepareNote eventId={referencedEventId} />
+                </div>
               </>
-            )}
+            ) : null}
 
-            <TextWithImages content={event.content} />
-
-            {hasOllama && shouldShowTranslate && (
-              <div style={{ marginTop: 10 }}>
-                <Button
-                  variant="text"
-                  onClick={handleTranslate}
-                  disabled={isTranslating}
-                >
-                  {isTranslating ? "Translating..." : "Translate"}
-                </Button>
-              </div>
-            )}
-
-            {translatedText && (
-              <Typography mt={2} fontStyle="italic">
-                {translatedText}
-              </Typography>
-            )}
+            <TextWithImages content={event.content}></TextWithImages>
           </CardContent>
         </Card>
         <FeedbackMenu event={event} />

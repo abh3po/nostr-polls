@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PrepareNote } from "../Notes/PrepareNote";
 import { nip19 } from "nostr-tools";
 import { isImageUrl } from "../../utils/common";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
+import { Button, Typography } from "@mui/material";
+import { TranslationPopover } from "./TranslationPopover";
 
 interface TextWithImagesProps {
   content: string;
@@ -12,49 +14,116 @@ interface TextWithImagesProps {
 
 const urlRegex = /((http|https):\/\/[^\s]+)/g;
 const hashtagRegex = /#(\w+)/g;
-// const nostrRegex = /nostr:([a-z0-9]+)/gi;
 
 const isVideoUrl = (url: string) =>
   /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/.test(url);
 
 export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
-  const [text, setText] = useState<string>(content);
-  const { fetchUserProfileThrottled, profiles } = useAppContext();
+  const [displayedText, setDisplayedText] = useState<string>(content);
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [shouldShowTranslate, setShouldShowTranslate] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const translateButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const { aiSettings, fetchUserProfileThrottled, profiles } = useAppContext();
+  const browserLang = navigator.language.slice(0, 2).toLowerCase();
+
+  const hasOllama =
+    typeof window !== "undefined" &&
+    window.ollama &&
+    typeof window.ollama.generate === "function";
 
   useEffect(() => {
-    if (!text) setText(content);
-  }, [content, text]);
+    setDisplayedText(content);
+    if (!hasOllama) return;
 
-  const processContent = () => {
-    const lines = text?.split(/\n/) || [];
+    const detectLang = async () => {
+      try {
+        const prompt = `Determine the language of the following text. Only respond with the ISO 639-1 language code (e.g., "en", "es", "fr").
 
+Ignore:
+- URLs (http links)
+- Hashes
+- Random alphanumeric strings or identifiers
+
+Default to "en" unless you're very confident it's another language.
+Text:\n\n${content}`;
+
+        const result = await window.ollama!.generate!({
+          model: aiSettings.model || "llama3",
+          prompt,
+          stream: false,
+        });
+
+        const rawLang = result?.data?.response?.trim();
+        console.log("RAW LANG RETURNED WAS", rawLang);
+        // Onl y proceed if rawLang length is exactly 2 and it matches /^[a-z]{2}$/
+        if (
+          rawLang &&
+          rawLang.length === 2 &&
+          /^[a-z]{2}$/.test(rawLang.toLowerCase())
+        ) {
+          const lang = rawLang.toLowerCase();
+          if (lang !== browserLang) {
+            setShouldShowTranslate(true);
+            return;
+          }
+        }
+
+        setShouldShowTranslate(false);
+      } catch (err) {
+        console.warn("Language detection failed:", err);
+        setShouldShowTranslate(false);
+      }
+    };
+
+    detectLang();
+  }, [content, aiSettings.model, browserLang, hasOllama]);
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    try {
+      const prompt = `Translate the following text to ${browserLang}. You may skip or preserve hashes, URLs, and nostr identifiers:\n\n${content}`;
+
+      const result = await window.ollama!.generate!({
+        model: aiSettings.model || "llama3",
+        prompt,
+        stream: false,
+      });
+
+      const translated = result?.data?.response?.trim();
+      if (translated) {
+        setTranslatedText(translated);
+      }
+    } catch (err) {
+      console.error("Translation failed:", err);
+      setTranslatedText("⚠️ Translation failed.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const renderContent = (text: string) => {
+    const lines = text.split(/\n/);
     return lines.map((line, lineIndex) => {
       const parts = line.split(/(\s+)/);
-
       return (
-        <div
-          key={lineIndex}
-          style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
-        >
+        <div key={lineIndex} style={{ wordBreak: "break-word" }}>
           {parts.map((part, index) => {
-            // --- Image ---
             if (isImageUrl(part)) {
               return (
                 <img
                   key={index}
                   src={part}
-                  alt={`Content ${lineIndex + 1}-${index}`}
+                  alt={`img-${lineIndex}-${index}`}
                   style={{
                     maxWidth: "100%",
                     marginBottom: "0.5rem",
-                    marginRight: "0.5rem",
                     maxHeight: "400px",
                   }}
                 />
               );
             }
 
-            // --- Video ---
             if (isVideoUrl(part)) {
               return (
                 <video
@@ -70,38 +139,33 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
               );
             }
 
-            // --- URL ---
             if (urlRegex.test(part)) {
               const url = part.match(urlRegex)?.[0];
-              if (url)
-                return (
-                  <a
-                    href={url}
-                    key={index}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    style={{ color: "#FAD13F" }}
-                  >
-                    {part}
-                  </a>
-                );
-            }
-
-            // --- Hashtag ---
-            if (hashtagRegex.test(part)) {
               return (
-                <React.Fragment key={index}>
-                  <a
-                    href={`https://snort.social/t/${part}`}
-                    style={{ color: "#FAD13F", textDecoration: "underline" }}
-                  >
-                    {part}
-                  </a>
-                </React.Fragment>
+                <a
+                  href={url}
+                  key={index}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#FAD13F" }}
+                >
+                  {part}
+                </a>
               );
             }
 
-            // --- Nostr Links ---
+            if (hashtagRegex.test(part)) {
+              return (
+                <a
+                  key={index}
+                  href={`https://snort.social/t/${part.replace("#", "")}`}
+                  style={{ color: "#FAD13F", textDecoration: "underline" }}
+                >
+                  {part}
+                </a>
+              );
+            }
+
             if (part.startsWith("nostr:")) {
               try {
                 const encoded = part.replace("nostr:", "");
@@ -117,7 +181,6 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
 
                 if (type === "nprofile" || type === "npub") {
                   const pubkey = type === "nprofile" ? data.pubkey : data;
-                  // Optionally fetch profile if not already available
                   if (!profiles?.has(pubkey)) {
                     fetchUserProfileThrottled(pubkey);
                   }
@@ -143,25 +206,22 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
                         gap: "0.3rem",
                       }}
                     >
-                      <div>
-                        <img
-                          src={profile?.picture || DEFAULT_IMAGE_URL}
-                          alt={name}
-                          width={18}
-                          height={18}
-                          style={{ borderRadius: "50%" }}
-                        />
-                        {name}
-                      </div>
+                      <img
+                        src={profile?.picture || DEFAULT_IMAGE_URL}
+                        alt={name}
+                        width={18}
+                        height={18}
+                        style={{ borderRadius: "50%" }}
+                      />
+                      {name}
                     </a>
                   );
                 }
-              } catch (err) {
-                // Not a valid nip19 encoded string
+              } catch {
                 return <span key={index}>{part}</span>;
               }
             }
-            // --- Default ---
+
             return <React.Fragment key={index}>{part}</React.Fragment>;
           })}
           <br />
@@ -169,5 +229,31 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
       );
     });
   };
-  return <>{processContent()}</>;
+
+  return (
+    <>
+      {renderContent(displayedText)}
+
+      {hasOllama && shouldShowTranslate && (
+        <Button
+          ref={translateButtonRef}
+          onClick={handleTranslate}
+          disabled={isTranslating}
+          variant="text"
+          style={{ marginTop: "0.5rem" }}
+        >
+          {isTranslating ? "Translating..." : "Translate"}
+        </Button>
+      )}
+
+      <TranslationPopover
+        translatedText={translatedText}
+        buttonRef={translateButtonRef.current}
+        open={!!translatedText}
+        onClose={() => {
+          setTranslatedText(null);
+        }}
+      />
+    </>
+  );
 };
