@@ -1,14 +1,18 @@
 import React, { useState } from "react";
 import {
   Button,
-  Card,
+  Container,
   Divider,
-  Input,
   MenuItem,
   Select,
   SelectChangeEvent,
   TextField,
   Typography,
+  Stack,
+  FormControl,
+  InputLabel,
+  FormLabel,
+  Paper,
 } from "@mui/material";
 import OptionsCard from "./OptionsCard";
 import { Option } from "../../interfaces";
@@ -95,55 +99,43 @@ const PollTemplateForm = () => {
   let now = dayjs();
 
   return (
-    <div style={{ alignItems: "center", width: "100%", maxWidth: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          maxWidth: "100%",
-          alignItems: "center",
-        }}
+    <Container maxWidth="md">
+      <Typography variant="h4" component="h1" align="center" gutterBottom>
+        Create A Poll
+      </Typography>
+      
+      <Paper 
+        component="form" 
+        onSubmit={handleSubmit} 
+        elevation={1}
+        sx={{ p: 3 }}
       >
-        <Typography variant="h5" gutterBottom>
-          Create A Poll
-        </Typography>
-        <form
-          onSubmit={handleSubmit}
-          style={{ border: "none", boxShadow: "none" }}
-        >
-          <Card
-            style={{
-              boxShadow: "none",
-              width: "100%",
-              maxWidth: "100%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "left",
-              padding: 20,
-            }}
-          >
-            <TextField
-              label="Poll questions or content?"
-              value={pollContent}
-              onChange={(e) => setPollContent(e.target.value)}
-              required
-              multiline
-              style={{ borderBottom: "none", margin: 10 }}
-              size="medium"
-            />
-            <OptionsCard
-              onAddOption={addOption}
-              onRemoveOption={removeOption}
-              onEditOptions={onEditOptions}
-              options={options}
-            />
+        <Stack spacing={3}>
+          <TextField
+            label="Poll Question"
+            value={pollContent}
+            onChange={(e) => setPollContent(e.target.value)}
+            required
+            multiline
+            minRows={3}
+            fullWidth
+          />
+          
+          <OptionsCard
+            onAddOption={addOption}
+            onRemoveOption={removeOption}
+            onEditOptions={onEditOptions}
+            options={options}
+          />
+          
+          <FormControl fullWidth>
+            <InputLabel id="poll-type-label">Poll Type</InputLabel>
             <Select
-              labelId="demo-select-small-label"
-              id="demo-select-small"
+              labelId="poll-type-label"
+              id="poll-type-select"
               value={pollType}
-              label="Age"
+              label="Poll Type"
               onChange={handleChange}
-              style={{ maxWidth: "200px", margin: 10 }}
             >
               <MenuItem value={"singlechoice"}>Single Choice Poll</MenuItem>
               <MenuItem value={"multiplechoice"}>Multiple Choice Poll</MenuItem>
@@ -151,53 +143,57 @@ const PollTemplateForm = () => {
                 Ranked Choice Poll
               </MenuItem>
             </Select>
-            <Divider />
-            <div style={{ margin: 10 }}>
-              <Typography>Add Poll Expiration</Typography>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DateTimePicker
-                  label="Poll Expiration"
-                  disablePast
-                  onChange={(value: dayjs.Dayjs | null) => {
-                    if (!value) return;
-                    if (value?.isBefore(now)) {
-                      alert("You cannot select a past date/time.");
-                      setExpiration(null);
-                      return;
-                    } else if (value.isValid()) {
-                      setExpiration(value.valueOf() / 1000);
-                    }
-                  }}
-                  sx={{
-                    marginTop: 3,
-                    marginBottom: 3,
-                  }}
-                />
-              </LocalizationProvider>
-            </div>
-            <Divider />
-            <div style={{ margin: 10 }}>
-              <Typography>Add Proof of Work Difficulty</Typography>
-              <Input
-                value={poW || ""}
-                type="number"
-                placeholder="Enter desired difficulty"
-                style={{ maxWidth: "60%" }}
-                onChange={(e) => setPoW(Number(e.target.value))}
+          </FormControl>
+          
+          <Divider />
+          
+          <FormControl component="fieldset" fullWidth>
+            <FormLabel component="legend">Poll Expiration (Optional)</FormLabel>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DateTimePicker
+                label="Expiration Date"
+                disablePast
+                onChange={(value: dayjs.Dayjs | null) => {
+                  if (!value) return;
+                  if (value?.isBefore(now)) {
+                    alert("You cannot select a past date/time.");
+                    setExpiration(null);
+                    return;
+                  } else if (value.isValid()) {
+                    setExpiration(value.valueOf() / 1000);
+                  }
+                }}
+                slotProps={{
+                  textField: { fullWidth: true }
+                }}
               />
-            </div>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              style={{ maxWidth: 100 }}
-            >
-              Submit
-            </Button>
-          </Card>
-        </form>
-      </div>
-    </div>
+            </LocalizationProvider>
+          </FormControl>
+          
+          <Divider />
+          
+          <FormControl component="fieldset" fullWidth>
+            <FormLabel component="legend">Proof of Work Difficulty (Optional)</FormLabel>
+            <TextField
+              type="number"
+              placeholder="Difficulty level"
+              value={poW || ""}
+              onChange={(e) => setPoW(Number(e.target.value))}
+              fullWidth
+            />
+          </FormControl>
+          
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            fullWidth
+          >
+            Create Poll
+          </Button>
+        </Stack>
+      </Paper>
+    </Container>
   );
 };
 
