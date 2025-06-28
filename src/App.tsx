@@ -28,6 +28,7 @@ import { PollFeed } from "./components/Feed/PollFeed";
 import MoviesFeed from "./components/Feed/MoviesFeed";
 import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadataProvider";
 import FeedsLayout from "./components/Feed/FeedsLayout";
+import { NotificationProvider } from "./contexts/notification-context";
 
 declare global {
   interface Window {
@@ -37,8 +38,9 @@ declare global {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={baseTheme} modeStorageKey={"pollerama-color-scheme"}>
-      <AppContextProvider>
+    <NotificationProvider>
+      <ThemeProvider theme={baseTheme} modeStorageKey={"pollerama-color-scheme"}>
+        <AppContextProvider>
         <UserProvider>
           <SignerProvider>
             <ListProvider>
@@ -88,6 +90,7 @@ const App: React.FC = () => {
         </UserProvider>
       </AppContextProvider>
     </ThemeProvider>
+    </NotificationProvider>
   );
 };
 
