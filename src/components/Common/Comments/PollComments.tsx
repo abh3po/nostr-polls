@@ -21,6 +21,8 @@ import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
 import { SubCloser } from "nostr-tools/lib/types/pool";
 import { useSigner } from "../../../contexts/signer-context";
+import { useNotification } from "../../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 
 interface PollCommentsProps {
   pollEventId: string;
@@ -28,6 +30,7 @@ interface PollCommentsProps {
 
 const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
   const [showComments, setShowComments] = useState<boolean>(false);
+  const { showNotification } = useNotification();
   const {
     poolRef,
     profiles,
@@ -76,7 +79,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
 
   const handleSubmitComment = async (content: string, parentId?: string) => {
     if (!user) {
-      alert("Login To Comment");
+      showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_COMMENT, "warning");
       return;
     }
 

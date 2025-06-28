@@ -7,11 +7,14 @@ import { useEffect, useState } from "react";
 import { Typography } from "@mui/material";
 import { Analytics } from "./Analytics";
 import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
+import { useNotification } from "../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
 export const PollResults = () => {
   let { eventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const [respones, setResponses] = useState<Event[] | undefined>();
+  const { showNotification } = useNotification();
   let navigate = useNavigate();
 
   const getUniqueLatestEvents = (events: Event[]) => {
@@ -40,7 +43,7 @@ export const PollResults = () => {
 
   const fetchPollEvents = async () => {
     if (!eventId) {
-      alert("Invalid url");
+      showNotification(NOTIFICATION_MESSAGES.INVALID_URL, "error");
       navigate("/");
     }
     let resultFilter: Filter = {

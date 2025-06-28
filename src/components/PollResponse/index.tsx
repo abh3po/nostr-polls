@@ -6,17 +6,20 @@ import { Filter } from 'nostr-tools/lib/types/filter';
 import { defaultRelays } from "../../nostr";
 import { Button, Typography } from "@mui/material";
 import { useAppContext } from "../../hooks/useAppContext";
+import { useNotification } from "../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
 export const PollResponse = () => {
   const { eventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
 
   const { poolRef } = useAppContext();
 
   const fetchPollEvent = async () => {
     if (!eventId) {
-      alert("Invalid URL");
+      showNotification(NOTIFICATION_MESSAGES.INVALID_URL, "error");
       navigate("/");
       return;
     }
@@ -26,14 +29,14 @@ export const PollResponse = () => {
     try {
       const events = await poolRef.current.querySync(defaultRelays, filter);
       if (events.length === 0) {
-        alert("Could not find the given poll");
+        showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");
         return;
       }
       setPollEvent(events[0]);
     } catch (error) {
       console.error("Error fetching poll event:", error);
-      alert("Error fetching poll event.");
+      showNotification(NOTIFICATION_MESSAGES.POLL_FETCH_ERROR, "error");
       navigate("/");
     }
   };

@@ -33,6 +33,8 @@ import PollTimer from "./PollTimer";
 import { getColorsWithTheme } from "../../styles/theme";
 import { FeedbackMenu } from "../FeedbackMenu";
 import { useSigner } from "../../contexts/signer-context";
+import { useNotification } from "../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -53,6 +55,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [filterPubkeys, setFilterPubkeys] = useState<string[]>([]);
   const [showPoWModal, setShowPoWModal] = useState<boolean>(false);
+  const { showNotification } = useNotification();
   const { profiles, poolRef, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
   const { signer } = useSigner();
@@ -121,7 +124,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
 
     let responseUser = user;
     if (!user) {
-      alert("login not found, submitting anonymously");
+      showNotification(NOTIFICATION_MESSAGES.ANONYMOUS_LOGIN, "success");
       let secret = generateSecretKey();
       let pubkey = getPublicKey(secret);
       responseUser = { pubkey: pubkey, privateKey: bytesToHex(secret) };
@@ -171,10 +174,10 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     const rawEvent = JSON.stringify(pollEvent, null, 2);
     try {
       await navigator.clipboard.writeText(rawEvent);
-      alert("Event copied to clipboard!");
+      showNotification(NOTIFICATION_MESSAGES.EVENT_COPIED, "success");
     } catch (error) {
       console.error("Failed to copy event:", error);
-      alert("Failed to copy raw event.");
+      showNotification(NOTIFICATION_MESSAGES.EVENT_COPY_FAILED, "error");
     }
   };
 
@@ -183,10 +186,10 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
       await navigator.clipboard.writeText(
         `${window.location.origin}/respond/${pollEvent.id}`
       );
-      alert("Poll URL copied to clipboard!");
+      showNotification(NOTIFICATION_MESSAGES.POLL_URL_COPIED, "success");
     } catch (error) {
       console.error("Failed to copy event:", error);
-      alert("Failed to copy raw event.");
+      showNotification(NOTIFICATION_MESSAGES.POLL_URL_COPY_FAILED, "error");
     }
   };
 

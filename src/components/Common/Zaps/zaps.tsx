@@ -9,6 +9,8 @@ import { useUserContext } from "../../../hooks/useUserContext";
 import { styled } from "@mui/system";
 import { getColorsWithTheme } from "../../../styles/theme";
 import { useSigner } from "../../../contexts/signer-context";
+import { useNotification } from "../../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 
 interface ZapProps {
   pollEvent: Event;
@@ -25,6 +27,7 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const { user } = useUserContext();
   const { signer } = useSigner();
   const [hasZapped, setHasZapped] = useState<boolean>(false);
+  const { showNotification } = useNotification();
   useEffect(() => {
     // Fetch existing zaps for the poll event
     const fetchZaps = async () => {
@@ -62,17 +65,17 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
 
   const sendZap = async () => {
     if (!user) {
-      alert("Log In to send zaps!");
+      showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_ZAP, "warning");
       return;
     }
     let recipient = profiles?.get(pollEvent.pubkey);
     if (!recipient) {
-      alert("Could not fetch recipient profile");
+      showNotification(NOTIFICATION_MESSAGES.RECIPIENT_PROFILE_ERROR, "error");
       return;
     }
     const zapAmount = prompt("Enter the amount to zap (in satoshis):");
     if (!zapAmount || isNaN(Number(zapAmount))) {
-      alert("Invalid amount.");
+      showNotification(NOTIFICATION_MESSAGES.INVALID_AMOUNT, "error");
       return;
     }
 
