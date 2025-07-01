@@ -14,6 +14,9 @@ import {
   FormLabel,
   Paper,
 } from "@mui/material";
+import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import OptionsCard from "./OptionsCard";
 import { Option } from "../../interfaces";
 import { defaultRelays, signEvent } from "../../nostr";
@@ -33,6 +36,25 @@ export type PollTypes =
   | "multiplechoice"
   | "rankedchoice"
   | undefined;
+
+const pollOptions = [
+  {
+    value: "singlechoice",
+    icon: <RadioButtonCheckedIcon fontSize="small" />,
+    label: "Single Choice Poll",
+  },
+  {
+    value: "multiplechoice",
+    icon: <CheckBoxIcon fontSize="small" />,
+    label: "Multiple Choice Poll",
+  },
+  {
+    value: "rankedchoice",
+    icon: <FormatListNumberedIcon fontSize="small" />,
+    label: "Ranked Choice Poll",
+    disabled: true,
+  },
+];
 
 const PollTemplateForm = () => {
   const [pollContent, setPollContent] = useState<string>("");
@@ -140,11 +162,18 @@ const PollTemplateForm = () => {
               label="Poll Type"
               onChange={handleChange}
             >
-              <MenuItem value={"singlechoice"}>Single Choice Poll</MenuItem>
-              <MenuItem value={"multiplechoice"}>Multiple Choice Poll</MenuItem>
-              <MenuItem value={"rankedchoice"} disabled>
-                Ranked Choice Poll
-              </MenuItem>
+              {pollOptions.map((option) => (
+                <MenuItem
+                  key={option.value}
+                  value={option.value}
+                  disabled={option.disabled}
+                >
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    {option.icon}
+                    <Typography>{option.label}</Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           
