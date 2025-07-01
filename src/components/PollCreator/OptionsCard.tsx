@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, TextField, Button, CardActions } from '@mui/material';
+import { Card, CardContent, TextField, Button, CardActions, IconButton } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 import { Option } from "../../interfaces"
  
@@ -37,11 +37,12 @@ const OptionsCard: React.FC<OptionsCardProps> = ({
               sx={{ mr: 1 }}
               style={{border: "none", margin: 10}}
             />
-            <Button
+            <IconButton
               color="error"
               onClick={() => onRemoveOption(index)}
-              startIcon={<Delete />}
-            />
+            >
+              <Delete />
+            </IconButton>
           </div>
         ))}
       </CardContent>
