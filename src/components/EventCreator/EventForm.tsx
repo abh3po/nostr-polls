@@ -60,8 +60,8 @@ const pollOptions = [
   },
 ];
 
-const PollTemplateForm = () => {
-  const [pollContent, setPollContent] = useState<string>("");
+const EventForm = () => {
+  const [eventContent, setEventContent] = useState<string>("");
   const [options, setOptions] = useState<Option[]>(() => [
     [generateOptionId(), ""],
     [generateOptionId(), ""],
@@ -94,11 +94,12 @@ const PollTemplateForm = () => {
       showNotification("No options added. This will be posted as a note instead.", "info");
     }
   };
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+
+  const handleEventSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (options.length === 0) {
-      publishNote(user?.privateKey);
+      publishNoteEvent(user?.privateKey);
       return;
     }
 
@@ -107,24 +108,24 @@ const PollTemplateForm = () => {
       return;
     }
     
-    publishPoll(user?.privateKey);
+    publishPollEvent(user?.privateKey);
   };
 
-  const publishNote = async (secret?: string) => {
+  const publishNoteEvent = async (secret?: string) => {
     try {
       if (!signer && !secret) {
         requestLogin();
         return;
       }
       
-      if (!pollContent.trim()) {
+      if (!eventContent.trim()) {
         showNotification("Note content cannot be empty.", "error");
         return;
       }
       
       const noteEvent = {
         kind: 1,
-        content: pollContent,
+        content: eventContent,
         tags: [
           ...defaultRelays.map((relay) => ["relay", relay]),
         ],
@@ -146,21 +147,21 @@ const PollTemplateForm = () => {
     }
   };
 
-  const publishPoll = async (secret?: string) => {
+  const publishPollEvent = async (secret?: string) => {
     try {
       if (!signer && !secret) {
         requestLogin();
         return;
       }
       
-      if (!pollContent.trim()) {
+      if (!eventContent.trim()) {
         showNotification("Poll question cannot be empty.", "error");
         return;
       }
       
       const pollEvent = {
         kind: 1068,
-        content: pollContent,
+        content: eventContent,
         tags: [
           ...options.map((option: Option) => ["option", option[0], option[1]]),
           ...defaultRelays.map((relay) => ["relay", relay]),
@@ -209,7 +210,7 @@ const PollTemplateForm = () => {
       
       <Card 
         component="form" 
-        onSubmit={handleSubmit} 
+        onSubmit={handleEventSubmit} 
         elevation={2}
         sx={{ p: 3 }}
       >
@@ -221,8 +222,8 @@ const PollTemplateForm = () => {
             </Typography>
             <TextField
               label={options.length === 0 ? "Note Content" : "Poll Question"}
-              value={pollContent}
-              onChange={(e) => setPollContent(e.target.value)}
+              value={eventContent}
+              onChange={(e) => setEventContent(e.target.value)}
               required
               multiline
               minRows={4}
@@ -344,4 +345,4 @@ const PollTemplateForm = () => {
   );
 };
 
-export default PollTemplateForm;
+export default EventForm; 
