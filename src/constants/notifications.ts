@@ -13,6 +13,8 @@ export const NOTIFICATION_MESSAGES = {
   INVALID_AMOUNT: "Invalid amount.",
   PAST_DATE_ERROR: "You cannot select a past date/time.",
   RECIPIENT_PROFILE_ERROR: "Could not fetch recipient profile",
+  EMPTY_POLL_OPTIONS: "Poll options cannot be empty.",
+  MIN_POLL_OPTIONS: "A poll must have at least one option.",
 
   // Poll operations
   POLL_NOT_FOUND: "Could not find the given poll",

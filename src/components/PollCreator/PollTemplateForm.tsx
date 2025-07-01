@@ -34,9 +34,16 @@ export type PollTypes =
   | "rankedchoice"
   | undefined;
 
+function generateOptionId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
 const PollTemplateForm = () => {
   const [pollContent, setPollContent] = useState<string>("");
-  const [options, setOptions] = useState<Option[]>([]);
+  const [options, setOptions] = useState<Option[]>(() => [
+    [generateOptionId(), ""],
+    [generateOptionId(), ""],
+  ]);
   const [pollType, setPollType] = useState<PollTypes>("singlechoice");
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
@@ -47,13 +54,9 @@ const PollTemplateForm = () => {
   const { signer, requestLogin } = useSigner();
   let navigate = useNavigate();
 
-  function generateOptionId() {
-    return Math.random().toString(36).substr(2, 9);
-  }
-
   const addOption = () => {
-    let newOptions = [...options, [generateOptionId(), ""]];
-    setOptions(newOptions as Option[]);
+    const newOptions: Option[] = [...options, [generateOptionId(), ""]];
+    setOptions(newOptions);
   };
 
   const onEditOptions = (newOptions: Option[]) => {
@@ -67,6 +70,15 @@ const PollTemplateForm = () => {
   };
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (options.length < 1) {
+      showNotification(NOTIFICATION_MESSAGES.MIN_POLL_OPTIONS, "error");
+      return;
+    }
+
+    if (options.some((option) => option[1].trim() === "")) {
+      showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_OPTIONS, "error");
+      return;
+    }
     publishPoll(user?.privateKey);
   };
 
