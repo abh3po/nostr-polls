@@ -31,6 +31,7 @@ const OptionsCard: React.FC<OptionsCardProps> = ({
               <TextField
                 label={`Option ${index + 1}`}
                 fullWidth
+                multiline
                 value={option[1]}
                 onChange={(e) => handleEditOption(index, e.target.value)}
                 sx={{ mr: 1 }}
@@ -45,7 +46,7 @@ const OptionsCard: React.FC<OptionsCardProps> = ({
           ))}
         </CardContent>
       )}
-      <CardActions sx={{ pt: 2,pb: 2 }}>
+      <CardActions sx={{ pt: 2, pb: 2 }}>
         <Button
           variant="contained"
           startIcon={<Add />}

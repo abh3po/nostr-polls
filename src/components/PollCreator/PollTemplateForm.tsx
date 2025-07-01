@@ -111,49 +111,83 @@ const PollTemplateForm = () => {
   };
 
   const publishNote = async (secret?: string) => {
-    if (!signer && !secret) {
-      requestLogin();
-      return;
-    }
-    
-    const noteEvent = {
-      kind: 1,
-      content: pollContent,
-      tags: [
-        ...defaultRelays.map((relay) => ["relay", relay]),
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-    };
+    try {
+      if (!signer && !secret) {
+        requestLogin();
+        return;
+      }
+      
+      if (!pollContent.trim()) {
+        showNotification("Note content cannot be empty.", "error");
+        return;
+      }
+      
+      const noteEvent = {
+        kind: 1,
+        content: pollContent,
+        tags: [
+          ...defaultRelays.map((relay) => ["relay", relay]),
+        ],
+        created_at: Math.floor(Date.now() / 1000),
+      };
 
-    let signedEvent = await signEvent(noteEvent, signer, secret);
-    poolRef.current.publish(defaultRelays, signedEvent!);
-    navigate("/");
+      const signedEvent = await signEvent(noteEvent, signer, secret);
+      if (!signedEvent) {
+        showNotification("Failed to sign the note.", "error");
+        return;
+      }
+      
+      poolRef.current.publish(defaultRelays, signedEvent);
+      showNotification("Note published successfully!", "success");
+      navigate("/");
+    } catch (error) {
+      console.error("Error publishing note:", error);
+      showNotification("Failed to publish note. Please try again.", "error");
+    }
   };
 
   const publishPoll = async (secret?: string) => {
-    if (!signer && !secret) {
-      requestLogin();
-      return;
+    try {
+      if (!signer && !secret) {
+        requestLogin();
+        return;
+      }
+      
+      if (!pollContent.trim()) {
+        showNotification("Poll question cannot be empty.", "error");
+        return;
+      }
+      
+      const pollEvent = {
+        kind: 1068,
+        content: pollContent,
+        tags: [
+          ...options.map((option: Option) => ["option", option[0], option[1]]),
+          ...defaultRelays.map((relay) => ["relay", relay]),
+        ],
+        created_at: Math.floor(Date.now() / 1000),
+      };
+      if (poW) pollEvent.tags.push(["PoW", poW.toString()]);
+      if (pollType) {
+        pollEvent.tags.push(["polltype", pollType]);
+      }
+      if (expiration) {
+        pollEvent.tags.push(["endsAt", expiration.toString()]);
+      }
+      
+      const signedEvent = await signEvent(pollEvent, signer, secret);
+      if (!signedEvent) {
+        showNotification("Failed to sign the poll.", "error");
+        return;
+      }
+      
+      poolRef.current.publish(defaultRelays, signedEvent);
+      showNotification("Poll published successfully!", "success");
+      navigate("/");
+    } catch (error) {
+      console.error("Error publishing poll:", error);
+      showNotification("Failed to publish poll. Please try again.", "error");
     }
-    const pollEvent = {
-      kind: 1068,
-      content: pollContent,
-      tags: [
-        ...options.map((option: Option) => ["option", option[0], option[1]]),
-        ...defaultRelays.map((relay) => ["relay", relay]),
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-    };
-    if (poW) pollEvent.tags.push(["PoW", poW.toString()]);
-    if (pollType) {
-      pollEvent.tags.push(["polltype", pollType]);
-    }
-    if (expiration) {
-      pollEvent.tags.push(["endsAt", expiration.toString()]);
-    }
-    let signedEvent = await signEvent(pollEvent, signer, secret);
-    poolRef.current.publish(defaultRelays, signedEvent!);
-    navigate("/");
   };
 
   const handleChange = (event: SelectChangeEvent) => {
@@ -186,6 +220,7 @@ const PollTemplateForm = () => {
               {options.length === 0 ? "Note Content" : "Poll Question"}
             </Typography>
             <TextField
+              label={options.length === 0 ? "Note Content" : "Poll Question"}
               value={pollContent}
               onChange={(e) => setPollContent(e.target.value)}
               required
@@ -195,7 +230,7 @@ const PollTemplateForm = () => {
               fullWidth
               placeholder={options.length === 0 
                 ? "Share your thoughts." 
-                : "Ask  a question."
+                : "Ask a question."
               }
             />
           </Box>
