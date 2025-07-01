@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Button,
   Container,
-  Divider,
   MenuItem,
   Select,
   SelectChangeEvent,
@@ -11,9 +10,10 @@ import {
   Stack,
   FormControl,
   InputLabel,
-  FormLabel,
-  Paper,
+  Box,
+  Card,
 } from "@mui/material";
+import Grid from '@mui/material/Grid2';
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
@@ -89,11 +89,16 @@ const PollTemplateForm = () => {
     const updatedOptions = [...options];
     updatedOptions.splice(index, 1);
     setOptions(updatedOptions);
+
+    if (updatedOptions.length === 0) {
+      showNotification("No options added. This will be posted as a note instead.", "info");
+    }
   };
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (options.length < 1) {
-      showNotification(NOTIFICATION_MESSAGES.MIN_POLL_OPTIONS, "error");
+
+    if (options.length === 0) {
+      publishNote(user?.privateKey);
       return;
     }
 
@@ -101,7 +106,28 @@ const PollTemplateForm = () => {
       showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_OPTIONS, "error");
       return;
     }
+    
     publishPoll(user?.privateKey);
+  };
+
+  const publishNote = async (secret?: string) => {
+    if (!signer && !secret) {
+      requestLogin();
+      return;
+    }
+    
+    const noteEvent = {
+      kind: 1,
+      content: pollContent,
+      tags: [
+        ...defaultRelays.map((relay) => ["relay", relay]),
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+
+    let signedEvent = await signEvent(noteEvent, signer, secret);
+    poolRef.current.publish(defaultRelays, signedEvent!);
+    navigate("/");
   };
 
   const publishPoll = async (secret?: string) => {
@@ -136,107 +162,149 @@ const PollTemplateForm = () => {
   let now = dayjs();
 
   return (
-    <Container maxWidth="md">
-      <Typography variant="h4" component="h1" align="center" gutterBottom>
-        Create A Poll
-      </Typography>
+    <Container maxWidth="md" sx={{ py: 3 }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          sx={{ mb: 1 }}
+        >
+          {options.length === 0 ? "Create A Note" : "Create A Poll"}
+        </Typography>
+      </Box>
       
-      <Paper 
+      <Card 
         component="form" 
         onSubmit={handleSubmit} 
-        elevation={1}
+        elevation={2}
         sx={{ p: 3 }}
       >
-        <Stack spacing={3}>
-          <TextField
-            label="Poll Question"
-            value={pollContent}
-            onChange={(e) => setPollContent(e.target.value)}
-            required
-            multiline
-            minRows={3}
-            fullWidth
-          />
-          
-          <OptionsCard
-            onAddOption={addOption}
-            onRemoveOption={removeOption}
-            onEditOptions={onEditOptions}
-            options={options}
-          />
-          
-          <FormControl fullWidth>
-            <InputLabel id="poll-type-label">Poll Type</InputLabel>
-            <Select
-              labelId="poll-type-label"
-              id="poll-type-select"
-              value={pollType}
-              label="Poll Type"
-              onChange={handleChange}
-            >
-              {pollOptions.map((option) => (
-                <MenuItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    {option.icon}
-                    <Typography>{option.label}</Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <Divider />
-          
-          <FormControl component="fieldset" fullWidth>
-            <FormLabel component="legend">Poll Expiration (Optional)</FormLabel>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateTimePicker
-                label="Expiration Date"
-                disablePast
-                onChange={(value: dayjs.Dayjs | null) => {
-                  if (!value) return;
-                  if (value?.isBefore(now)) {
-                    showNotification(NOTIFICATION_MESSAGES.PAST_DATE_ERROR, "error");
-                    setExpiration(null);
-                    return;
-                  } else if (value.isValid()) {
-                    setExpiration(value.valueOf() / 1000);
-                  }
-                }}
-                slotProps={{
-                  textField: { fullWidth: true }
-                }}
-              />
-            </LocalizationProvider>
-          </FormControl>
-          
-          <Divider />
-          
-          <FormControl component="fieldset" fullWidth>
-            <FormLabel component="legend">Proof of Work Difficulty (Optional)</FormLabel>
+        <Stack spacing={4}>
+          {/* Content Section */}
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {options.length === 0 ? "Note Content" : "Poll Question"}
+            </Typography>
             <TextField
-              type="number"
-              placeholder="Difficulty level"
-              value={poW || ""}
-              onChange={(e) => setPoW(Number(e.target.value))}
+              value={pollContent}
+              onChange={(e) => setPollContent(e.target.value)}
+              required
+              multiline
+              minRows={4}
+              maxRows={8}
               fullWidth
+              placeholder={options.length === 0 
+                ? "Share your thoughts." 
+                : "Ask  a question."
+              }
             />
-          </FormControl>
+          </Box>
           
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            fullWidth
-          >
-            Create Poll
-          </Button>
+          {/* Options Section */}
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Poll Options
+            </Typography>
+            <OptionsCard
+              onAddOption={addOption}
+              onRemoveOption={removeOption}
+              onEditOptions={onEditOptions}
+              options={options}
+            />
+          </Box>
+          
+          {/* Poll Settings Section - Only show when options exist */}
+          {options.length > 0 && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 3 }}>
+                Poll Settings
+              </Typography>
+              
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel id="poll-type-label">Poll Type</InputLabel>
+                    <Select
+                      labelId="poll-type-label"
+                      id="poll-type-select"
+                      value={pollType}
+                      label="Poll Type"
+                      onChange={handleChange}
+                    >
+                      {pollOptions.map((option) => (
+                        <MenuItem
+                          key={option.value}
+                          value={option.value}
+                          disabled={option.disabled}
+                        >
+                          <Stack direction="row" spacing={1.5} alignItems="center">
+                            {option.icon}
+                            <Typography>{option.label}</Typography>
+                          </Stack>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DateTimePicker
+                      label="Poll Expiration (Optional)"
+                      disablePast
+                      onChange={(value: dayjs.Dayjs | null) => {
+                        if (!value) return;
+                        if (value?.isBefore(now)) {
+                          showNotification(NOTIFICATION_MESSAGES.PAST_DATE_ERROR, "error");
+                          setExpiration(null);
+                          return;
+                        } else if (value.isValid()) {
+                          setExpiration(value.valueOf() / 1000);
+                        }
+                      }}
+                      slotProps={{
+                        textField: { 
+                          fullWidth: true
+                        }
+                      }}
+                    />
+                  </LocalizationProvider>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          
+          {/* Advanced Settings Section - Only show when options exist */}
+          {options.length > 0 && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 3 }}>
+                Advanced Settings
+              </Typography>
+              
+              <TextField
+                type="number"
+                label="Proof of Work Difficulty (Optional)"
+                placeholder="Enter difficulty level"
+                value={poW || ""}
+                onChange={(e) => setPoW(Number(e.target.value))}
+                fullWidth
+              />
+            </Box>
+          )}
+          
+          {/* Submit Button */}
+          <Box sx={{ pt: 2 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              fullWidth
+            >
+              {options.length === 0 ? "Create Note" : "Create Poll"}
+            </Button>
+          </Box>
         </Stack>
-      </Paper>
+      </Card>
     </Container>
   );
 };

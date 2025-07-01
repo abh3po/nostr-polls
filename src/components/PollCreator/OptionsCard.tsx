@@ -23,37 +23,37 @@ const OptionsCard: React.FC<OptionsCardProps> = ({
   };
 
   return (
-    <Card variant="outlined" style={{ maxWidth: "100%"}}>
-      <CardContent>
-        {options.map((option, index) => (
-          <div key={index} style={{ display: 'flex', alignItems: 'center' }}>
-            <TextField
-              label={`Option ${index + 1}`}
-              fullWidth
-              multiline
-              rows="auto"
-              value={option[1]}
-              onChange={(e) => handleEditOption(index, e.target.value)}
-              sx={{ mr: 1 }}
-              style={{border: "none", margin: 10}}
-            />
-            <IconButton
-              color="error"
-              onClick={() => onRemoveOption(index)}
-            >
-              <Delete />
-            </IconButton>
-          </div>
-        ))}
-      </CardContent>
-      <CardActions> <Button
+    <Card variant="outlined">
+      {options.length > 0 && (
+        <CardContent sx={{ pb: 0 }}>
+          {options.map((option, index) => (
+            <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+              <TextField
+                label={`Option ${index + 1}`}
+                fullWidth
+                value={option[1]}
+                onChange={(e) => handleEditOption(index, e.target.value)}
+                sx={{ mr: 1 }}
+              />
+              <IconButton
+                color="error"
+                onClick={() => onRemoveOption(index)}
+              >
+                <Delete />
+              </IconButton>
+            </div>
+          ))}
+        </CardContent>
+      )}
+      <CardActions sx={{ pt: 2,pb: 2 }}>
+        <Button
           variant="contained"
           startIcon={<Add />}
           onClick={onAddOption}
-          sx={{ mt: 1, mb: 1 }}
         >
           Add Option
-        </Button></CardActions>
+        </Button>
+      </CardActions>
     </Card>
   );
 };
