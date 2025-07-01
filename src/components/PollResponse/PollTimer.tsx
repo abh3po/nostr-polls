@@ -1,7 +1,6 @@
 // PollTimer.tsx
 import React, { useEffect, useState } from "react";
 import dayjs from "dayjs";
-import moment from "moment";
 import { Typography } from "@mui/material";
 
 interface PollTimerProps {
@@ -36,9 +35,7 @@ const PollTimer: React.FC<PollTimerProps> = ({ pollExpiration }) => {
 
   const renderExpirationMessage = () => {
     if (isPollConcluded) {
-      return `Poll concluded at: ${moment
-        .unix(Number(pollExpiration))
-        .format("YYYY-MM-DD HH:mm")}`;
+      return `Closed at: ${dayjs.unix(Number(pollExpiration)).format("YYYY-MM-DD HH:mm")}`;
     }
 
     if (timeRemaining !== null) {
