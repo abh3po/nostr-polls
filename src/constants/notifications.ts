@@ -14,7 +14,6 @@ export const NOTIFICATION_MESSAGES = {
   PAST_DATE_ERROR: "You cannot select a past date/time.",
   RECIPIENT_PROFILE_ERROR: "Could not fetch recipient profile",
   EMPTY_POLL_OPTIONS: "Poll options cannot be empty.",
-  MIN_POLL_OPTIONS: "A poll must have at least one option.",
 
   // Poll operations
   POLL_NOT_FOUND: "Could not find the given poll",
@@ -24,6 +23,17 @@ export const NOTIFICATION_MESSAGES = {
   LOGIN_TO_LIKE: "Login To Like!",
   LOGIN_TO_COMMENT: "Login To Comment",
   LOGIN_TO_ZAP: "Log In to send zaps!",
+
+  // Event creation
+  NO_OPTIONS_NOTE_WARNING: "No options added. This will be posted as a note instead.",
+  EMPTY_NOTE_CONTENT: "Note content cannot be empty.",
+  NOTE_SIGN_FAILED: "Failed to sign the note.",
+  NOTE_PUBLISHED_SUCCESS: "Note published successfully!",
+  NOTE_PUBLISH_FAILED: "Failed to publish note. Please try again.",
+  EMPTY_POLL_QUESTION: "Poll question cannot be empty.",
+  POLL_SIGN_FAILED: "Failed to sign the poll.",
+  POLL_PUBLISHED_SUCCESS: "Poll published successfully!",
+  POLL_PUBLISH_FAILED: "Failed to publish poll. Please try again.",
 } as const;
 
 export type NotificationMessageKey = keyof typeof NOTIFICATION_MESSAGES;

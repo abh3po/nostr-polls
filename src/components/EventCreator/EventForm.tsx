@@ -30,6 +30,7 @@ import dayjs from "dayjs";
 import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
+import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
 
 export type PollTypes =
   | "singlechoice"
@@ -91,7 +92,7 @@ const EventForm = () => {
     setOptions(updatedOptions);
 
     if (updatedOptions.length === 0) {
-      showNotification("No options added. This will be posted as a note instead.", "info");
+      showNotification(NOTIFICATION_MESSAGES.NO_OPTIONS_NOTE_WARNING, "info");
     }
   };
 
@@ -119,12 +120,12 @@ const EventForm = () => {
       }
       
       if (!eventContent.trim()) {
-        showNotification("Note content cannot be empty.", "error");
+        showNotification(NOTIFICATION_MESSAGES.EMPTY_NOTE_CONTENT, "error");
         return;
       }
       
       const noteEvent = {
-        kind: 1,
+        kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
         content: eventContent,
         tags: [
           ...defaultRelays.map((relay) => ["relay", relay]),
@@ -134,16 +135,16 @@ const EventForm = () => {
 
       const signedEvent = await signEvent(noteEvent, signer, secret);
       if (!signedEvent) {
-        showNotification("Failed to sign the note.", "error");
+        showNotification(NOTIFICATION_MESSAGES.NOTE_SIGN_FAILED, "error");
         return;
       }
       
       poolRef.current.publish(defaultRelays, signedEvent);
-      showNotification("Note published successfully!", "success");
+      showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS, "success");
       navigate("/");
     } catch (error) {
       console.error("Error publishing note:", error);
-      showNotification("Failed to publish note. Please try again.", "error");
+      showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISH_FAILED, "error");
     }
   };
 
@@ -155,12 +156,12 @@ const EventForm = () => {
       }
       
       if (!eventContent.trim()) {
-        showNotification("Poll question cannot be empty.", "error");
+        showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_QUESTION, "error");
         return;
       }
       
       const pollEvent = {
-        kind: 1068,
+        kind: NOSTR_EVENT_KINDS.POLL,
         content: eventContent,
         tags: [
           ...options.map((option: Option) => ["option", option[0], option[1]]),
@@ -178,16 +179,16 @@ const EventForm = () => {
       
       const signedEvent = await signEvent(pollEvent, signer, secret);
       if (!signedEvent) {
-        showNotification("Failed to sign the poll.", "error");
+        showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
       
       poolRef.current.publish(defaultRelays, signedEvent);
-      showNotification("Poll published successfully!", "success");
+      showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
       navigate("/");
     } catch (error) {
       console.error("Error publishing poll:", error);
-      showNotification("Failed to publish poll. Please try again.", "error");
+      showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISH_FAILED, "error");
     }
   };
 
