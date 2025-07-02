@@ -72,6 +72,8 @@ const EventForm = () => {
   const [expiration, setExpiration] = useState<number | null>(null);
   const { showNotification } = useNotification();
 
+  const isNote = options.length === 0;
+
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
   const { signer, requestLogin } = useSigner();
@@ -99,7 +101,7 @@ const EventForm = () => {
   const handleEventSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (options.length === 0) {
+    if (isNote) {
       publishNoteEvent(user?.privateKey);
       return;
     }
@@ -205,7 +207,7 @@ const EventForm = () => {
           component="h1" 
           sx={{ mb: 1 }}
         >
-          {options.length === 0 ? "Create A Note" : "Create A Poll"}
+          {isNote ? "Create A Note" : "Create A Poll"}
         </Typography>
       </Box>
       
@@ -219,10 +221,10 @@ const EventForm = () => {
           {/* Content Section */}
           <Box>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              {options.length === 0 ? "Note Content" : "Poll Question"}
+              {isNote ? "Note Content" : "Poll Question"}
             </Typography>
             <TextField
-              label={options.length === 0 ? "Note Content" : "Poll Question"}
+              label={isNote ? "Note Content" : "Poll Question"}
               value={eventContent}
               onChange={(e) => setEventContent(e.target.value)}
               required
@@ -230,7 +232,7 @@ const EventForm = () => {
               minRows={4}
               maxRows={8}
               fullWidth
-              placeholder={options.length === 0 
+              placeholder={isNote 
                 ? "Share your thoughts." 
                 : "Ask a question."
               }
@@ -251,7 +253,7 @@ const EventForm = () => {
           </Box>
           
           {/* Poll Settings Section - Only show when options exist */}
-          {options.length > 0 && (
+          {!isNote && (
             <Box>
               <Typography variant="h6" sx={{ mb: 3 }}>
                 Poll Settings
@@ -312,7 +314,7 @@ const EventForm = () => {
           )}
           
           {/* Advanced Settings Section - Only show when options exist */}
-          {options.length > 0 && (
+          {!isNote && (
             <Box>
               <Typography variant="h6" sx={{ mb: 3 }}>
                 Advanced Settings
@@ -337,7 +339,7 @@ const EventForm = () => {
               size="large"
               fullWidth
             >
-              {options.length === 0 ? "Create Note" : "Create Poll"}
+              {isNote ? "Create Note" : "Create Poll"}
             </Button>
           </Box>
         </Stack>
