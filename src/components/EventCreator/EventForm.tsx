@@ -113,7 +113,7 @@ const EventForm = () => {
       showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_OPTIONS, "error");
       return;
     }
-    
+
     publishPollEvent(user?.privateKey);
   };
 
@@ -123,12 +123,12 @@ const EventForm = () => {
         requestLogin();
         return;
       }
-      
+
       if (!eventContent.trim()) {
         showNotification(NOTIFICATION_MESSAGES.EMPTY_NOTE_CONTENT, "error");
         return;
       }
-      
+
       const noteEvent = {
         kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
         content: eventContent,
@@ -143,7 +143,7 @@ const EventForm = () => {
         showNotification(NOTIFICATION_MESSAGES.NOTE_SIGN_FAILED, "error");
         return;
       }
-      
+
       poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/notes");
@@ -159,12 +159,12 @@ const EventForm = () => {
         requestLogin();
         return;
       }
-      
+
       if (!eventContent.trim()) {
         showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_QUESTION, "error");
         return;
       }
-      
+
       const pollEvent = {
         kind: NOSTR_EVENT_KINDS.POLL,
         content: eventContent,
@@ -181,13 +181,13 @@ const EventForm = () => {
       if (expiration) {
         pollEvent.tags.push(["endsAt", expiration.toString()]);
       }
-      
+
       const signedEvent = await signEvent(pollEvent, signer, secret);
       if (!signedEvent) {
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
-      
+
       poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/polls");
@@ -205,18 +205,18 @@ const EventForm = () => {
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
+        <Typography
+          variant="h4"
+          component="h1"
           sx={{ mb: 1 }}
         >
           {isNote ? "Create A Note" : "Create A Poll"}
         </Typography>
       </Box>
-      
-      <Card 
-        component="form" 
-        onSubmit={handleEventSubmit} 
+
+      <Card
+        component="form"
+        onSubmit={handleEventSubmit}
         elevation={2}
         sx={{ p: 3 }}
       >
@@ -249,26 +249,26 @@ const EventForm = () => {
               minRows={4}
               maxRows={8}
               fullWidth
-              placeholder={isNote 
-                ? "Share your thoughts." 
+              placeholder={isNote
+                ? "Share your thoughts."
                 : "Ask a question."
               }
             />
           </Box>
-          
+
           {/* Options Section - Only show when options exist */}
           {!isNote && (
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Poll Options
-            </Typography>
-            <OptionsCard
-              onAddOption={addOption}
-              onRemoveOption={removeOption}
-              onEditOptions={onEditOptions}
-              options={options}
-            />
-          </Box>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Poll Options
+              </Typography>
+              <OptionsCard
+                onAddOption={addOption}
+                onRemoveOption={removeOption}
+                onEditOptions={onEditOptions}
+                options={options}
+              />
+            </Box>
           )}
 
           {/* Poll Settings Section - Only show when options exist */}
@@ -277,7 +277,7 @@ const EventForm = () => {
               <Typography variant="h6" sx={{ mb: 3 }}>
                 Poll Settings
               </Typography>
-              
+
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <FormControl fullWidth>
@@ -304,7 +304,7 @@ const EventForm = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                
+
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DateTimePicker
@@ -322,7 +322,7 @@ const EventForm = () => {
                         }
                       }}
                       slotProps={{
-                        textField: { 
+                        textField: {
                           fullWidth: true
                         }
                       }}
@@ -332,14 +332,14 @@ const EventForm = () => {
               </Grid>
             </Box>
           )}
-          
+
           {/* Advanced Settings Section - Only show when options exist */}
           {!isNote && (
             <Box>
               <Typography variant="h6" sx={{ mb: 3 }}>
                 Advanced Settings
               </Typography>
-              
+
               <TextField
                 type="number"
                 label="Proof of Work Difficulty (Optional)"
@@ -350,7 +350,7 @@ const EventForm = () => {
               />
             </Box>
           )}
-          
+
           {/* Submit Button */}
           <Box sx={{ pt: 2 }}>
             <Button
@@ -368,4 +368,4 @@ const EventForm = () => {
   );
 };
 
-export default EventForm; 
+export default EventForm;
