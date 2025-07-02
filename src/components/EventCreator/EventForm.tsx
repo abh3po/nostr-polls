@@ -12,6 +12,8 @@ import {
   InputLabel,
   Box,
   Card,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import Grid from '@mui/material/Grid2';
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
@@ -70,9 +72,9 @@ const EventForm = () => {
   const [pollType, setPollType] = useState<PollTypes>("singlechoice");
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
+  const [isNote, setIsNote] = useState<boolean>(true);
   const { showNotification } = useNotification();
 
-  const isNote = options.length === 0;
 
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
@@ -92,10 +94,6 @@ const EventForm = () => {
     const updatedOptions = [...options];
     updatedOptions.splice(index, 1);
     setOptions(updatedOptions);
-
-    if (updatedOptions.length === 0) {
-      showNotification(NOTIFICATION_MESSAGES.NO_OPTIONS_NOTE_WARNING, "info");
-    }
   };
 
   const handleEventSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -103,6 +101,11 @@ const EventForm = () => {
 
     if (isNote) {
       publishNoteEvent(user?.privateKey);
+      return;
+    }
+
+    if (options.length < 1) {
+      showNotification(NOTIFICATION_MESSAGES.MIN_POLL_OPTIONS, "error");
       return;
     }
 
@@ -143,7 +146,7 @@ const EventForm = () => {
       
       poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS, "success");
-      navigate("/");
+      navigate("/feeds/notes");
     } catch (error) {
       console.error("Error publishing note:", error);
       showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISH_FAILED, "error");
@@ -187,7 +190,7 @@ const EventForm = () => {
       
       poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
-      navigate("/");
+      navigate("/feeds/polls");
     } catch (error) {
       console.error("Error publishing poll:", error);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISH_FAILED, "error");
@@ -220,9 +223,23 @@ const EventForm = () => {
         <Stack spacing={4}>
           {/* Content Section */}
           <Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              {isNote ? "Note Content" : "Poll Question"}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">
+                {isNote ? "Note" : "Poll"}
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={!isNote}
+                    onChange={() => setIsNote((prev) => !prev)}
+                    color="primary"
+                  />
+                }
+                label={"Switch to Poll"}
+                labelPlacement="end"
+                sx={{ ml: 2 }}
+              />
+            </Box>
             <TextField
               label={isNote ? "Note Content" : "Poll Question"}
               value={eventContent}
@@ -239,7 +256,8 @@ const EventForm = () => {
             />
           </Box>
           
-          {/* Options Section */}
+          {/* Options Section - Only show when options exist */}
+          {!isNote && (
           <Box>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Poll Options
@@ -251,7 +269,8 @@ const EventForm = () => {
               options={options}
             />
           </Box>
-          
+          )}
+
           {/* Poll Settings Section - Only show when options exist */}
           {!isNote && (
             <Box>
@@ -291,6 +310,7 @@ const EventForm = () => {
                     <DateTimePicker
                       label="Poll Expiration (Optional)"
                       disablePast
+                      value={expiration ? dayjs.unix(expiration) : null}
                       onChange={(value: dayjs.Dayjs | null) => {
                         if (!value) return;
                         if (value?.isBefore(now)) {
@@ -298,7 +318,7 @@ const EventForm = () => {
                           setExpiration(null);
                           return;
                         } else if (value.isValid()) {
-                          setExpiration(value.valueOf() / 1000);
+                          setExpiration(value.unix());
                         }
                       }}
                       slotProps={{

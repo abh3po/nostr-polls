@@ -27,7 +27,7 @@ const OptionsCard: React.FC<OptionsCardProps> = ({
       {options.length > 0 && (
         <CardContent sx={{ pb: 0 }}>
           {options.map((option, index) => (
-            <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+            <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <TextField
                 label={`Option ${index + 1}`}
                 fullWidth
