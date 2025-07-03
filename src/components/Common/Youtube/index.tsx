@@ -72,22 +72,17 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
   return (
     <div
       style={{
-        position: "relative",
-        minWidth: "300px",
-        maxWidth: "1000px",
         width: "100%",
+        maxWidth: "1000px",
         margin: "0 auto",
-        paddingTop: "56.25%",
+        aspectRatio: "16/9",
       }}
     >
       <div
         ref={playerRef}
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
           width: "100%",
-          height: "100%",
+          height: "auto",
         }}
       ></div>
     </div>
