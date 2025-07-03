@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
@@ -11,6 +11,11 @@ const FollowingFeed = () => {
   const { events, fetchNotes, loadingMore } = useFollowingNotes(user);
 
   const sorted = Array.from(events.values()).sort((a, b) => b.created_at - a.created_at);
+  useEffect(() => {
+    if (user) {
+      fetchNotes();
+    }
+  }, [user]);
 
   return (
     <>
