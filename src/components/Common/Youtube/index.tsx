@@ -15,15 +15,10 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
   const playerRef = useRef<HTMLDivElement>(null);
   const ytPlayer = useRef<any>(null);
 
-  // Utility to extract the video ID from different YouTube URL formats
   function extractVideoId(url: string): string | null {
-    try {
-      const regExp = /(?:youtube\.com\/.*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-      const match = url.match(regExp);
-      return match && match[1] ? match[1] : null;
-    } catch {
-      return null;
-    }
+    const regExp = /(?:youtube\.com\/.*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regExp);
+    return match && match[1] ? match[1] : null;
   }
 
   useEffect(() => {
@@ -33,7 +28,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
       return;
     }
 
-    // Load the YouTube IFrame API if needed
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -49,8 +43,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
     function createPlayer(videoId: string) {
       if (playerRef.current) {
         ytPlayer.current = new window.YT.Player(playerRef.current, {
-          height: "360",
-          width: "640",
+          width: "100%",
+          height: "100%",
           videoId,
           events: {
             onReady: onPlayerReady,
@@ -76,8 +70,21 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
   }, [url]);
 
   return (
-    <div>
-      <div ref={playerRef}></div>
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "1000px",
+        margin: "0 auto",
+        aspectRatio: "16/9",
+      }}
+    >
+      <div
+        ref={playerRef}
+        style={{
+          width: "100%",
+          height: "auto",
+        }}
+      ></div>
     </div>
   );
 };
