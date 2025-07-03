@@ -8,6 +8,8 @@ import { EventPointer } from "nostr-tools/lib/types/nip19";
 import { IconButton, Tooltip } from "@mui/material";
 import { TranslationPopover } from "./TranslationPopover";
 import TranslateIcon from "@mui/icons-material/Translate";
+import { isEmbeddableYouTubeUrl } from "./Utils";
+import { YouTubePlayer } from "./Youtube";
 
 interface TextWithImagesProps {
   content: string;
@@ -111,6 +113,9 @@ Text:\n\n${content}`;
       return (
         <div key={lineIndex} style={{ wordBreak: "break-word" }}>
           {parts.map((part, index) => {
+            if (isEmbeddableYouTubeUrl(part)) {
+              return <YouTubePlayer url={part} />;
+            }
             if (isImageUrl(part)) {
               return (
                 <img
