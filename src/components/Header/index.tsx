@@ -51,7 +51,7 @@ const Header: React.FC = () => {
         </HeaderCenterSection>
         <HeaderRightSection>
           <Button variant="contained" onClick={() => navigate("/create")}>
-            <Typography>new poll</Typography>
+            <Typography>Create</Typography>
           </Button>
           <UserMenu />
         </HeaderRightSection>

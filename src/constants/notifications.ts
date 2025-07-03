@@ -24,6 +24,16 @@ export const NOTIFICATION_MESSAGES = {
   LOGIN_TO_LIKE: "Login To Like!",
   LOGIN_TO_COMMENT: "Login To Comment",
   LOGIN_TO_ZAP: "Log In to send zaps!",
+
+  // Event creation
+  EMPTY_NOTE_CONTENT: "Note content cannot be empty.",
+  NOTE_SIGN_FAILED: "Failed to sign the note.",
+  NOTE_PUBLISHED_SUCCESS: "Note published successfully!",
+  NOTE_PUBLISH_FAILED: "Failed to publish note. Please try again.",
+  EMPTY_POLL_QUESTION: "Poll question cannot be empty.",
+  POLL_SIGN_FAILED: "Failed to sign the poll.",
+  POLL_PUBLISHED_SUCCESS: "Poll published successfully!",
+  POLL_PUBLISH_FAILED: "Failed to publish poll. Please try again.",
 } as const;
 
 export type NotificationMessageKey = keyof typeof NOTIFICATION_MESSAGES;

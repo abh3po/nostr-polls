@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { Alert, Snackbar } from "@mui/material";
 
-type NotificationSeverity = "success" | "error" | "info" | "warning";
+export type NotificationSeverity = "success" | "error" | "info" | "warning";
 
 interface NotificationState {
   open: boolean;

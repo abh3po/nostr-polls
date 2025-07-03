@@ -6,7 +6,7 @@ import {
   Outlet,
   Navigate,
 } from "react-router-dom";
-import { PollCreator } from "./components/PollCreator";
+import { EventCreator } from "./components/EventCreator";
 import { PollResponse } from "./components/PollResponse";
 import { PollResults } from "./components/PollResults";
 import type { WindowNostr } from "nostr-tools/lib/types/nip07";
@@ -49,7 +49,7 @@ const App: React.FC = () => {
                 <Router>
                   <Header />
                   <Routes>
-                    <Route path="/create" element={<PollCreator />} />
+                    <Route path="/create" element={<EventCreator />} />
                     <Route
                       path="/respond/:eventId"
                       element={<PollResponse />}
