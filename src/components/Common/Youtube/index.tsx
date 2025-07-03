@@ -73,10 +73,11 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
     <div
       style={{
         position: "relative",
-        width: "100%",        // fills parent width
-        maxWidth: "1000px",   // but caps on large screens
-        margin: "0 auto",     // center horizontally
-        paddingTop: "56.25%", // 16:9 aspect ratio
+        minWidth: "300px",
+        maxWidth: "1000px",
+        width: "100%",
+        margin: "0 auto",
+        paddingTop: "56.25%",
       }}
     >
       <div
