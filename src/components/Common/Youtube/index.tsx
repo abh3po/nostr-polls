@@ -75,18 +75,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
     };
   }, [url]);
 
-  const handlePlay = () => ytPlayer.current?.playVideo();
-  const handlePause = () => ytPlayer.current?.pauseVideo();
-  const handleStop = () => ytPlayer.current?.stopVideo();
-
   return (
     <div>
       <div ref={playerRef}></div>
-      <div style={{ marginTop: "1rem" }}>
-        <button onClick={handlePlay}>Play</button>
-        <button onClick={handlePause}>Pause</button>
-        <button onClick={handleStop}>Stop</button>
-      </div>
     </div>
   );
 };
