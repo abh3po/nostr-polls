@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Button, Stack, TextField } from "@mui/material";
+import { Box, Button, Stack, TextField, Collapse } from "@mui/material";
 import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { useAppContext } from "../../hooks/useAppContext";
@@ -8,14 +8,23 @@ import { useNavigate } from "react-router-dom";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
 import { defaultRelays, signEvent } from "../../nostr";
+import { Event } from "nostr-tools";
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { NotePreview } from "./NotePreview";
 
 const NoteTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: string) => void }> = ({ eventContent, setEventContent }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { signer, requestLogin } = useSigner();
   const { showNotification } = useNotification();
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
   const navigate = useNavigate();
+
+  const previewEvent: Partial<Event> = {
+    content: eventContent,
+  };
 
   const publishNoteEvent = async (secret?: string) => {
     try {
@@ -74,15 +83,31 @@ const NoteTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
           />
         </Box>
         <Box sx={{ pt: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            fullWidth
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating Note..." : "Create Note"}
-          </Button>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating Note..." : "Create Note"}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={showPreview ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              onClick={(e) => {
+                e.preventDefault();
+                setShowPreview(!showPreview);
+              }}
+              fullWidth
+            >
+              {showPreview ? 'Hide Preview' : 'Show Preview'}
+            </Button>
+            <Collapse in={showPreview}>
+              <Box mt={1}>
+                <NotePreview noteEvent={previewEvent} />
+              </Box>
+            </Collapse>
+          </Box>
         </Box>
       </Stack>
     </form>

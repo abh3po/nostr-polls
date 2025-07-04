@@ -9,7 +9,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Collapse,
 } from "@mui/material";
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Grid from '@mui/material/Grid2';
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers";
@@ -28,10 +31,12 @@ import { useNavigate } from "react-router-dom";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
 import { defaultRelays, signEvent } from "../../nostr";
+import { PollPreview } from "./PollPreview";
+import { Event } from "nostr-tools";
 
 const generateOptionId = (): string => {
   return Math.random().toString(36).substr(2, 9);
-}; 
+};
 
 const pollOptions = [
   {
@@ -53,6 +58,7 @@ const pollOptions = [
 ];
 
 const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: string) => void }> = ({ eventContent, setEventContent }) => {
+  const [showPreview, setShowPreview] = useState(false);
   const [options, setOptions] = useState<Option[]>([
     [generateOptionId(), ""],
     [generateOptionId(), ""],
@@ -134,6 +140,16 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
 
   const handleChange = (event: any) => {
     setPollType(event.target.value);
+  };
+
+  const previewEvent: Partial<Event> = {
+    content: eventContent,
+    tags: [
+      ...options.map((option: Option) => ["option", option[0], option[1]]),
+      ["polltype", pollType],
+      ...(expiration ? [["endsAt", expiration.toString()]] : []),
+      ...(poW ? [["PoW", poW.toString()]] : []),
+    ],
   };
 
   return (
@@ -233,15 +249,27 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
           />
         </Box>
         <Box sx={{ pt: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            fullWidth
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating Poll..." : "Create Poll"}
-          </Button>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <Button type="submit" variant="contained" disabled={isSubmitting}>
+              {isSubmitting ? "Creating Poll..." : "Create Poll"}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={showPreview ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              onClick={(e) => {
+                e.preventDefault();
+                setShowPreview(!showPreview);
+              }}
+              fullWidth
+            >
+              {showPreview ? 'Hide Preview' : 'Show Preview'}
+            </Button>
+            <Collapse in={showPreview}>
+              <Box mt={1}>
+                <PollPreview pollEvent={previewEvent} />
+              </Box>
+            </Collapse>
+          </Box>
         </Box>
       </Stack>
     </form>
