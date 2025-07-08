@@ -162,7 +162,7 @@ export const PollFeed = () => {
   }, [user, poolRef]);
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" disableGutters>
       <Grid container spacing={2}>
         <Grid size={12}>
           <CenteredBox>
