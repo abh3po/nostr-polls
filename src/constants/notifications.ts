@@ -7,6 +7,8 @@ export const NOTIFICATION_MESSAGES = {
 
   // Authentication
   ANONYMOUS_LOGIN: "Login not found, submitting anonymously",
+  NIP07_INIT_FAILED: "Failed to initialize NIP-07 signer",
+  NIP46_INIT_FAILED: "Failed to initialize NIP-46 signer",
 
   // Validation errors
   INVALID_URL: "Invalid URL",
