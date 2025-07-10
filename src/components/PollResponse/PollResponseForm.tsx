@@ -201,7 +201,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
       <Card
         variant="elevation"
         className="poll-response-form"
-        style={{ margin: 10 }}
+        sx={{ m: 1 }}
       >
         <form onSubmit={handleSubmitResponse}>
           <Card variant="outlined">
@@ -209,7 +209,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
               title={<TextWithImages content={label} />}
               subheader={
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <Typography>
+                  <Typography sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}>
                     required difficulty: {difficulty || 0} bits
                   </Typography>
                   <PollTimer pollExpiration={pollExpiration} />

@@ -37,7 +37,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
       <Card
         variant="outlined"
         className="poll-response-form"
-        style={{ margin: 10 }}
+        sx={{ m: 1 }}
       >
         <CardHeader
           avatar={
