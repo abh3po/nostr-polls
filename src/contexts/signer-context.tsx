@@ -8,6 +8,12 @@ import {
   getKeysFromLocalStorage,
   setBunkerUriInLocalStorage,
   setKeysInLocalStorage,
+  setUserDataInLocalStorage,
+  getUserDataFromLocalStorage,
+  removeUserDataFromLocalStorage,
+  removeKeysFromLocalStorage,
+  removeBunkerUriFromLocalStorage,
+  removeAppSecretFromLocalStorage,
 } from "../utils/localStorage";
 import { fetchUserProfile } from "../nostr";
 import { Event } from "nostr-tools";
@@ -27,6 +33,7 @@ interface SignerContextType {
   loginWithNip07: () => Promise<void>;
   loginWithNip46: (bunkerUri: string) => Promise<void>;
   requestLogin: () => void;
+  logout: () => void;
 }
 
 export const SignerContext = createContext<SignerContextType | null>(null);
@@ -47,10 +54,26 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
     showLoginModal(); // instead of real login
   };
 
+  const logout = () => {
+    setSigner(null);
+    setType(null);
+    setUser(null);
+    removeKeysFromLocalStorage();
+    removeBunkerUriFromLocalStorage();
+    removeAppSecretFromLocalStorage();
+    removeUserDataFromLocalStorage();
+  };
+
   useEffect(() => {
     // Fetch user profile when component mounts
     const initializeUser = async () => {
       if (user) return; // Skip if user is already set
+
+      // First try to get user data from localStorage
+      const cachedUserData = getUserDataFromLocalStorage();
+      if (cachedUserData) {
+        setUser(cachedUserData.user);
+      }
 
       const keys = getKeysFromLocalStorage();
       const bunkerUri = getBunkerUriInLocalStorage();
@@ -64,12 +87,15 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
           const kind0 = await fetchUserProfile(keys.pubkey, poolRef.current);
           if (kind0) {
             const profile = JSON.parse(kind0.content);
-            setUser({
+            const userData = {
               ...profile,
               pubkey: keys.pubkey,
               picture: profile.picture || DEFAULT_IMAGE_URL,
               name: profile.name || ANONYMOUS_USER_NAME,
-            });
+            };
+            // Store user data in localStorage with TTL
+            setUserDataInLocalStorage(userData);
+            setUser(userData);
             addEventToProfiles(kind0);
           }
         }
@@ -96,6 +122,8 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
         ? { ...JSON.parse(kind0.content), pubkey }
         : { name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL, pubkey };
 
+      // Store user data in localStorage with TTL
+      setUserDataInLocalStorage(userData);
       setUser(userData);
       kind0 && addEventToProfiles(kind0);
       setType("nip07");
@@ -118,6 +146,8 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
         ? { ...JSON.parse(kind0.content), pubkey }
         : { name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL, pubkey };
 
+      // Store user data in localStorage with TTL
+      setUserDataInLocalStorage(userData);
       setUser(userData);
       kind0 && addEventToProfiles(kind0);
       setBunkerUriInLocalStorage(bunkerUri);
@@ -131,7 +161,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <SignerContext.Provider
-      value={{ signer, type, loginWithNip07, loginWithNip46, requestLogin }}
+      value={{ signer, type, loginWithNip07, loginWithNip46, requestLogin, logout }}
     >
       {children}
       <LoginModal
