@@ -62,28 +62,29 @@ type UserData = {
 export const setUserDataInLocalStorage = (user: User, ttlInHours = 24) => {
   const now = new Date();
   const expiresAt = now.setHours(now.getHours() + ttlInHours);
-  
+
   const userData: UserData = {
     user,
     expiresAt,
   };
-  
-  localStorage.setItem(LOCAL_USER_DATA, JSON.stringify(userData));};
+
+  localStorage.setItem(LOCAL_USER_DATA, JSON.stringify(userData));
+};
 
 export const getUserDataFromLocalStorage = (): { user: User } | null => {
   const data = localStorage.getItem(LOCAL_USER_DATA);
   if (!data) return null;
-  
+
   try {
     const { user, expiresAt } = JSON.parse(data) as UserData;
     const isExpired = Date.now() > expiresAt;
-    
+
     // Remove expired data
     if (isExpired) {
       localStorage.removeItem(LOCAL_USER_DATA);
       return null;
     }
-    
+
     return { user };
   } catch (error) {
     console.error('Failed to parse user data from localStorage', error);
