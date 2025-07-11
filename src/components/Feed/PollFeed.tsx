@@ -58,6 +58,11 @@ export const PollFeed = () => {
       kinds: [1068],
       until: lastPollEvent?.created_at || Date.now() / 1000,
     };
+
+    if (eventSource === "following" && user?.follows?.length) {
+      filter.authors = user.follows;
+    }
+    
     if (feedSubscritpion) feedSubscritpion.close();
     let newCloser = poolRef.current.subscribeMany(defaultRelays, [filter], {
       onevent: (event) => {
