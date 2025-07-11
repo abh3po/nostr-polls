@@ -1,15 +1,11 @@
 import React from "react";
 import { Avatar, Menu, MenuItem } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
-import {
-  removeAppSecretFromLocalStorage,
-  removeBunkerUriFromLocalStorage,
-  removeKeysFromLocalStorage,
-} from "../../utils/localStorage";
 import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
+import { useSigner } from "../../contexts/signer-context";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -19,13 +15,11 @@ export const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
-  const { user, setUser } = useUserContext();
+  const { user } = useUserContext();
+  const { logout } = useSigner();
 
   const handleLogOut = () => {
-    removeKeysFromLocalStorage();
-    removeBunkerUriFromLocalStorage();
-    removeAppSecretFromLocalStorage();
-    setUser(null);
+    logout();
     setAnchorEl(null);
   };
 
