@@ -9,7 +9,7 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
-export const PollResponse = () => {
+const PollResponse = () => {
   const { eventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const navigate = useNavigate();
@@ -56,3 +56,5 @@ export const PollResponse = () => {
     </>
   );
 };
+
+export default PollResponse;

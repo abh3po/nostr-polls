@@ -1,5 +1,7 @@
-import EventForm from "./EventForm"
+import EventForm from "./EventForm";
 
-export const EventCreator = () => {
+const EventCreator = () => {
     return <EventForm />;
 }
+
+export default EventCreator;

@@ -22,7 +22,7 @@ const CenteredBox = styled(Box)`
   justify-content: center;
 `;
 
-export const PollFeed = () => {
+const PollFeed = () => {
   const [pollEvents, setPollEvents] = useState<Event[] | undefined>();
   const [userResponses, setUserResponses] = useState<Event[] | undefined>();
   let KIND_FILTER = "Polls";
@@ -206,3 +206,5 @@ export const PollFeed = () => {
     </Container>
   );
 };
+
+export default PollFeed;

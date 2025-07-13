@@ -10,7 +10,7 @@ import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
-export const PollResults = () => {
+const PollResults = () => {
   let { eventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const [respones, setResponses] = useState<Event[] | undefined>();
@@ -87,3 +87,5 @@ export const PollResults = () => {
     </>
   );
 };
+
+export default PollResults;
