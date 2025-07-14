@@ -4,7 +4,7 @@ import { Filter, SimplePool } from "nostr-tools";
 import { defaultRelays } from "../../nostr";
 import MovieCard from "../Movies/MovieCard";
 import RateMovieModal from "../Ratings/RateMovieModal";
-import { Card, CardContent, Typography } from "@mui/material";
+import { Card, CardContent, Typography, CircularProgress, Box, Button } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom/dist";
 
@@ -93,22 +93,35 @@ const MoviesFeed: React.FC = () => {
         </CardContent>
       </Card>
 
-      {Array.from(movieIds).map((id) => (
-        <div
-          key={id}
-          onClick={() => navigate(`${id}`)}
-          style={{ cursor: "pointer" }}
-        >
-          <MovieCard imdbId={id} />
-        </div>
-      ))}
+      {loading && movieIds.size === 0 ? (
+        <Box display="flex" justifyContent="center" py={8}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box>
+          {Array.from(movieIds).map((id) => (
+            <div
+              key={id}
+              onClick={() => navigate(`${id}`)}
+              style={{ cursor: "pointer" }}
+            >
+              <MovieCard imdbId={id} />
+            </div>
+          ))}
+        </Box>
+      )}
 
-      {hasMore && (
-        <Card sx={{ mt: 2, cursor: "pointer" }} onClick={fetchBatch}>
-          <CardContent>
-            <Typography align="center">Load More</Typography>
-          </CardContent>
-        </Card>
+      {hasMore && movieIds.size > 0 && (
+        <Box display="flex" justifyContent="center" my={2}>
+          <Button
+            onClick={fetchBatch}
+            variant="contained"
+            disabled={loading}
+            sx={{ cursor: "pointer" }}
+          >
+            {loading ? <CircularProgress size={24} /> : "Load More"}
+          </Button>
+        </Box>
       )}
 
       <RateMovieModal open={modalOpen} onClose={() => setModalOpen(false)} />
