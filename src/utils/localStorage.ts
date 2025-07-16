@@ -1,6 +1,7 @@
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 import { generateSecretKey } from "nostr-tools";
 import { User } from "../contexts/user-context";
+import { USER_DATA_TTL_HOURS } from "./constants";
 
 const LOCAL_STORAGE_KEYS = "pollerama:keys";
 const LOCAL_BUNKER_URI = "pollerama:bunkerUri";
@@ -59,7 +60,7 @@ type UserData = {
   expiresAt: number;
 };
 
-export const setUserDataInLocalStorage = (user: User, ttlInHours = 24) => {
+export const setUserDataInLocalStorage = (user: User, ttlInHours = USER_DATA_TTL_HOURS) => {
   const now = new Date();
   const expiresAt = now.setHours(now.getHours() + ttlInHours);
 
