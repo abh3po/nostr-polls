@@ -35,13 +35,13 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
 
   useEffect(() => {
     const initialize = async () => {
-      if (!signer) return;
+      if (!signer || !open) return; // Only initialize when modal is actually open
       else {
         setPreviewEvent(await buildPreviewEvent());
       }
     };
     initialize();
-  }, [title, poster, year, summary, signer]);
+  }, [title, poster, year, summary, signer, open]);
   if (!signer) {
     return (
       <Modal open={open} onClose={onClose}>
