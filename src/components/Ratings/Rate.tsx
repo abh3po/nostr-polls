@@ -20,16 +20,12 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   const ratingKey = `${entityType}:${entityId}`;
   const { averageRating, totalRatings, submitRating, userRatingEvent } =
     useRating(ratingKey);
-  const { signer } = useSigner();
-
   const [ratingValue, setRatingValue] = useState<number | null>(null);
   const [content, setContent] = useState("");
   const [showContentInput, setShowContentInput] = useState(false);
   const [error, setError] = useState("");
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const hasExistingRating = !!userRatingEvent;
-  const hasExistingContent = !!userRatingEvent?.content?.trim();
 
   useEffect(() => {
     if (hasExistingRating) {
@@ -44,10 +40,6 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   }, [userRatingEvent]);
 
   const handleSubmit = () => {
-    if (!signer) {
-      setShowLoginModal(true);
-      return;
-    }
     if (ratingValue === null) {
       setError("Please give a rating before submitting a review.");
       return;
@@ -61,10 +53,6 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     _: React.SyntheticEvent,
     newValue: number | null
   ) => {
-    if (!signer) {
-      setShowLoginModal(true);
-      return;
-    }
     if (newValue != null) {
       setRatingValue(newValue);
       setError("");
@@ -74,10 +62,6 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   };
 
   const handleAddReviewClick = () => {
-    if (!signer) {
-      setShowLoginModal(true);
-      return;
-    }
     setShowContentInput(true);
   };
   return (
@@ -102,7 +86,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
         ) : null}
       </Box>
 
-      {(!hasExistingRating || !hasExistingContent) && !showContentInput && (
+      {!showContentInput && (
         <Button
           variant="text"
           sx={{ mt: 1 }}
@@ -122,11 +106,24 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
             multiline
             minRows={3}
             label="Your Review"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              e.stopPropagation();
+              setContent(e.target.value);
+            }}
             sx={{ mt: 2 }}
           />
-          <Button variant="contained" sx={{ mt: 1 }} onClick={handleSubmit}>
+          <Button
+            variant="contained"
+            sx={{ mt: 1 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSubmit();
+            }}
+          >
             Submit Review
           </Button>
         </>
@@ -136,22 +133,6 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
           {error}
         </Alert>
       )}
-
-      <Modal open={showLoginModal} onClose={() => setShowLoginModal(false)}>
-        <Box
-          sx={{
-            p: 4,
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            boxShadow: 24,
-            maxWidth: 500,
-            mx: "auto",
-            mt: "10%",
-          }}
-        >
-          <Typography>You need to login to rate and review</Typography>
-        </Box>
-      </Modal>
     </Box>
   );
 };
