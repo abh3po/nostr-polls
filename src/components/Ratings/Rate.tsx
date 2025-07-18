@@ -65,7 +65,11 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     setShowContentInput(true);
   };
   return (
-    <Box>
+    <Box
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <MuiRating
           name={`rating-${entityId}`}

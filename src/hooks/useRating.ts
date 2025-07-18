@@ -51,7 +51,11 @@ export const useRating = (entityId: string) => {
         requestLogin
       );
       if (!signed) throw new Error("Signer couldn't sign Event");
-      poolRef.current.publish(defaultRelays, signed);
+      poolRef.current
+        .publish(defaultRelays, signed)
+        .forEach((p: Promise<string>) => {
+          p.then((message: string) => console.log("Relay Replied: ", message));
+        });
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {
