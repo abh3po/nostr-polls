@@ -3,7 +3,7 @@ import PollResponseForm from "./PollResponseForm";
 import { useEffect, useState } from "react";
 import { Event } from 'nostr-tools/lib/types/core';
 import { Filter } from 'nostr-tools/lib/types/filter';
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { Box, Button, CircularProgress } from "@mui/material";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useNotification } from "../../contexts/notification-context";
@@ -17,6 +17,7 @@ export const PollResponse = () => {
   const { showNotification } = useNotification();
 
   const { poolRef } = useAppContext();
+  const { relays } = useRelays();
 
   const fetchPollEvent = async () => {
     if (!eventId) {
@@ -28,7 +29,7 @@ export const PollResponse = () => {
       ids: [eventId],
     };
     try {
-      const event = await poolRef.current.get(defaultRelays, filter);
+      const event = await poolRef.current.get(relays, filter);
       if (event === null) {
         showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");

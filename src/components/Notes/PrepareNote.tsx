@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { Event } from "nostr-tools";
 import { Notes } from ".";
 import { Button, Typography } from "@mui/material";
@@ -11,6 +11,7 @@ interface PrepareNoteInterface {
 
 export const PrepareNote: React.FC<PrepareNoteInterface> = ({ eventId }) => {
   let { poolRef } = useAppContext();
+  const { relays } = useRelays();
   const [event, setEvent] = useState<Event | null>(null);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ eventId }) => {
       const filter = {
         ids: [id],
       };
-      let result = await poolRef.current.get(defaultRelays, filter);
+      let result = await poolRef.current.get(relays, filter);
       setEvent(result);
     };
     if (eventId && !event) {

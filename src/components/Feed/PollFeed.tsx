@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { defaultRelays } from "../../nostr";
 import { Event, Filter } from "nostr-tools";
 import { Feed } from "./Feed";
 import { useAppContext } from "../../hooks/useAppContext";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
+import { useRelays } from "../../hooks/useRelays";
 import { Select, MenuItem, Button, CircularProgress, Container, Box } from "@mui/material";
 import Grid from '@mui/material/Grid2';
 import { styled } from "@mui/system";
@@ -34,6 +34,7 @@ export const PollFeed = () => {
   >();
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
+  const { relays } = useRelays();
   const [loadingMore, setLoadingMore] = useState(false);
 
   const loadMore = () => {
@@ -64,7 +65,7 @@ export const PollFeed = () => {
     }
     
     if (feedSubscritpion) feedSubscritpion.close();
-    let newCloser = poolRef.current.subscribeMany(defaultRelays, [filter], {
+    let newCloser = poolRef.current.subscribeMany(relays, [filter], {
       onevent: (event) => {
         handleFeedEvents(event, newCloser);
         setLoadingMore(false);
@@ -107,7 +108,6 @@ export const PollFeed = () => {
   };
 
   const fetchFeedEvents = () => {
-    const relays = defaultRelays;
     const filter: Filter = {
       kinds: KIND_FILTER === "All" ? [1, 1068] : [1068],
       limit: 10,
@@ -126,7 +126,6 @@ export const PollFeed = () => {
   };
 
   const fetchResponseEvents = () => {
-    const relays = defaultRelays;
     const filters: Filter[] = [
       {
         kinds: [1018, 1070],

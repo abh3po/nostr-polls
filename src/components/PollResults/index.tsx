@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Filter } from "nostr-tools/lib/types/filter";
 import { Event } from "nostr-tools/lib/types/core";
 import { SimplePool } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { useEffect, useState } from "react";
 import { Typography } from "@mui/material";
 import { Analytics } from "./Analytics";
@@ -15,6 +15,7 @@ export const PollResults = () => {
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const [respones, setResponses] = useState<Event[] | undefined>();
   const { showNotification } = useNotification();
+  const { relays } = useRelays();
   let navigate = useNavigate();
 
   const getUniqueLatestEvents = (events: Event[]) => {
@@ -55,7 +56,7 @@ export const PollResults = () => {
       ids: [eventId!],
     };
     let pool = new SimplePool();
-    let closer = pool.subscribeMany(defaultRelays, [resultFilter, pollFilter], {
+    let closer = pool.subscribeMany(relays, [resultFilter, pollFilter], {
       onevent: handleResultEvent,
     });
     return closer;

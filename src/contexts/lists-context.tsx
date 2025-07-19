@@ -2,7 +2,8 @@ import { ReactNode, createContext, useEffect, useState } from "react";
 import { useAppContext } from "../hooks/useAppContext";
 import { Event } from "nostr-tools";
 import { SubCloser } from "nostr-tools/lib/types/pool";
-import { defaultRelays, parseContacts, getATagFromEvent } from "../nostr";
+import { parseContacts, getATagFromEvent } from "../nostr";
+import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
 import { User } from "./user-context";
 
@@ -19,6 +20,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
   const [selectedList, setSelectedList] = useState<string | undefined>();
   const { poolRef } = useAppContext();
   const { user, setUser } = useUserContext();
+  const { relays } = useRelays();
 
   const handleListEvent = (event: Event) => {
     setLists((prevMap) => {
@@ -63,7 +65,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
       authors: [user!.pubkey],
     };
     let closer = poolRef.current?.subscribeMany(
-      defaultRelays,
+      relays,
       [contactListFilter],
       {
         onevent: (event: Event) => {
@@ -80,7 +82,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
       authors: [user!.pubkey],
     };
     let closer = poolRef.current?.subscribeMany(
-      defaultRelays,
+      relays,
       [followSetFilter],
       {
         onevent: handleListEvent,

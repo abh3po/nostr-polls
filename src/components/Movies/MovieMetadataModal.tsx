@@ -10,7 +10,8 @@ import {
   Divider,
 } from "@mui/material";
 import { useSigner } from "../../contexts/signer-context";
-import { defaultRelays, signEvent } from "../../nostr";
+import { signEvent } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { SimplePool, Event } from "nostr-tools";
 import MovieCard from "./MovieCard";
 
@@ -32,6 +33,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
   const [tab, setTab] = useState(0);
   const [previewEvent, setPreviewEvent] = useState<Event>();
   const { signer } = useSigner();
+  const { relays } = useRelays();
 
   useEffect(() => {
     const initialize = async () => {
@@ -98,7 +100,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
     if (!signed) throw new Error("Signing failed");
 
     const pool = new SimplePool();
-    pool.publish(defaultRelays, signed);
+    pool.publish(relays, signed);
     onClose();
   };
 
