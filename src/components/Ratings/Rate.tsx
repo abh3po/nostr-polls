@@ -6,10 +6,8 @@ import {
   TextField,
   Rating as MuiRating,
   Alert,
-  Modal,
 } from "@mui/material";
 import { useRating } from "../../hooks/useRating";
-import { useSigner } from "../../contexts/signer-context";
 
 interface Props {
   entityId: string;
