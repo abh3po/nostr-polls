@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Event, Filter, SimplePool } from "nostr-tools";
-import { defaultRelays } from "../../../nostr";
+import { useRelays } from "../../../hooks/useRelays";
 
 type MetadataMap = Map<string, Event[]>;
 
@@ -31,6 +31,7 @@ export const MovieMetadataProvider: React.FC<{ children: React.ReactNode }> = ({
   const lastTrackedIds = useRef<string[]>([]);
   const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
   const pool = useRef(new SimplePool()).current;
+  const { relays } = useRelays();
 
   const registerMovie = (id: string) => {
     trackedIdsRef.current.add(id);
@@ -57,7 +58,7 @@ export const MovieMetadataProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       ];
 
-      subRef.current = pool.subscribeMany(defaultRelays, filters, {
+      subRef.current = pool.subscribeMany(relays, filters, {
         onevent: (event) => {
           const dTag = event.tags.find((t) => t[0] === "d")?.[1];
           if (!dTag?.startsWith("movie:")) return;

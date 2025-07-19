@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useRef, useState } from "react";
 import { Event } from "nostr-tools";
-import { defaultRelays } from "../nostr";
+import { useRelays } from "../hooks/useRelays";
 import { useAppContext } from "../hooks/useAppContext";
 import { useUserContext } from "../hooks/useUserContext";
 
@@ -34,6 +34,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
   > | null>(null);
 
   const { user } = useUserContext();
+  const { relays } = useRelays();
 
   const registerEntityId = (id: string) => {
     trackedIdsRef.current.add(id);
@@ -94,7 +95,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
       ];
 
       subscriptionRef.current = poolRef.current.subscribeMany(
-        defaultRelays,
+        relays,
         filters,
         {
           onevent: handleEvent,

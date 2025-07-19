@@ -1,6 +1,7 @@
 // hooks/useRating.ts
 import { useContext, useEffect, useRef } from "react";
-import { defaultRelays, signEvent } from "../nostr";
+import { signEvent } from "../nostr";
+import { useRelays } from "./useRelays";
 import { RatingContext } from "../contexts/RatingProvider";
 import { useAppContext } from "./useAppContext";
 import { useSigner } from "../contexts/signer-context";
@@ -10,6 +11,7 @@ export const useRating = (entityId: string) => {
   const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
   const { signer } = useSigner();
+  const { relays } = useRelays();
 
   // Register entityId with the RatingsProvider
   useEffect(() => {
@@ -45,7 +47,7 @@ export const useRating = (entityId: string) => {
     try {
       const signed = await signEvent(ratingEvent, signer);
       if(!signed) throw new Error("Signer couldn't sign Event")
-      poolRef.current.publish(defaultRelays, signed);
+      poolRef.current.publish(relays, signed);
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {
