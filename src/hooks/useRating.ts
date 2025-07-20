@@ -6,10 +6,11 @@ import { useAppContext } from "./useAppContext";
 import { useSigner } from "../contexts/signer-context";
 
 export const useRating = (entityId: string) => {
-  const { ratings, registerEntityId, userRatingEvent } = useContext(RatingContext);
+  const { ratings, registerEntityId, userRatingEvent } =
+    useContext(RatingContext);
   const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
-  const { signer } = useSigner();
+  const { signer, requestLogin } = useSigner();
 
   // Register entityId with the RatingsProvider
   useEffect(() => {
@@ -40,12 +41,21 @@ export const useRating = (entityId: string) => {
       id: "",
       sig: "",
     };
-    if(content) ratingEvent.tags.push(["c", "true"])
+    if (content) ratingEvent.tags.push(["c", "true"]);
 
     try {
-      const signed = await signEvent(ratingEvent, signer);
-      if(!signed) throw new Error("Signer couldn't sign Event")
-      poolRef.current.publish(defaultRelays, signed);
+      const signed = await signEvent(
+        ratingEvent,
+        signer,
+        undefined,
+        requestLogin
+      );
+      if (!signed) throw new Error("Signer couldn't sign Event");
+      poolRef.current
+        .publish(defaultRelays, signed)
+        .forEach((p: Promise<string>) => {
+          p.then((message: string) => console.log("Relay Replied: ", message));
+        });
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {
@@ -64,6 +74,6 @@ export const useRating = (entityId: string) => {
     averageRating: average,
     totalRatings: entityRatings?.size || 0,
     submitRating,
-    userRatingEvent
+    userRatingEvent,
   };
 };
