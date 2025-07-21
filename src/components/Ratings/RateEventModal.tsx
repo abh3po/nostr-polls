@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { nip19, SimplePool, Event } from "nostr-tools";
 import EventJsonCard from "../Event/EventJSONCard";
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { Notes } from "../Notes";
 
 interface Props {
@@ -22,6 +22,7 @@ const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { relays } = useRelays();
 
   const handleClose = () => {
     setInput("");
@@ -44,7 +45,7 @@ const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
       }
 
       const pool = new SimplePool();
-      const ev = await pool.get(defaultRelays, {
+      const ev = await pool.get(relays, {
         ids: [decoded.data.id],
       });
 

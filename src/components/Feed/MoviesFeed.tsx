@@ -1,7 +1,7 @@
 // components/Feed/MoviesFeed.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { Filter, SimplePool } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import MovieCard from "../Movies/MovieCard";
 import RateMovieModal from "../Ratings/RateMovieModal";
 import { Card, CardContent, Typography, CircularProgress, Box, Button } from "@mui/material";
@@ -17,6 +17,7 @@ const MoviesFeed: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<number | undefined>(undefined);
   const { user } = useUserContext();
+  const { relays } = useRelays();
   const navigate = useNavigate();
   const seen = useRef<Set<string>>(new Set());
 
@@ -41,7 +42,7 @@ const MoviesFeed: React.FC = () => {
       filter.authors = user.follows;
     }
 
-    const sub = pool.subscribeMany(defaultRelays, [filter], {
+    const sub = pool.subscribeMany(relays, [filter], {
       onevent: (event) => {
         const dTag = event.tags.find((t) => t[0] === "d");
         if (dTag && dTag[1].startsWith("movie:")) {

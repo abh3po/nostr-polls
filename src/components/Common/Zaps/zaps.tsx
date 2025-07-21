@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Tooltip, Typography } from "@mui/material";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { Event } from "nostr-tools/lib/types/core";
-import { defaultRelays, signEvent } from "../../../nostr";
+import { signEvent } from "../../../nostr";
+import { useRelays } from "../../../hooks/useRelays";
 import { FlashOn } from "@mui/icons-material";
 import { nip57 } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
@@ -28,6 +29,7 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const { signer } = useSigner();
   const [hasZapped, setHasZapped] = useState<boolean>(false);
   const { showNotification } = useNotification();
+  const { relays } = useRelays();
   useEffect(() => {
     // Fetch existing zaps for the poll event
     const fetchZaps = async () => {
@@ -84,7 +86,7 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
       event: pollEvent.id,
       amount: Number(zapAmount) * 1000,
       comment: "",
-      relays: defaultRelays,
+      relays: relays,
     });
     let serializedZapEvent = encodeURI(
       JSON.stringify(signEvent(zapRequestEvent, signer, user.privateKey))
