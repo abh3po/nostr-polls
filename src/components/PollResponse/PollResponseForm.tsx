@@ -16,8 +16,7 @@ import {
 } from "@mui/material";
 import { Event } from "nostr-tools/lib/types/core";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
-import { openProfileTab, signEvent } from "../../nostr";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays, openProfileTab, signEvent } from "../../nostr";
 import { FetchResults } from "./FetchResults";
 import { SingleChoiceOptions } from "./SingleChoiceOptions";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
@@ -62,7 +61,6 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const { profiles, poolRef, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
   const { signer } = useSigner();
-  const { relays } = useRelays();
   const difficulty = Number(
     pollEvent.tags.filter((t) => t[0] === "PoW")?.[0]?.[1]
   );
@@ -163,11 +161,11 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
       signer,
       responseUser!.privateKey
     );
-    let eventRelays = pollEvent.tags
+    let relays = pollEvent.tags
       .filter((t) => t[0] === "relay")
       .map((t) => t[1]);
-    let publishRelays = eventRelays.length === 0 ? relays : eventRelays;
-    poolRef.current.publish(publishRelays, signedResponse!);
+    relays = relays.length === 0 ? defaultRelays : relays;
+    poolRef.current.publish(relays, signedResponse!);
     setShowResults(true);
   };
 

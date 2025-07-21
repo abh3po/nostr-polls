@@ -11,7 +11,7 @@ import {
   SelectChangeEvent,
 } from "@mui/material";
 import { SimplePool, Event, Filter } from "nostr-tools";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays } from "../../nostr";
 import MovieCard from "./MovieCard";
 import ReviewCard from "../Ratings/ReviewCard";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -24,7 +24,6 @@ const MoviePage = () => {
     "everyone"
   );
   const { user } = useUserContext();
-  const { relays } = useRelays();
 
   const fetchReviews = useCallback(() => {
     if (!imdbId) return;
@@ -43,7 +42,7 @@ const MoviePage = () => {
       },
     ];
 
-    const sub = pool.subscribeMany(relays, filters, {
+    const sub = pool.subscribeMany(defaultRelays, filters, {
       onevent(e) {
         if (!newReviewMap.has(e.id)) {
           newReviewMap.set(e.id, e);

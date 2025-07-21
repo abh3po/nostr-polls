@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Event, Filter, SimplePool } from "nostr-tools";
-import { useRelays } from "../../../../hooks/useRelays";
+import { defaultRelays } from "../../../../nostr";
 
 
 export const useFollowingNotes = (user: any) => {
   const [events, setEvents] = useState<Map<string, Event>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
-  const { relays } = useRelays();
 
   const fetchNotes = async () => {
     if (!user?.follows?.length || loadingMore) return;
@@ -26,7 +25,7 @@ export const useFollowingNotes = (user: any) => {
       )[0].created_at;
     }
 
-    const fetchedEvents = await pool.querySync(relays, filter);
+    const fetchedEvents = await pool.querySync(defaultRelays, filter);
     setEvents((prev) => {
       const updated = new Map(prev);
       fetchedEvents.forEach((e) => updated.set(e.id, e));

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays } from "../../nostr";
 import HashtagCard from "../Hashtag/HashtagCard";
 import RateHashtagModal from "../Ratings/RateHashtagModal";
 import { Card, CardContent, Typography } from "@mui/material";
@@ -9,7 +9,6 @@ const HashtagsFeed: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const seen = new Set<string>();
   const [modalOpen, setModalOpen] = useState(false);
-  const { relays } = useRelays();
 
   function parseRatingDTag(dTagValue: string): { type: string; id: string } {
     const colonIndex = dTagValue.indexOf(":");
@@ -26,7 +25,7 @@ const HashtagsFeed: React.FC = () => {
   useEffect(() => {
     const pool = new SimplePool();
     const sub = pool.subscribeMany(
-      relays,
+      defaultRelays,
       [{ kinds: [34259], "#m": ["hashtag"] }],
       {
         onevent: (event: Event) => {

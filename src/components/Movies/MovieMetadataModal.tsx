@@ -10,8 +10,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useSigner } from "../../contexts/signer-context";
-import { signEvent } from "../../nostr";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays, signEvent } from "../../nostr";
 import { SimplePool, Event } from "nostr-tools";
 import MovieCard from "./MovieCard";
 
@@ -33,17 +32,16 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
   const [tab, setTab] = useState(0);
   const [previewEvent, setPreviewEvent] = useState<Event>();
   const { signer } = useSigner();
-  const { relays } = useRelays();
 
   useEffect(() => {
     const initialize = async () => {
-      if (!signer || !open) return; // Only initialize when modal is actually open
+      if (!signer) return;
       else {
         setPreviewEvent(await buildPreviewEvent());
       }
     };
     initialize();
-  }, [title, poster, year, summary, signer, open]);
+  }, [title, poster, year, summary, signer]);
   if (!signer) {
     return (
       <Modal open={open} onClose={onClose}>
@@ -100,7 +98,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
     if (!signed) throw new Error("Signing failed");
 
     const pool = new SimplePool();
-    pool.publish(relays, signed);
+    pool.publish(defaultRelays, signed);
     onClose();
   };
 

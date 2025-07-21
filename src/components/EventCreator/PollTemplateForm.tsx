@@ -30,8 +30,7 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
-import { signEvent } from "../../nostr";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays, signEvent } from "../../nostr";
 import { PollPreview } from "./PollPreview";
 import { Event } from "nostr-tools";
 
@@ -72,7 +71,6 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
   const { showNotification } = useNotification();
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
-  const { relays } = useRelays();
   const navigate = useNavigate();
   const now = dayjs();
 
@@ -111,7 +109,7 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
         content: eventContent,
         tags: [
           ...options.map((option: Option) => ["option", option[0], option[1]]),
-          ...relays.map((relay) => ["relay", relay]),
+          ...defaultRelays.map((relay) => ["relay", relay]),
         ],
         created_at: Math.floor(Date.now() / 1000),
       };
@@ -125,7 +123,7 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
-      poolRef.current.publish(relays, signedEvent);
+      poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/polls");
     } catch (error) {

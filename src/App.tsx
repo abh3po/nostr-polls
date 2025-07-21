@@ -29,7 +29,6 @@ import MoviesFeed from "./components/Feed/MoviesFeed";
 import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadataProvider";
 import FeedsLayout from "./components/Feed/FeedsLayout";
 import { NotificationProvider } from "./contexts/notification-context";
-import { RelayProvider } from "./contexts/relay-context";
 
 declare global {
   interface Window {
@@ -44,9 +43,8 @@ const App: React.FC = () => {
         <AppContextProvider>
         <UserProvider>
           <SignerProvider>
-            <RelayProvider>
-              <ListProvider>
-                <RatingProvider>
+            <ListProvider>
+              <RatingProvider>
                 <CssBaseline />
                 <Router>
                   <Header />
@@ -87,8 +85,7 @@ const App: React.FC = () => {
                   </Routes>
                 </Router>
               </RatingProvider>
-              </ListProvider>
-            </RelayProvider>
+            </ListProvider>
           </SignerProvider>
         </UserProvider>
       </AppContextProvider>

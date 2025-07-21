@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays } from "../../nostr";
 import ProfileCard from "../Profile/ProfileCard";
 import { useUserContext } from "../../hooks/useUserContext";
 import {
@@ -22,7 +22,6 @@ const ProfilesFeed: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const { user } = useUserContext();
   const { requestLogin } = useSigner();
-  const { relays } = useRelays();
 
   const fetchProfiles = () => {
     if (!user || !user.follows || user.follows.length === 0) return;
@@ -38,7 +37,7 @@ const ProfilesFeed: React.FC = () => {
       limit: 10,
     };
 
-    const sub = pool.subscribeMany(relays, [filter], {
+    const sub = pool.subscribeMany(defaultRelays, [filter], {
       onevent: (event) => {
         setProfiles((prev) => {
           if (prev.has(event.pubkey)) return prev;

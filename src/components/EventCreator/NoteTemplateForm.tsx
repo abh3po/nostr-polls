@@ -7,8 +7,7 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
-import { signEvent } from "../../nostr";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays, signEvent } from "../../nostr";
 import { Event } from "nostr-tools";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -21,7 +20,6 @@ const NoteTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
   const { showNotification } = useNotification();
   const { poolRef } = useAppContext();
   const { user } = useUserContext();
-  const { relays } = useRelays();
   const navigate = useNavigate();
 
   const previewEvent: Partial<Event> = {
@@ -42,7 +40,7 @@ const NoteTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
         kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
         content: eventContent,
         tags: [
-          ...relays.map((relay) => ["relay", relay]),
+          ...defaultRelays.map((relay) => ["relay", relay]),
         ],
         created_at: Math.floor(Date.now() / 1000),
       };
@@ -53,7 +51,7 @@ const NoteTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
         showNotification(NOTIFICATION_MESSAGES.NOTE_SIGN_FAILED, "error");
         return;
       }
-      poolRef.current.publish(relays, signedEvent);
+      poolRef.current.publish(defaultRelays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/notes");
     } catch (error) {

@@ -3,8 +3,7 @@ import { Tooltip, Typography } from "@mui/material";
 import FavoriteBorder from "@mui/icons-material/FavoriteBorder";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { Event, EventTemplate } from "nostr-tools/lib/types/core";
-import { signEvent } from "../../../nostr";
-import { useRelays } from "../../../hooks/useRelays";
+import { defaultRelays, signEvent } from "../../../nostr";
 import { Favorite } from "@mui/icons-material";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { useSigner } from "../../../contexts/signer-context";
@@ -22,7 +21,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
 
   const { signer } = useSigner();
   const { user } = useUserContext();
-  const { relays } = useRelays();
 
   const addLike = async () => {
     if (!user) {
@@ -32,11 +30,11 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
     let event: EventTemplate = {
       content: "+",
       kind: 7,
-      tags: [["e", pollEvent.id, relays[0]]],
+      tags: [["e", pollEvent.id, defaultRelays[0]]],
       created_at: Math.floor(Date.now() / 1000),
     };
     let finalEvent = await signEvent(event, signer, user.privateKey);
-    poolRef.current.publish(relays, finalEvent!);
+    poolRef.current.publish(defaultRelays, finalEvent!);
     addEventToMap(finalEvent!);
   };
 

@@ -1,18 +1,15 @@
 // hooks/useRating.ts
 import { useContext, useEffect, useRef } from "react";
-import { signEvent } from "../nostr";
-import { useRelays } from "./useRelays";
+import { defaultRelays, signEvent } from "../nostr";
 import { RatingContext } from "../contexts/RatingProvider";
 import { useAppContext } from "./useAppContext";
 import { useSigner } from "../contexts/signer-context";
 
 export const useRating = (entityId: string) => {
-  const { ratings, registerEntityId, userRatingEvent } =
-    useContext(RatingContext);
+  const { ratings, registerEntityId, userRatingEvent } = useContext(RatingContext);
   const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
-  const { signer, requestLogin } = useSigner();
-  const { relays } = useRelays();
+  const { signer } = useSigner();
 
   // Register entityId with the RatingsProvider
   useEffect(() => {
@@ -43,21 +40,12 @@ export const useRating = (entityId: string) => {
       id: "",
       sig: "",
     };
-    if (content) ratingEvent.tags.push(["c", "true"]);
+    if(content) ratingEvent.tags.push(["c", "true"])
 
     try {
-      const signed = await signEvent(
-        ratingEvent,
-        signer,
-        undefined,
-        requestLogin
-      );
-      if (!signed) throw new Error("Signer couldn't sign Event");
-      poolRef.current
-        .publish(relays, signed)
-        .forEach((p: Promise<string>) => {
-          p.then((message: string) => console.log("Relay Replied: ", message));
-        });
+      const signed = await signEvent(ratingEvent, signer);
+      if(!signed) throw new Error("Signer couldn't sign Event")
+      poolRef.current.publish(defaultRelays, signed);
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {
@@ -76,6 +64,6 @@ export const useRating = (entityId: string) => {
     averageRating: average,
     totalRatings: entityRatings?.size || 0,
     submitRating,
-    userRatingEvent,
+    userRatingEvent
   };
 };

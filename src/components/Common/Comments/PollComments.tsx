@@ -10,8 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useAppContext } from "../../../hooks/useAppContext";
-import { signEvent } from "../../../nostr";
-import { useRelays } from "../../../hooks/useRelays";
+import { defaultRelays, signEvent } from "../../../nostr";
 import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import CommentIcon from "@mui/icons-material/Comment";
@@ -48,14 +47,13 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
 
   const { user } = useUserContext();
   const { signer } = useSigner();
-  const { relays } = useRelays();
 
   const fetchComments = () => {
     let filter = {
       kinds: [1],
       "#e": [pollEventId],
     };
-    let closer = poolRef.current.subscribeMany(relays, [filter], {
+    let closer = poolRef.current.subscribeMany(defaultRelays, [filter], {
       onevent: addEventToMap,
     });
     return closer;
@@ -100,7 +98,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
       signer,
       user.privateKey
     );
-    poolRef.current.publish(relays, signedComment!);
+    poolRef.current.publish(defaultRelays, signedComment!);
     setReplyTo(null);
   };
 

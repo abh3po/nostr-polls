@@ -1,6 +1,6 @@
 import { Filter } from "nostr-tools/lib/types/filter";
 import { Event } from "nostr-tools/lib/types/core";
-import { useRelays } from "../../hooks/useRelays";
+import { defaultRelays } from "../../nostr";
 import { useEffect, useState } from "react";
 import { Analytics } from "../PollResults/Analytics";
 import { useAppContext } from "../../hooks/useAppContext";
@@ -26,7 +26,6 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
     (t) => t[0] === "endsAt"
   )?.[0]?.[1];
   const { poolRef } = useAppContext();
-  const { relays: userRelays } = useRelays();
   const getUniqueLatestEvents = (events: Event[]) => {
     const eventMap = new Map<string, Event>();
 
@@ -67,7 +66,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
     if (pollExpiration) {
       resultFilter.until = Number(pollExpiration);
     }
-    const useRelays = relays?.length ? relays : userRelays;
+    const useRelays = relays?.length ? relays : defaultRelays;
     let newCloser = poolRef.current.subscribeMany(useRelays, [resultFilter], {
       onevent: handleResultEvent,
     });
