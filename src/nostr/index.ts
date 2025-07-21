@@ -13,8 +13,8 @@ export const defaultRelays = [
   "wss://nostr21.com",
 ];
 
-export const fetchUserProfile = async (pubkey: string, pool: SimplePool) => {
-  let result = await pool.get(defaultRelays, { kinds: [0], authors: [pubkey] });
+export const fetchUserProfile = async (pubkey: string, pool: SimplePool, relays: string[] = defaultRelays) => {
+  let result = await pool.get(relays, { kinds: [0], authors: [pubkey] });
   return result;
 };
 
@@ -32,33 +32,34 @@ export async function parseContacts(contactList: Event) {
 
 export const fetchUserProfiles = async (
   pubkeys: string[],
-  pool: SimplePool
+  pool: SimplePool,
+  relays: string[] = defaultRelays
 ) => {
-  let result = await pool.querySync(defaultRelays, {
+  let result = await pool.querySync(relays, {
     kinds: [0],
     authors: pubkeys,
   });
   return result;
 };
 
-export const fetchComments = async (eventIds: string[], pool: SimplePool) => {
-  let result = await pool.querySync(defaultRelays, {
+export const fetchComments = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+  let result = await pool.querySync(relays, {
     kinds: [1],
     "#e": eventIds,
   });
   return result;
 };
 
-export const fetchLikes = async (eventIds: string[], pool: SimplePool) => {
-  let result = await pool.querySync(defaultRelays, {
+export const fetchLikes = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+  let result = await pool.querySync(relays, {
     kinds: [7],
     "#e": eventIds,
   });
   return result;
 };
 
-export const fetchZaps = async (eventIds: string[], pool: SimplePool) => {
-  let result = await pool.querySync(defaultRelays, {
+export const fetchZaps = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+  let result = await pool.querySync(relays, {
     kinds: [9735],
     "#e": eventIds,
   });

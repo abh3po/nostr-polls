@@ -3,11 +3,12 @@ import PollResponseForm from "./PollResponseForm";
 import { useEffect, useState } from "react";
 import { Event } from 'nostr-tools/lib/types/core';
 import { Filter } from 'nostr-tools/lib/types/filter';
-import { defaultRelays } from "../../nostr";
-import { Button, Typography } from "@mui/material";
+import { useRelays } from "../../hooks/useRelays";
+import { Box, Button, CircularProgress } from "@mui/material";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export const PollResponse = () => {
   const { eventId } = useParams();
@@ -16,6 +17,7 @@ export const PollResponse = () => {
   const { showNotification } = useNotification();
 
   const { poolRef } = useAppContext();
+  const { relays } = useRelays();
 
   const fetchPollEvent = async () => {
     if (!eventId) {
@@ -24,16 +26,16 @@ export const PollResponse = () => {
       return;
     }
     const filter: Filter = {
-      ids: [eventId!],
+      ids: [eventId],
     };
     try {
-      const events = await poolRef.current.querySync(defaultRelays, filter);
-      if (events.length === 0) {
+      const event = await poolRef.current.get(relays, filter);
+      if (event === null) {
         showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");
         return;
       }
-      setPollEvent(events[0]);
+      setPollEvent(event);
     } catch (error) {
       console.error("Error fetching poll event:", error);
       showNotification(NOTIFICATION_MESSAGES.POLL_FETCH_ERROR, "error");
@@ -47,12 +49,18 @@ export const PollResponse = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  if (pollEvent === undefined) return <Typography>Loading...</Typography>;
-
   return (
-    <>
-      <PollResponseForm pollEvent={pollEvent} />
-      <Button onClick={() => navigate("/")}>Feed</Button>
-    </>
+    <Box sx={{ maxWidth: { xs: "100%", sm: 600 }, mx: 'auto', p: 2 }}>
+      <Button variant="outlined" onClick={() => navigate("/")} sx={{ m: 1 }}>
+        <ArrowBackIcon />Back to Feed
+      </Button>
+      {pollEvent === undefined ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+        </Box>
+      ) : (
+        <PollResponseForm pollEvent={pollEvent} />
+      )}
+    </Box>
   );
 };
