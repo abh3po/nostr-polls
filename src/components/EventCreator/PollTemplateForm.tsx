@@ -73,7 +73,7 @@ const PollTemplateForm: React.FC<{
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signer, requestLogin } = useSigner();
+  const { requestLogin } = useSigner();
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -94,10 +94,6 @@ const PollTemplateForm: React.FC<{
 
   const publishPollEvent = async (secret?: string) => {
     try {
-      if (!signer && !secret) {
-        requestLogin();
-        return;
-      }
       if (!eventContent.trim()) {
         showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_QUESTION, "error");
         return;
@@ -123,7 +119,7 @@ const PollTemplateForm: React.FC<{
       if (pollType) pollEvent.tags.push(["polltype", pollType]);
       if (expiration) pollEvent.tags.push(["endsAt", expiration.toString()]);
       setIsSubmitting(true);
-      const signedEvent = await signEvent(pollEvent, signer, user?.privateKey);
+      const signedEvent = await signEvent(pollEvent, user?.privateKey);
       setIsSubmitting(false);
       if (!signedEvent) {
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");

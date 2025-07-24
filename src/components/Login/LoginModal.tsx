@@ -8,7 +8,8 @@ import {
   Button,
   Stack,
 } from "@mui/material";
-import { useSigner } from "../../contexts/signer-context";
+import { signerManager } from "../Signer/SignerManager";
+import { useUserContext } from "../../hooks/useUserContext";
 
 interface Props {
   open: boolean;
@@ -16,11 +17,14 @@ interface Props {
 }
 
 export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
-  const { loginWithNip07, loginWithNip46 } = useSigner();
-
+  const { setUser } = useUserContext();
   const handleLoginWithNip07 = async () => {
+    const unsubscribe = signerManager.onChange(() => {
+      setUser(signerManager.getUser());
+      unsubscribe();
+    });
     try {
-      await loginWithNip07();
+      await signerManager.loginWithNip07();
       onClose();
     } catch (err) {
       alert("NIP-07 login failed");
@@ -29,11 +33,15 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   };
 
   const handleLoginWithNip46 = async () => {
+    const unsubscribe = signerManager.onChange(() => {
+      setUser(signerManager.getUser());
+      unsubscribe();
+    });
     const bunkerUri = prompt("Enter your Bunker (NIP-46) URI:");
     if (!bunkerUri) return;
 
     try {
-      await loginWithNip46(bunkerUri);
+      await signerManager.loginWithNip46(bunkerUri);
       onClose();
     } catch (err) {
       alert("Failed to connect to remote signer.");

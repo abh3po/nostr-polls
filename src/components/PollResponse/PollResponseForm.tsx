@@ -60,7 +60,6 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const { showNotification } = useNotification();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
-  const { signer } = useSigner();
   const { relays } = useRelays();
   const difficulty = Number(
     pollEvent.tags.filter((t) => t[0] === "PoW")?.[0]?.[1]
@@ -149,11 +148,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     }
 
     setShowPoWModal(false);
-    const signedResponse = await signEvent(
-      useEvent,
-      signer,
-      responseUser!.privateKey
-    );
+    const signedResponse = await signEvent(useEvent, responseUser!.privateKey);
     let eventRelays = pollEvent.tags
       .filter((t) => t[0] === "relay")
       .map((t) => t[1]);

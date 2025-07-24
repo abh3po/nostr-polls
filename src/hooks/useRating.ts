@@ -10,7 +10,7 @@ export const useRating = (entityId: string) => {
   const { ratings, registerEntityId, userRatingEvent } =
     useContext(RatingContext);
   const hasSubmittedRef = useRef(false);
-  const { signer, requestLogin } = useSigner();
+  const { requestLogin } = useSigner();
   const { relays } = useRelays();
 
   // Register entityId with the RatingsProvider
@@ -45,12 +45,7 @@ export const useRating = (entityId: string) => {
     if (content) ratingEvent.tags.push(["c", "true"]);
 
     try {
-      const signed = await signEvent(
-        ratingEvent,
-        signer,
-        undefined,
-        requestLogin
-      );
+      const signed = await signEvent(ratingEvent, undefined, requestLogin);
       if (!signed) throw new Error("Signer couldn't sign Event");
       pool.publish(relays, signed).forEach((p: Promise<string>) => {
         p.then((message: string) => console.log("Relay Replied: ", message));

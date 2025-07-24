@@ -20,7 +20,7 @@ const NoteTemplateForm: React.FC<{
 }> = ({ eventContent, setEventContent }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const { signer, requestLogin } = useSigner();
+  const { requestLogin } = useSigner();
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -32,10 +32,6 @@ const NoteTemplateForm: React.FC<{
 
   const publishNoteEvent = async (secret?: string) => {
     try {
-      if (!signer && !secret) {
-        requestLogin();
-        return;
-      }
       if (!eventContent.trim()) {
         showNotification(NOTIFICATION_MESSAGES.EMPTY_NOTE_CONTENT, "error");
         return;
@@ -47,7 +43,7 @@ const NoteTemplateForm: React.FC<{
         created_at: Math.floor(Date.now() / 1000),
       };
       setIsSubmitting(true);
-      const signedEvent = await signEvent(noteEvent, signer, user?.privateKey);
+      const signedEvent = await signEvent(noteEvent, user?.privateKey);
       setIsSubmitting(false);
       if (!signedEvent) {
         showNotification(NOTIFICATION_MESSAGES.NOTE_SIGN_FAILED, "error");

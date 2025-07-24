@@ -21,7 +21,6 @@ import { calculateTimeAgo } from "../../../utils/common";
 import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
 import { SubCloser } from "nostr-tools/lib/types/pool";
-import { useSigner } from "../../../contexts/signer-context";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 import { pool } from "../../../singletons";
@@ -47,7 +46,6 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
   );
 
   const { user } = useUserContext();
-  const { signer } = useSigner();
   const { relays } = useRelays();
 
   const fetchComments = () => {
@@ -95,11 +93,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
       created_at: Math.floor(Date.now() / 1000),
     };
 
-    const signedComment = await signEvent(
-      commentEvent,
-      signer,
-      user.privateKey
-    );
+    const signedComment = await signEvent(commentEvent, user.privateKey);
     pool.publish(relays, signedComment!);
     setReplyTo(null);
   };

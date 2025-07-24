@@ -1,7 +1,7 @@
 import { Event, EventTemplate, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
-import { NostrSigner } from "../components/Signer/types";
 import { pool } from "../singletons";
+import { signerManager } from "../components/Signer/SignerManager";
 
 export const defaultRelays = [
   "wss://relay.damus.io/",
@@ -97,20 +97,18 @@ export const getATagFromEvent = (event: Event) => {
 
 export const signEvent = async (
   event: EventTemplate,
-  signer?: NostrSigner | null,
   secret?: string,
   requestLogin?: () => void
 ) => {
   let signedEvent;
   let secretKey;
+  const signer = signerManager.getSigner();
   if (!signer && !secret) {
     requestLogin?.();
     return;
   }
   if (signer) {
-    console.log("ATTEMPTING TO SIGN!!");
     signedEvent = await signer.signEvent(event);
-    console.log("THE EVENT IS SIGNED THIS IS THE EVEBT", signedEvent);
     return signedEvent;
   }
   if (secret) {

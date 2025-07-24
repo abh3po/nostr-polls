@@ -7,7 +7,6 @@ import { signEvent } from "../../../nostr";
 import { useRelays } from "../../../hooks/useRelays";
 import { Favorite } from "@mui/icons-material";
 import { useUserContext } from "../../../hooks/useUserContext";
-import { useSigner } from "../../../contexts/signer-context";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 import { pool } from "../../../singletons";
@@ -20,7 +19,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const { likesMap, fetchLikesThrottled, addEventToMap } = useAppContext();
   const { showNotification } = useNotification();
 
-  const { signer } = useSigner();
   const { user } = useUserContext();
   const { relays } = useRelays();
 
@@ -35,7 +33,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       tags: [["e", pollEvent.id, relays[0]]],
       created_at: Math.floor(Date.now() / 1000),
     };
-    let finalEvent = await signEvent(event, signer, user.privateKey);
+    let finalEvent = await signEvent(event, user.privateKey);
     pool.publish(relays, finalEvent!);
     addEventToMap(finalEvent!);
   };
