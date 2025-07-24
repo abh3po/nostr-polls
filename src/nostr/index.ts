@@ -95,26 +95,19 @@ export const getATagFromEvent = (event: Event) => {
   return a_tag;
 };
 
-export const signEvent = async (
-  event: EventTemplate,
-  secret?: string,
-  requestLogin?: () => void
-) => {
+export const signEvent = async (event: EventTemplate, secret?: string) => {
   let signedEvent;
   let secretKey;
-  const signer = signerManager.getSigner();
-  if (!signer && !secret) {
-    requestLogin?.();
-    return;
-  }
-  if (signer) {
-    signedEvent = await signer.signEvent(event);
-    return signedEvent;
-  }
   if (secret) {
     secretKey = hexToBytes(secret);
     signedEvent = finalizeEvent(event, secretKey);
+    return signedEvent;
   }
+  const signer = await signerManager.getSigner();
+  if (!signer) {
+    throw Error("Login Method Not Provided");
+  }
+  signedEvent = await signer.signEvent(event);
   return signedEvent;
 };
 

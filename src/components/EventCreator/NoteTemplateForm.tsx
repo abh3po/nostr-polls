@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Box, Button, Stack, TextField, Collapse } from "@mui/material";
-import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
@@ -20,7 +19,6 @@ const NoteTemplateForm: React.FC<{
 }> = ({ eventContent, setEventContent }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const { requestLogin } = useSigner();
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();

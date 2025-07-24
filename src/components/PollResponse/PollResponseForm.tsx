@@ -33,7 +33,6 @@ import { useMiningWorker } from "../../hooks/useMiningWorker";
 import PollTimer from "./PollTimer";
 import { getColorsWithTheme } from "../../styles/theme";
 import { FeedbackMenu } from "../FeedbackMenu";
-import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { pool } from "../../singletons";

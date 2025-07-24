@@ -22,9 +22,14 @@ class SignerManager {
   private signer: NostrSigner | null = null;
   private user: User | null = null;
   private onChangeCallbacks: Set<() => void> = new Set();
+  private loginModalCallback: (() => Promise<void>) | null = null;
 
   constructor() {
     this.restoreFromStorage();
+  }
+
+  registerLoginModal(callback: () => Promise<void>) {
+    this.loginModalCallback = callback;
   }
 
   async restoreFromStorage() {
@@ -45,6 +50,7 @@ class SignerManager {
   }
 
   async loginWithNip07() {
+    console.log("LOGGIN IN WITH NIP07");
     if (!window.nostr) throw new Error("NIP-07 extension not found");
     this.signer = nip07Signer;
     const pubkey = await window.nostr.getPublicKey();
@@ -89,12 +95,21 @@ class SignerManager {
     this.notify();
   }
 
-  getSigner() {
-    return this.signer;
+  async getSigner(): Promise<NostrSigner> {
+    if (this.signer) return this.signer;
+
+    if (this.loginModalCallback) {
+      await this.loginModalCallback();
+      if (this.signer) return this.signer;
+    }
+
+    throw new Error("No signer available and no login modal registered.");
   }
 
-  getUser() {
-    return this.user;
+  async getUser(): Promise<User> {
+    if (this.user) return this.user;
+    const pubkey = await (await this.getSigner()).getPublicKey();
+    return { pubkey };
   }
 
   onChange(cb: () => void) {

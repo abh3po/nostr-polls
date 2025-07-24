@@ -23,7 +23,6 @@ import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import OptionsCard from "./OptionsCard";
 import { Option } from "../../interfaces";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
@@ -73,7 +72,6 @@ const PollTemplateForm: React.FC<{
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { requestLogin } = useSigner();
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();

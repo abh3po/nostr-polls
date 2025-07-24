@@ -3,14 +3,14 @@ import { Button, CircularProgress } from "@mui/material";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { Notes } from "../../../Notes";
-import { useSigner } from "../../../../contexts/signer-context";
 
 const FollowingFeed = () => {
   const { user } = useUserContext();
-  const { requestLogin } = useSigner();
   const { events, fetchNotes, loadingMore } = useFollowingNotes(user);
 
-  const sorted = Array.from(events.values()).sort((a, b) => b.created_at - a.created_at);
+  const sorted = Array.from(events.values()).sort(
+    (a, b) => b.created_at - a.created_at
+  );
   useEffect(() => {
     if (user) {
       fetchNotes();
@@ -24,12 +24,14 @@ const FollowingFeed = () => {
       ))}
 
       <div style={{ textAlign: "center", margin: 20 }}>
-        <Button
-          onClick={!!user ? fetchNotes : requestLogin}
-          variant="contained"
-          disabled={loadingMore}
-        >
-          {loadingMore ? <CircularProgress size={24} /> : !!user ? "Load More" : "Login"}
+        <Button onClick={fetchNotes} variant="contained" disabled={loadingMore}>
+          {loadingMore ? (
+            <CircularProgress size={24} />
+          ) : !!user ? (
+            "Load More"
+          ) : (
+            "Login"
+          )}
         </Button>
       </div>
     </>

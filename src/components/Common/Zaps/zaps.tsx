@@ -9,7 +9,6 @@ import { nip57 } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { styled } from "@mui/system";
 import { getColorsWithTheme } from "../../../styles/theme";
-import { useSigner } from "../../../contexts/signer-context";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 
