@@ -5,10 +5,18 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useRelays } from "../../hooks/useRelays";
-import { Select, MenuItem, Button, CircularProgress, Container, Box } from "@mui/material";
-import Grid from '@mui/material/Grid2';
+import {
+  Select,
+  MenuItem,
+  Button,
+  CircularProgress,
+  Container,
+  Box,
+} from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import { styled } from "@mui/system";
 import { SubCloser } from "nostr-tools/lib/types/pool";
+import { pool } from "../../singletons";
 
 const StyledSelect = styled(Select)`
   &::before,
@@ -32,7 +40,6 @@ export const PollFeed = () => {
   const [feedSubscritpion, setFeedSubscription] = useState<
     SubCloser | undefined
   >();
-  const { poolRef } = useAppContext();
   const { user } = useUserContext();
   const { relays } = useRelays();
   const [loadingMore, setLoadingMore] = useState(false);
@@ -63,10 +70,10 @@ export const PollFeed = () => {
     if (eventSource === "following" && user?.follows?.length) {
       filter.authors = user.follows;
     }
-    
+
     if (feedSubscritpion) feedSubscritpion.close();
-    let newCloser = poolRef.current.subscribeMany(relays, [filter], {
-      onevent: (event) => {
+    let newCloser = pool.subscribeMany(relays, [filter], {
+      onevent: (event: Event) => {
         handleFeedEvents(event, newCloser);
         setLoadingMore(false);
       },
@@ -117,8 +124,8 @@ export const PollFeed = () => {
       filter.authors = user?.follows;
     }
 
-    let newCloser = poolRef.current.subscribeMany(relays, [filter], {
-      onevent: (event) => {
+    let newCloser = pool.subscribeMany(relays, [filter], {
+      onevent: (event: Event) => {
         handleFeedEvents(event, newCloser);
       },
     });
@@ -133,7 +140,7 @@ export const PollFeed = () => {
         limit: 40,
       },
     ];
-    let closer = poolRef.current.subscribeMany(relays, filters, {
+    let closer = pool.subscribeMany(relays, filters, {
       onevent: handleResponseEvents,
     });
     return closer;
@@ -150,11 +157,11 @@ export const PollFeed = () => {
       if (feedSubscritpion) feedSubscritpion.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [poolRef, eventSource]);
+  }, [eventSource]);
 
   useEffect(() => {
     let closer: SubCloser | undefined;
-    if (user && !userResponses && poolRef && !closer) {
+    if (user && !userResponses && !closer) {
       closer = fetchResponseEvents();
     }
     return () => {
@@ -163,7 +170,7 @@ export const PollFeed = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, poolRef]);
+  }, [user]);
 
   return (
     <Container maxWidth="lg" disableGutters>

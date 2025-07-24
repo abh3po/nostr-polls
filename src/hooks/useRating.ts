@@ -3,13 +3,12 @@ import { useContext, useEffect, useRef } from "react";
 import { signEvent } from "../nostr";
 import { useRelays } from "./useRelays";
 import { RatingContext } from "../contexts/RatingProvider";
-import { useAppContext } from "./useAppContext";
 import { useSigner } from "../contexts/signer-context";
+import { pool } from "../singletons";
 
 export const useRating = (entityId: string) => {
   const { ratings, registerEntityId, userRatingEvent } =
     useContext(RatingContext);
-  const { poolRef } = useAppContext();
   const hasSubmittedRef = useRef(false);
   const { signer, requestLogin } = useSigner();
   const { relays } = useRelays();
@@ -53,11 +52,9 @@ export const useRating = (entityId: string) => {
         requestLogin
       );
       if (!signed) throw new Error("Signer couldn't sign Event");
-      poolRef.current
-        .publish(relays, signed)
-        .forEach((p: Promise<string>) => {
-          p.then((message: string) => console.log("Relay Replied: ", message));
-        });
+      pool.publish(relays, signed).forEach((p: Promise<string>) => {
+        p.then((message: string) => console.log("Relay Replied: ", message));
+      });
     } catch (err) {
       console.error("Error publishing rating:", err);
     } finally {

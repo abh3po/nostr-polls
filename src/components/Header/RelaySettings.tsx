@@ -16,13 +16,15 @@ import { useEffect, useState } from "react";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useRelays } from "../../hooks/useRelays";
 import { useAppContext } from "../../hooks/useAppContext";
+import { pool } from "../../singletons";
 
 export const RelaySettings: React.FC = () => {
-  const [relayConnectionMap, setRelayConnectionMap] = useState<Map<string, boolean>>(new Map());
+  const [relayConnectionMap, setRelayConnectionMap] = useState<
+    Map<string, boolean>
+  >(new Map());
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const { relays, isUsingUserRelays } = useRelays();
   const { user } = useUserContext();
-  const { poolRef } = useAppContext();
 
   // Function to check relay connections using the existing SimplePool
   const checkConnections = async () => {
@@ -33,17 +35,17 @@ export const RelaySettings: React.FC = () => {
       try {
         // Use the SimplePool to check if we can query the relay
         // This is a more reliable way to check connection status
-        const timeoutPromise = new Promise<boolean>(resolve => {
+        const timeoutPromise = new Promise<boolean>((resolve) => {
           setTimeout(() => resolve(false), 5000); // 5 second timeout
         });
 
         // Try to query a simple event from the relay
-        const queryPromise = new Promise<boolean>(async resolve => {
+        const queryPromise = new Promise<boolean>(async (resolve) => {
           try {
             // Use querySync with a very simple query to test connection
-            await poolRef.current.querySync([relayUrl], {
+            await pool.querySync([relayUrl], {
               kinds: [0],
-              limit: 1
+              limit: 1,
             });
             resolve(true); // If we get here, the relay is connected
           } catch (e) {
@@ -79,8 +81,15 @@ export const RelaySettings: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Typography variant="subtitle1" sx={{ mr: 1 }}>
             Using:
           </Typography>
@@ -94,7 +103,9 @@ export const RelaySettings: React.FC = () => {
           variant="outlined"
           onClick={() => checkConnections()}
           disabled={isChecking}
-          startIcon={isChecking ? <CircularProgress size={16} /> : <RefreshIcon />}
+          startIcon={
+            isChecking ? <CircularProgress size={16} /> : <RefreshIcon />
+          }
         >
           Refresh Status
         </Button>
@@ -106,7 +117,13 @@ export const RelaySettings: React.FC = () => {
             {relays.map((relayUrl) => (
               <TableRow key={relayUrl}>
                 <TableCell>
-                  <Tooltip title={relayConnectionMap.get(relayUrl) ? "Connected" : "Disconnected"}>
+                  <Tooltip
+                    title={
+                      relayConnectionMap.get(relayUrl)
+                        ? "Connected"
+                        : "Disconnected"
+                    }
+                  >
                     <LightbulbIcon
                       sx={{
                         color: relayConnectionMap.get(relayUrl)

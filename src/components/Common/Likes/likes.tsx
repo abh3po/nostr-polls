@@ -10,14 +10,14 @@ import { useUserContext } from "../../../hooks/useUserContext";
 import { useSigner } from "../../../contexts/signer-context";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
+import { pool } from "../../../singletons";
 
 interface LikesProps {
   pollEvent: Event;
 }
 
 const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
-  const { likesMap, fetchLikesThrottled, poolRef, addEventToMap } =
-    useAppContext();
+  const { likesMap, fetchLikesThrottled, addEventToMap } = useAppContext();
   const { showNotification } = useNotification();
 
   const { signer } = useSigner();
@@ -36,7 +36,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       created_at: Math.floor(Date.now() / 1000),
     };
     let finalEvent = await signEvent(event, signer, user.privateKey);
-    poolRef.current.publish(relays, finalEvent!);
+    pool.publish(relays, finalEvent!);
     addEventToMap(finalEvent!);
   };
 

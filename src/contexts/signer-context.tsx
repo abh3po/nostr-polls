@@ -43,7 +43,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [signer, setSigner] = useState<NostrSigner | null>(null);
   const [type, setType] = useState<SignerType | null>(null);
-  const { poolRef, addEventToProfiles } = useAppContext();
+  const { addEventToProfiles } = useAppContext();
   const { user, setUser } = useUserContext();
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const { showNotification } = useNotification();
@@ -84,7 +84,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
         } else if (keys.secret) {
           await loginWithNip07();
         } else if (keys.pubkey) {
-          const kind0 = await fetchUserProfile(keys.pubkey, poolRef.current);
+          const kind0 = await fetchUserProfile(keys.pubkey);
           if (kind0) {
             const profile = JSON.parse(kind0.content);
             const userData = {
@@ -100,7 +100,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
       } catch (error) {
-        console.error('Failed to initialize auth state:', error);
+        console.error("Failed to initialize auth state:", error);
       }
     };
 
@@ -113,10 +113,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
       setSigner(nip07Signer);
       const pubkey = await window.nostr!.getPublicKey();
       setKeysInLocalStorage(pubkey);
-      const kind0: Event | null = await fetchUserProfile(
-        pubkey,
-        poolRef.current
-      );
+      const kind0: Event | null = await fetchUserProfile(pubkey);
 
       const userData = kind0
         ? { ...JSON.parse(kind0.content), pubkey }
@@ -138,10 +135,7 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
       const remoteSigner = await createNip46Signer(bunkerUri);
       const pubkey = await remoteSigner.getPublicKey();
       setKeysInLocalStorage(pubkey);
-      const kind0: Event | null = await fetchUserProfile(
-        pubkey,
-        poolRef.current
-      );
+      const kind0: Event | null = await fetchUserProfile(pubkey);
       const userData = kind0
         ? { ...JSON.parse(kind0.content), pubkey }
         : { name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL, pubkey };
@@ -161,7 +155,14 @@ export const SignerProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <SignerContext.Provider
-      value={{ signer, type, loginWithNip07, loginWithNip46, requestLogin, logout }}
+      value={{
+        signer,
+        type,
+        loginWithNip07,
+        loginWithNip46,
+        requestLogin,
+        logout,
+      }}
     >
       {children}
       <LoginModal
