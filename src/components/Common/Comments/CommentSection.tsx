@@ -6,7 +6,6 @@ import {
   CardActions,
   CardContent,
   CardHeader,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useAppContext } from "../../../hooks/useAppContext";
@@ -25,12 +24,12 @@ import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 import { pool } from "../../../singletons";
 
-interface PollCommentsProps {
-  pollEventId: string;
+interface CommentSectionProps {
+  eventId: string;
+  showComments: boolean;
 }
 
-const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
-  const [showComments, setShowComments] = useState<boolean>(false);
+const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }) => {
   const { showNotification } = useNotification();
   const {
     profiles,
@@ -51,7 +50,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
   const fetchComments = () => {
     let filter = {
       kinds: [1],
-      "#e": [pollEventId],
+      "#e": [eventId],
     };
     let closer = pool.subscribeMany(relays, [filter], {
       onevent: addEventToMap,
@@ -71,8 +70,8 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
   }, [showComments]);
 
   useEffect(() => {
-    if (!commentsMap?.get(pollEventId)) {
-      fetchCommentsThrottled(pollEventId);
+    if (!commentsMap?.get(eventId)) {
+      fetchCommentsThrottled(eventId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,7 +86,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
       kind: 1,
       content: content,
       tags: [
-        ["e", pollEventId, "", "root"],
+        ["e", eventId, "", "root"],
         ...(parentId ? [["e", parentId, "", "reply"]] : []),
       ],
       created_at: Math.floor(Date.now() / 1000),
@@ -106,7 +105,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
         )?.[0]?.[1];
 
         if (parentId === null) {
-          return !isReplyTo || replyTo === pollEventId;
+          return !isReplyTo || replyTo === eventId;
         }
 
         // If parentId is specified, we want replies to that parentId
@@ -123,8 +122,8 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
         );
 
         return (
-          <div key={comment.id} style={{ marginLeft: "20px" }}>
-            <Card variant="outlined" style={{ marginTop: 10, width: "100%" }}>
+          <div key={comment.id} style={{ marginLeft: "8px" }}>
+            <Card variant="outlined" style={{ marginTop: "8px" }}>
               <CardHeader
                 avatar={
                   <Avatar src={commentUser?.picture || DEFAULT_IMAGE_URL} />
@@ -135,21 +134,21 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
                 }
                 subheader={calculateTimeAgo(comment.created_at)}
               />
-              <CardContent>
+              <CardContent style={{ marginLeft: "8px", padding: "8px"}}>
                 <Typography>
                   <TextWithImages content={comment.content} />
                 </Typography>
               </CardContent>
-              <CardActions>
+              <CardActions style={{ marginLeft: "16px", marginBottom: "16px", padding: "0px" }}>
                 <CommentIcon
                   onClick={() =>
                     setReplyTo(replyTo === comment.id ? null : comment.id)
                   }
-                  style={{ marginLeft: "20px" }}
                   sx={(theme) => {
                     return {
                       color: theme.palette.mode === "light" ? "black" : "white",
                       fontSize: 18,
+                      cursor: "pointer"
                     };
                   }}
                 />
@@ -164,7 +163,7 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
                       })
                     }
                     size="small"
-                    style={{ marginLeft: "20px", padding: 0, top: 0 }}
+                    style={{ marginLeft: "16px", padding: 0, top: 0 }}
                     sx={(theme) => ({
                       ...getColorsWithTheme(theme, { color: "#000000" }),
                     })}
@@ -194,38 +193,23 @@ const PollComments: React.FC<PollCommentsProps> = ({ pollEventId }) => {
         );
       });
   };
-  const comments = commentsMap?.get(pollEventId) || [];
+
+  const comments = commentsMap?.get(eventId) || [];
   const localCommentsMap = new Map((comments || []).map((c) => [c.id, c]));
 
+  if (!showComments) {
+    return null;
+  }
+
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <Tooltip title={showComments ? "Hide Comments" : "View Comments"}>
-        <span
-          onClick={() => setShowComments(!showComments)}
-          style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}
-        >
-          <CommentIcon
-            sx={(theme) => {
-              return {
-                color: theme.palette.mode === "light" ? "black" : "white",
-              };
-            }}
-          />
-          <Typography>{comments.length ? comments.length : null}</Typography>
-        </span>
-      </Tooltip>
-      {showComments && (
-        <div>
-          <CommentInput onSubmit={(content) => handleSubmitComment(content)} />
-          <div>
-            {comments.length === 0 ? <h5>No Comments</h5> : <h5>Comments</h5>}
-            {renderComments(Array.from(localCommentsMap.values()), null)}{" "}
-            {/* Render top-level comments */}
-          </div>
-        </div>
-      )}
+    <div style={{ width: "100%", marginTop: "16px" }}>
+      <CommentInput onSubmit={(content) => handleSubmitComment(content)} />
+      <div style={{ marginTop: "16px" }}>
+        {comments.length === 0 ? <h5>No Comments</h5> : <h5>Comments</h5>}
+        {renderComments(Array.from(localCommentsMap.values()), null)}
+      </div>
     </div>
   );
 };
 
-export default PollComments;
+export default CommentSection;
