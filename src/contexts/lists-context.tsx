@@ -2,9 +2,11 @@ import { ReactNode, createContext, useEffect, useState } from "react";
 import { useAppContext } from "../hooks/useAppContext";
 import { Event } from "nostr-tools";
 import { SubCloser } from "nostr-tools/lib/types/pool";
-import { defaultRelays, parseContacts, getATagFromEvent } from "../nostr";
+import { parseContacts, getATagFromEvent } from "../nostr";
+import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
 import { User } from "./user-context";
+import { pool } from "../singletons";
 
 interface ListContextInterface {
   lists: Map<string, Event> | undefined;
@@ -17,8 +19,8 @@ export const ListContext = createContext<ListContextInterface | null>(null);
 export function ListProvider({ children }: { children: ReactNode }) {
   const [lists, setLists] = useState<Map<string, Event> | undefined>();
   const [selectedList, setSelectedList] = useState<string | undefined>();
-  const { poolRef } = useAppContext();
   const { user, setUser } = useUserContext();
+  const { relays } = useRelays();
 
   const handleListEvent = (event: Event) => {
     setLists((prevMap) => {
@@ -62,15 +64,11 @@ export function ListProvider({ children }: { children: ReactNode }) {
       limit: 5,
       authors: [user!.pubkey],
     };
-    let closer = poolRef.current?.subscribeMany(
-      defaultRelays,
-      [contactListFilter],
-      {
-        onevent: (event: Event) => {
-          handleContactListEvent(event, closer);
-        },
-      }
-    );
+    let closer = pool.subscribeMany(relays, [contactListFilter], {
+      onevent: (event: Event) => {
+        handleContactListEvent(event, closer);
+      },
+    });
   };
 
   const fetchLists = () => {
@@ -79,25 +77,21 @@ export function ListProvider({ children }: { children: ReactNode }) {
       limit: 100,
       authors: [user!.pubkey],
     };
-    let closer = poolRef.current?.subscribeMany(
-      defaultRelays,
-      [followSetFilter],
-      {
-        onevent: handleListEvent,
-      }
-    );
+    let closer = pool.subscribeMany(relays, [followSetFilter], {
+      onevent: handleListEvent,
+    });
     return closer;
   };
 
   useEffect(() => {
     if (!user) return;
-    if (!poolRef.current) return;
-    if (user && poolRef && !lists) {
+    if (!pool) return;
+    if (user && !lists) {
       fetchLists();
       fetchContacts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lists, poolRef, user]);
+  }, [lists, user]);
   return (
     <ListContext.Provider value={{ lists, selectedList, handleListSelected }}>
       {children}

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Event, Filter, SimplePool } from "nostr-tools";
-import { defaultRelays } from "../../../../nostr";
+import { useRelays } from "../../../../hooks/useRelays";
 
 export const useReactedNotes = (user: any) => {
   const [reactedEvents, setReactedEvents] = useState<Map<string, Event>>(new Map());
   const [reactionEvents, setReactionEvents] = useState<Map<string, Event>>(new Map());
   const [loading, setLoading] = useState(false);
   const [lastTimestamp, setLastTimestamp] = useState<number | undefined>(undefined);
+  const { relays } = useRelays();
 
   const fetchReactedNotes = async () => {
     if (!user?.follows?.length || loading) return;
@@ -24,7 +25,7 @@ export const useReactedNotes = (user: any) => {
       reactionFilter.until = lastTimestamp;
     }
 
-    const newReactionEvents = await pool.querySync(defaultRelays, reactionFilter);
+    const newReactionEvents = await pool.querySync(relays, reactionFilter);
 
     const updatedReactionEvents = new Map(reactionEvents);
     newReactionEvents.forEach((e) => updatedReactionEvents.set(e.id, e));
@@ -42,7 +43,7 @@ export const useReactedNotes = (user: any) => {
       ids: uniqueNoteIds.filter((id) => id !== undefined),
     };
 
-    const noteEvents = await pool.querySync(defaultRelays, noteFilter);
+    const noteEvents = await pool.querySync(relays, noteFilter);
 
     const updated = new Map(reactedEvents);
     noteEvents.forEach((e) => updated.set(e.id, e));

@@ -1,8 +1,8 @@
 import { ReactNode, createContext, useRef, useState } from "react";
 import { Event } from "nostr-tools/lib/types/core";
 import { Profile } from "../nostr/types";
-import { SimplePool } from "nostr-tools";
 import { Throttler } from "../nostr/requestThrottler";
+import { pool } from "../singletons";
 
 type AppContextInterface = {
   profiles: Map<string, Profile> | undefined;
@@ -10,7 +10,6 @@ type AppContextInterface = {
   likesMap: Map<string, Event[]> | undefined;
   zapsMap: Map<string, Event[]> | undefined;
   addEventToProfiles: (event: Event) => void;
-  poolRef: React.MutableRefObject<SimplePool>;
   addEventToMap: (event: Event) => void;
   fetchUserProfileThrottled: (pubkey: string) => void;
   fetchCommentsThrottled: (pollEventId: string) => void;
@@ -33,7 +32,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [aiSettings, setAISettings] = useState(
     JSON.parse(localStorage.getItem("ai-settings") || "{}")
   );
-  const poolRef = useRef(new SimplePool());
 
   const addEventToProfiles = (event: Event) => {
     if (profiles.has(event.pubkey)) return;
@@ -88,17 +86,17 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   const ProfileThrottler = useRef(
-    new Throttler(50, poolRef.current, addEventsToProfiles, "profiles", 500)
+    new Throttler(50, pool, addEventsToProfiles, "profiles", 500)
   );
   const CommentsThrottler = useRef(
-    new Throttler(50, poolRef.current, addEventsToMap, "comments", 1000)
+    new Throttler(50, pool, addEventsToMap, "comments", 1000)
   );
   const LikesThrottler = useRef(
-    new Throttler(50, poolRef.current, addEventsToMap, "likes", 1500)
+    new Throttler(50, pool, addEventsToMap, "likes", 1500)
   );
 
   const ZapsThrottler = useRef(
-    new Throttler(50, poolRef.current, addEventsToMap, "zaps", 2000)
+    new Throttler(50, pool, addEventsToMap, "zaps", 2000)
   );
 
   const fetchUserProfileThrottled = (pubkey: string) => {
@@ -123,7 +121,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         profiles,
         addEventToProfiles,
         commentsMap,
-        poolRef,
         fetchUserProfileThrottled,
         fetchCommentsThrottled,
         addEventToMap,

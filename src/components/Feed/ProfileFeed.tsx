@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
-import { defaultRelays } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import ProfileCard from "../Profile/ProfileCard";
 import { useUserContext } from "../../hooks/useUserContext";
 import {
@@ -11,7 +11,6 @@ import {
   Typography,
 } from "@mui/material";
 import RateProfileModal from "../Ratings/RateProfileModal";
-import { useSigner } from "../../contexts/signer-context";
 
 const BATCH_SIZE = 20;
 
@@ -21,7 +20,7 @@ const ProfilesFeed: React.FC = () => {
   const [until, setUntil] = useState<number | undefined>(undefined); // for pagination
   const [modalOpen, setModalOpen] = useState(false);
   const { user } = useUserContext();
-  const { requestLogin } = useSigner();
+  const { relays } = useRelays();
 
   const fetchProfiles = () => {
     if (!user || !user.follows || user.follows.length === 0) return;
@@ -37,7 +36,7 @@ const ProfilesFeed: React.FC = () => {
       limit: 10,
     };
 
-    const sub = pool.subscribeMany(defaultRelays, [filter], {
+    const sub = pool.subscribeMany(relays, [filter], {
       onevent: (event) => {
         setProfiles((prev) => {
           if (prev.has(event.pubkey)) return prev;
@@ -96,7 +95,7 @@ const ProfilesFeed: React.FC = () => {
       ))}
       <div style={{ textAlign: "center", margin: 20 }}>
         <Button
-          onClick={!!user ? fetchProfiles : requestLogin}
+          onClick={fetchProfiles}
           variant="contained"
           disabled={loadingMore}
         >

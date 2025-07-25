@@ -9,8 +9,8 @@ import {
   Tab,
   Divider,
 } from "@mui/material";
-import { useSigner } from "../../contexts/signer-context";
-import { defaultRelays, signEvent } from "../../nostr";
+import { signEvent } from "../../nostr";
+import { useRelays } from "../../hooks/useRelays";
 import { SimplePool, Event } from "nostr-tools";
 import MovieCard from "./MovieCard";
 
@@ -31,36 +31,17 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
   const [summary, setSummary] = useState("");
   const [tab, setTab] = useState(0);
   const [previewEvent, setPreviewEvent] = useState<Event>();
-  const { signer } = useSigner();
+  const { relays } = useRelays();
 
   useEffect(() => {
     const initialize = async () => {
-      if (!signer) return;
+      if (!open) return; // Only initialize when modal is actually open
       else {
         setPreviewEvent(await buildPreviewEvent());
       }
     };
     initialize();
-  }, [title, poster, year, summary, signer]);
-  if (!signer) {
-    return (
-      <Modal open={open} onClose={onClose}>
-        <Box
-          sx={{
-            p: 4,
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            boxShadow: 24,
-            maxWidth: 500,
-            mx: "auto",
-            mt: "10%",
-          }}
-        >
-          <Typography>You need to login to publish metadata</Typography>
-        </Box>
-      </Modal>
-    );
-  }
+  }, [title, poster, year, summary, open]);
 
   const buildTags = () => [
     ["d", `movie:${imdbId}`],
@@ -70,35 +51,30 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
   ];
 
   const buildPreviewEvent = async (): Promise<Event> => {
-    const pubkey = await signer.getPublicKey();
     return {
       id: "Random",
       kind: 30300,
       content: title || "Untitled",
       tags: buildTags(),
       created_at: Math.floor(Date.now() / 1000),
-      pubkey,
-      sig: "kok",
+      pubkey: "placeholder_pubkey",
+      sig: "placeholder_signature",
     };
   };
 
   const handlePublish = async () => {
-    if (!signer) return;
-
-    const pubkey = await signer.getPublicKey();
     const event = {
       kind: 30300,
       content: title || "Untitled",
       tags: buildTags(),
       created_at: Math.floor(Date.now() / 1000),
-      pubkey,
     };
 
-    const signed = await signEvent(event, signer);
+    const signed = await signEvent(event);
     if (!signed) throw new Error("Signing failed");
 
     const pool = new SimplePool();
-    pool.publish(defaultRelays, signed);
+    pool.publish(relays, signed);
     onClose();
   };
 
