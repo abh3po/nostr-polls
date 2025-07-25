@@ -1,15 +1,11 @@
 import React from "react";
 import { Avatar, Menu, MenuItem } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
-import {
-  removeAppSecretFromLocalStorage,
-  removeBunkerUriFromLocalStorage,
-  removeKeysFromLocalStorage,
-} from "../../utils/localStorage";
 import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
+import { signerManager } from "../Signer/SignerManager";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -19,13 +15,10 @@ export const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
-  const { user, setUser } = useUserContext();
+  const { user } = useUserContext();
 
   const handleLogOut = () => {
-    removeKeysFromLocalStorage();
-    removeBunkerUriFromLocalStorage();
-    removeAppSecretFromLocalStorage();
-    setUser(null);
+    signerManager.logout();
     setAnchorEl(null);
   };
 
@@ -41,7 +34,9 @@ export const UserMenu: React.FC = () => {
       >
         {user
           ? [
-            <MenuItem onClick={() => setShowSettings(true)}>Settings</MenuItem>,
+              <MenuItem onClick={() => setShowSettings(true)}>
+                Settings
+              </MenuItem>,
               <MenuItem onClick={handleLogOut}>Log Out</MenuItem>,
               <ListItem>
                 <ColorSchemeToggle />
@@ -56,7 +51,10 @@ export const UserMenu: React.FC = () => {
               </ListItem>,
             ]}
       </Menu>
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
       <LoginModal
         open={showLoginModal}
         onClose={() => setShowLoginModal(false)}
