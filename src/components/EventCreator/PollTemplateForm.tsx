@@ -11,9 +11,9 @@ import {
   MenuItem,
   Collapse,
 } from "@mui/material";
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import Grid from '@mui/material/Grid2';
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import Grid from "@mui/material/Grid2";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
@@ -23,9 +23,7 @@ import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import OptionsCard from "./OptionsCard";
 import { Option } from "../../interfaces";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
-import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
@@ -34,6 +32,7 @@ import { signEvent } from "../../nostr";
 import { useRelays } from "../../hooks/useRelays";
 import { PollPreview } from "./PollPreview";
 import { Event } from "nostr-tools";
+import { pool } from "../../singletons";
 
 const generateOptionId = (): string => {
   return Math.random().toString(36).substr(2, 9);
@@ -58,19 +57,22 @@ const pollOptions = [
   },
 ];
 
-const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: string) => void }> = ({ eventContent, setEventContent }) => {
+const PollTemplateForm: React.FC<{
+  eventContent: string;
+  setEventContent: (val: string) => void;
+}> = ({ eventContent, setEventContent }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [options, setOptions] = useState<Option[]>([
     [generateOptionId(), ""],
     [generateOptionId(), ""],
   ]);
-  const [pollType, setPollType] = useState<string>(pollOptions[0]?.value || "singlechoice");
+  const [pollType, setPollType] = useState<string>(
+    pollOptions[0]?.value || "singlechoice"
+  );
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signer, requestLogin } = useSigner();
   const { showNotification } = useNotification();
-  const { poolRef } = useAppContext();
   const { user } = useUserContext();
   const { relays } = useRelays();
   const navigate = useNavigate();
@@ -90,10 +92,6 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
 
   const publishPollEvent = async (secret?: string) => {
     try {
-      if (!signer && !secret) {
-        requestLogin();
-        return;
-      }
       if (!eventContent.trim()) {
         showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_QUESTION, "error");
         return;
@@ -119,13 +117,13 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
       if (pollType) pollEvent.tags.push(["polltype", pollType]);
       if (expiration) pollEvent.tags.push(["endsAt", expiration.toString()]);
       setIsSubmitting(true);
-      const signedEvent = await signEvent(pollEvent, signer, user?.privateKey);
+      const signedEvent = await signEvent(pollEvent, user?.privateKey);
       setIsSubmitting(false);
       if (!signedEvent) {
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
-      poolRef.current.publish(relays, signedEvent);
+      pool.publish(relays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/polls");
     } catch (error) {
@@ -220,7 +218,10 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
                   onChange={(value: dayjs.Dayjs | null) => {
                     if (!value) return;
                     if (value?.isBefore(now)) {
-                      showNotification(NOTIFICATION_MESSAGES.PAST_DATE_ERROR, "error");
+                      showNotification(
+                        NOTIFICATION_MESSAGES.PAST_DATE_ERROR,
+                        "error"
+                      );
                       setExpiration(null);
                       return;
                     } else if (value.isValid()) {
@@ -229,8 +230,8 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
                   }}
                   slotProps={{
                     textField: {
-                      fullWidth: true
-                    }
+                      fullWidth: true,
+                    },
                   }}
                 />
               </LocalizationProvider>
@@ -257,14 +258,16 @@ const PollTemplateForm: React.FC<{ eventContent: string; setEventContent: (val: 
             </Button>
             <Button
               variant="outlined"
-              startIcon={showPreview ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              startIcon={
+                showPreview ? <VisibilityOffIcon /> : <VisibilityIcon />
+              }
               onClick={(e) => {
                 e.preventDefault();
                 setShowPreview(!showPreview);
               }}
               fullWidth
             >
-              {showPreview ? 'Hide Preview' : 'Show Preview'}
+              {showPreview ? "Hide Preview" : "Show Preview"}
             </Button>
             <Collapse in={showPreview}>
               <Box mt={1}>

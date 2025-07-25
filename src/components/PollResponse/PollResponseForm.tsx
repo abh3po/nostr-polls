@@ -33,9 +33,9 @@ import { useMiningWorker } from "../../hooks/useMiningWorker";
 import PollTimer from "./PollTimer";
 import { getColorsWithTheme } from "../../styles/theme";
 import { FeedbackMenu } from "../FeedbackMenu";
-import { useSigner } from "../../contexts/signer-context";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
+import { pool } from "../../singletons";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -57,9 +57,8 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const [filterPubkeys, setFilterPubkeys] = useState<string[]>([]);
   const [showPoWModal, setShowPoWModal] = useState<boolean>(false);
   const { showNotification } = useNotification();
-  const { profiles, poolRef, fetchUserProfileThrottled } = useAppContext();
+  const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
-  const { signer } = useSigner();
   const { relays } = useRelays();
   const difficulty = Number(
     pollEvent.tags.filter((t) => t[0] === "PoW")?.[0]?.[1]
@@ -91,14 +90,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     if (!profiles?.has(pollEvent.pubkey)) {
       fetchUserProfileThrottled(pollEvent.pubkey);
     }
-  }, [
-    pollEvent,
-    profiles,
-    poolRef,
-    fetchUserProfileThrottled,
-    userResponse,
-    responses,
-  ]);
+  }, [pollEvent, profiles, fetchUserProfileThrottled, userResponse, responses]);
 
   const handleResponseChange = (optionValue: string) => {
     if (error) {
@@ -155,16 +147,12 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     }
 
     setShowPoWModal(false);
-    const signedResponse = await signEvent(
-      useEvent,
-      signer,
-      responseUser!.privateKey
-    );
+    const signedResponse = await signEvent(useEvent, responseUser!.privateKey);
     let eventRelays = pollEvent.tags
       .filter((t) => t[0] === "relay")
       .map((t) => t[1]);
     let publishRelays = eventRelays.length === 0 ? relays : eventRelays;
-    poolRef.current.publish(publishRelays, signedResponse!);
+    pool.publish(publishRelays, signedResponse!);
     setShowResults(true);
   };
 
@@ -200,11 +188,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const options = pollEvent.tags.filter((t) => t[0] === "option");
   return (
     <div>
-      <Card
-        variant="elevation"
-        className="poll-response-form"
-        sx={{ m: 1 }}
-      >
+      <Card variant="elevation" className="poll-response-form" sx={{ m: 1 }}>
         <form onSubmit={handleSubmitResponse}>
           <Card variant="outlined">
             <CardHeader

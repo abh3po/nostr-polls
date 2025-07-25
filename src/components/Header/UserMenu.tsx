@@ -5,7 +5,7 @@ import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
-import { useSigner } from "../../contexts/signer-context";
+import { signerManager } from "../Signer/SignerManager";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -16,10 +16,9 @@ export const UserMenu: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const { user } = useUserContext();
-  const { logout } = useSigner();
 
   const handleLogOut = () => {
-    logout();
+    signerManager.logout();
     setAnchorEl(null);
   };
 
@@ -35,7 +34,9 @@ export const UserMenu: React.FC = () => {
       >
         {user
           ? [
-            <MenuItem onClick={() => setShowSettings(true)}>Settings</MenuItem>,
+              <MenuItem onClick={() => setShowSettings(true)}>
+                Settings
+              </MenuItem>,
               <MenuItem onClick={handleLogOut}>Log Out</MenuItem>,
               <ListItem>
                 <ColorSchemeToggle />
@@ -50,7 +51,10 @@ export const UserMenu: React.FC = () => {
               </ListItem>,
             ]}
       </Menu>
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
       <LoginModal
         open={showLoginModal}
         onClose={() => setShowLoginModal(false)}

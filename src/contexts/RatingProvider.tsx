@@ -1,8 +1,8 @@
 import React, { createContext, useEffect, useRef, useState } from "react";
 import { Event } from "nostr-tools";
 import { useRelays } from "../hooks/useRelays";
-import { useAppContext } from "../hooks/useAppContext";
 import { useUserContext } from "../hooks/useUserContext";
+import { pool } from "../singletons";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating
 
@@ -10,7 +10,7 @@ interface RatingContextType {
   registerEntityId: (id: string) => void;
   getAverageRating: (id: string) => { avg: number; count: number } | null;
   ratings: RatingMap;
-  userRatingEvent?: Event
+  userRatingEvent?: Event;
 }
 
 export const RatingContext = createContext<RatingContextType>({
@@ -24,14 +24,13 @@ export const RatingContext = createContext<RatingContextType>({
 export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { poolRef } = useAppContext();
   const [ratings, setRatings] = useState<RatingMap>(new Map());
-  const [userRatingEvent, setUserRatingEvent]= useState<Event>()
+  const [userRatingEvent, setUserRatingEvent] = useState<Event>();
   const trackedIdsRef = useRef<Set<string>>(new Set());
   const lastTrackedIds = useRef<string[]>([]);
-  const subscriptionRef = useRef<ReturnType<
-    typeof poolRef.current.subscribeMany
-  > | null>(null);
+  const subscriptionRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(
+    null
+  );
 
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -53,9 +52,9 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
     const dTag = ev.tags.find((t) => t[0] === "d")?.[1];
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
-    if(user && user.pubkey === ev.pubkey) {
-      if(userRatingEvent && userRatingEvent.created_at > ev.created_at) return
-      setUserRatingEvent(ev as Event)
+    if (user && user.pubkey === ev.pubkey) {
+      if (userRatingEvent && userRatingEvent.created_at > ev.created_at) return;
+      setUserRatingEvent(ev as Event);
     }
 
     if (!dTag || !ratingTag || !pubkey) return;
@@ -72,7 +71,6 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
-    if (!poolRef) return;
     const interval = setInterval(() => {
       const ids = Array.from(trackedIdsRef.current);
       const hasChanged =
@@ -94,20 +92,16 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       ];
 
-      subscriptionRef.current = poolRef.current.subscribeMany(
-        relays,
-        filters,
-        {
-          onevent: handleEvent,
-        }
-      );
+      subscriptionRef.current = pool.subscribeMany(relays, filters, {
+        onevent: handleEvent,
+      });
     }, 3000); // Adjust frequency as needed
 
     return () => {
       clearInterval(interval);
       if (subscriptionRef.current) subscriptionRef.current.close();
     };
-  }, [poolRef, user]);
+  }, [user]);
 
   return (
     <RatingContext.Provider

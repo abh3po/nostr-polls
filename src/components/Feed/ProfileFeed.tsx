@@ -11,7 +11,6 @@ import {
   Typography,
 } from "@mui/material";
 import RateProfileModal from "../Ratings/RateProfileModal";
-import { useSigner } from "../../contexts/signer-context";
 
 const BATCH_SIZE = 20;
 
@@ -21,7 +20,6 @@ const ProfilesFeed: React.FC = () => {
   const [until, setUntil] = useState<number | undefined>(undefined); // for pagination
   const [modalOpen, setModalOpen] = useState(false);
   const { user } = useUserContext();
-  const { requestLogin } = useSigner();
   const { relays } = useRelays();
 
   const fetchProfiles = () => {
@@ -97,7 +95,7 @@ const ProfilesFeed: React.FC = () => {
       ))}
       <div style={{ textAlign: "center", margin: 20 }}>
         <Button
-          onClick={!!user ? fetchProfiles : requestLogin}
+          onClick={fetchProfiles}
           variant="contained"
           disabled={loadingMore}
         >

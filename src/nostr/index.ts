@@ -1,6 +1,7 @@
 import { Event, EventTemplate, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
-import { NostrSigner } from "../components/Signer/types";
+import { pool } from "../singletons";
+import { signerManager } from "../components/Signer/SignerManager";
 
 export const defaultRelays = [
   "wss://relay.damus.io/",
@@ -13,7 +14,10 @@ export const defaultRelays = [
   "wss://nostr21.com",
 ];
 
-export const fetchUserProfile = async (pubkey: string, pool: SimplePool, relays: string[] = defaultRelays) => {
+export const fetchUserProfile = async (
+  pubkey: string,
+  relays: string[] = defaultRelays
+) => {
   let result = await pool.get(relays, { kinds: [0], authors: [pubkey] });
   return result;
 };
@@ -42,7 +46,11 @@ export const fetchUserProfiles = async (
   return result;
 };
 
-export const fetchComments = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+export const fetchComments = async (
+  eventIds: string[],
+  pool: SimplePool,
+  relays: string[] = defaultRelays
+) => {
   let result = await pool.querySync(relays, {
     kinds: [1],
     "#e": eventIds,
@@ -50,7 +58,11 @@ export const fetchComments = async (eventIds: string[], pool: SimplePool, relays
   return result;
 };
 
-export const fetchLikes = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+export const fetchLikes = async (
+  eventIds: string[],
+  pool: SimplePool,
+  relays: string[] = defaultRelays
+) => {
   let result = await pool.querySync(relays, {
     kinds: [7],
     "#e": eventIds,
@@ -58,7 +70,11 @@ export const fetchLikes = async (eventIds: string[], pool: SimplePool, relays: s
   return result;
 };
 
-export const fetchZaps = async (eventIds: string[], pool: SimplePool, relays: string[] = defaultRelays) => {
+export const fetchZaps = async (
+  eventIds: string[],
+  pool: SimplePool,
+  relays: string[] = defaultRelays
+) => {
   let result = await pool.querySync(relays, {
     kinds: [9735],
     "#e": eventIds,
@@ -79,28 +95,19 @@ export const getATagFromEvent = (event: Event) => {
   return a_tag;
 };
 
-export const signEvent = async (
-  event: EventTemplate,
-  signer?: NostrSigner | null,
-  secret?: string,
-  requestLogin?: () => void
-) => {
+export const signEvent = async (event: EventTemplate, secret?: string) => {
   let signedEvent;
   let secretKey;
-  if (!signer && !secret) {
-    requestLogin?.();
-    return;
-  }
-  if (signer) {
-    console.log("ATTEMPTING TO SIGN!!");
-    signedEvent = await signer.signEvent(event);
-    console.log("THE EVENT IS SIGNED THIS IS THE EVEBT", signedEvent);
-    return signedEvent;
-  }
   if (secret) {
     secretKey = hexToBytes(secret);
     signedEvent = finalizeEvent(event, secretKey);
+    return signedEvent;
   }
+  const signer = await signerManager.getSigner();
+  if (!signer) {
+    throw Error("Login Method Not Provided");
+  }
+  signedEvent = await signer.signEvent(event);
   return signedEvent;
 };
 

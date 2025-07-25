@@ -3,9 +3,9 @@ import { Event } from "nostr-tools/lib/types/core";
 import { useRelays } from "../../hooks/useRelays";
 import { useEffect, useState } from "react";
 import { Analytics } from "../PollResults/Analytics";
-import { useAppContext } from "../../hooks/useAppContext";
 import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { nip13 } from "nostr-tools";
+import { pool } from "../../singletons";
 
 interface FetchResultsProps {
   pollEvent: Event;
@@ -25,7 +25,6 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
   const pollExpiration = pollEvent.tags.filter(
     (t) => t[0] === "endsAt"
   )?.[0]?.[1];
-  const { poolRef } = useAppContext();
   const { relays: userRelays } = useRelays();
   const getUniqueLatestEvents = (events: Event[]) => {
     const eventMap = new Map<string, Event>();
@@ -68,7 +67,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
       resultFilter.until = Number(pollExpiration);
     }
     const useRelays = relays?.length ? relays : userRelays;
-    let newCloser = poolRef.current.subscribeMany(useRelays, [resultFilter], {
+    let newCloser = pool.subscribeMany(useRelays, [resultFilter], {
       onevent: handleResultEvent,
     });
     setCloser(newCloser);
@@ -80,7 +79,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
       if (closer) closer.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [poolRef, filterPubkeys]);
+  }, [filterPubkeys]);
 
   return (
     <>
