@@ -16,6 +16,7 @@ import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
 import { alpha, useTheme } from "@mui/material/styles";
+import { useResizeObserver } from "../../hooks/useResizeObserver";
 
 interface NotesProps {
   event: Event;
@@ -49,9 +50,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     }
   }, [event, fetchUserProfileThrottled, profiles]);
 
-  useEffect(() => {
-    checkOverflow();
-  }, [event]);
+  useResizeObserver(contentRef, checkOverflow);
 
   const timeAgo = calculateTimeAgo(event.created_at);
 
@@ -94,10 +93,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
             <>
               <Typography sx={{ fontSize: 10 }}>replying to:</Typography>
               <div style={{ borderRadius: "2px", borderColor: "grey" }}>
-                <PrepareNote
-                  eventId={referencedEventId}
-                  onReady={checkOverflow}
-                />
+                <PrepareNote eventId={referencedEventId} />
               </div>
             </>
           )}

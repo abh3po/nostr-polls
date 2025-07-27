@@ -3,10 +3,12 @@ import { Button, CircularProgress } from "@mui/material";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { Notes } from "../../../Notes";
+import PullToRefresh from "react-pull-to-refresh";
 
 const FollowingFeed = () => {
   const { user, requestLogin } = useUserContext();
-  const { events, fetchNotes, loadingMore } = useFollowingNotes(user);
+  const { events, fetchNotes, loadingMore, fetchNewerNotes } =
+    useFollowingNotes(user);
 
   const sorted = Array.from(events.values()).sort(
     (a, b) => b.created_at - a.created_at
@@ -18,7 +20,7 @@ const FollowingFeed = () => {
   }, [user, fetchNotes]);
 
   return (
-    <>
+    <PullToRefresh onRefresh={fetchNewerNotes}>
       {sorted.map((e) => (
         <Notes key={e.id} event={e} />
       ))}
@@ -38,7 +40,7 @@ const FollowingFeed = () => {
           )}
         </Button>
       </div>
-    </>
+    </PullToRefresh>
   );
 };
 

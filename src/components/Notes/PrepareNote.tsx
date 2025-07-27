@@ -7,13 +7,9 @@ import { pool } from "../..//singletons";
 
 interface PrepareNoteInterface {
   eventId: string;
-  onReady?: () => void;
 }
 
-export const PrepareNote: React.FC<PrepareNoteInterface> = ({
-  eventId,
-  onReady,
-}) => {
+export const PrepareNote: React.FC<PrepareNoteInterface> = ({ eventId }) => {
   const { relays } = useRelays();
   const [event, setEvent] = useState<Event | null>(null);
 
@@ -22,12 +18,11 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({
       const filter = { ids: [id] };
       let result = await pool.get(relays, filter);
       setEvent(result);
-      if (result && onReady) onReady(); // Notify parent
     };
     if (eventId && !event) {
       fetchEvent(eventId);
     }
-  }, [eventId, event, onReady, relays]);
+  }, [eventId, event, , relays]);
 
   if (event) return <Notes event={event} />;
   else
