@@ -64,6 +64,7 @@ class SignerManager {
     this.user = userData;
     setUserDataInLocalStorage(userData);
     this.notify();
+    console.log("LOGGIN IN WITH NIP07 IS NOW COMPLETE");
   }
 
   async loginWithNip46(bunkerUri: string) {

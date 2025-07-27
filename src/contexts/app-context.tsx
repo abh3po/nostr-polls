@@ -3,6 +3,7 @@ import { Event } from "nostr-tools/lib/types/core";
 import { Profile } from "../nostr/types";
 import { Throttler } from "../nostr/requestThrottler";
 import { pool } from "../singletons";
+import { LoginModal } from "../components/Login/LoginModal";
 
 type AppContextInterface = {
   profiles: Map<string, Profile> | undefined;
@@ -32,7 +33,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [aiSettings, setAISettings] = useState(
     JSON.parse(localStorage.getItem("ai-settings") || "{}")
   );
-
   const addEventToProfiles = (event: Event) => {
     if (profiles.has(event.pubkey)) return;
     try {

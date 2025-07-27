@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { Notes } from "../../../Notes";
 
 const FollowingFeed = () => {
-  const { user } = useUserContext();
+  const { user, requestLogin } = useUserContext();
   const { events, fetchNotes, loadingMore } = useFollowingNotes(user);
 
   const sorted = Array.from(events.values()).sort(
@@ -24,7 +24,11 @@ const FollowingFeed = () => {
       ))}
 
       <div style={{ textAlign: "center", margin: 20 }}>
-        <Button onClick={fetchNotes} variant="contained" disabled={loadingMore}>
+        <Button
+          onClick={!user ? requestLogin : fetchNotes}
+          variant="contained"
+          disabled={loadingMore}
+        >
           {loadingMore ? (
             <CircularProgress size={24} />
           ) : !!user ? (

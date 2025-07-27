@@ -45,22 +45,10 @@ const App: React.FC = () => {
     signerManager.registerLoginModal(() => {
       return new Promise<void>((resolve) => {
         setLoginModalOpen(true);
-
-        const handleLoginComplete = () => {
-          setLoginModalOpen(false);
-          resolve(); // Resolve the promise once login is done
-        };
-
-        // Store the handler somewhere accessible if needed,
-        // or wrap it in closure as below using a state var.
-        setModalHandlers({ onLoginComplete: handleLoginComplete });
       });
     });
   }, []);
 
-  const [modalHandlers, setModalHandlers] = useState<{
-    onLoginComplete?: () => void;
-  }>({});
   return (
     <NotificationProvider>
       <ThemeProvider
