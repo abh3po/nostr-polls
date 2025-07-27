@@ -37,6 +37,7 @@ const FollowingFeed = () => {
           </Button>
         </div>
       ) : null}
+      {loadingMore ? <CircularProgress /> : null}
       <Virtuoso
         data={sorted}
         itemContent={(index, event) => <Notes event={event} />}

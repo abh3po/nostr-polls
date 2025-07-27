@@ -97,6 +97,7 @@ class SignerManager {
     removeBunkerUriFromLocalStorage();
     removeAppSecretFromLocalStorage();
     removeUserDataFromLocalStorage();
+    console.log("Logged out from everywhere");
     this.notify();
   }
 
@@ -111,10 +112,8 @@ class SignerManager {
     throw new Error("No signer available and no login modal registered.");
   }
 
-  async getUser(): Promise<User> {
-    if (this.user) return this.user;
-    const pubkey = await (await this.getSigner()).getPublicKey();
-    return { pubkey };
+  getUser() {
+    return this.user;
   }
 
   onChange(cb: () => void) {
