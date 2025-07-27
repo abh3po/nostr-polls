@@ -23,7 +23,20 @@ const FollowingFeed = () => {
 
   return (
     <div>
-      {" "}
+      {!user ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            margin: 10,
+          }}
+        >
+          <Button variant="contained" onClick={requestLogin}>
+            login to view feed
+          </Button>
+        </div>
+      ) : null}
       <Virtuoso
         data={sorted}
         itemContent={(index, event) => <Notes event={event} />}

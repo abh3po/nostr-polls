@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Button, CircularProgress } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { useReactedNotes } from "../hooks/useReactedNotes";
 import ReactedNoteCard from "./ReactedNoteCard";
 import { Event } from "nostr-tools";
+import { Virtuoso } from "react-virtuoso";
 
 const ReactedFeed = () => {
   const { user } = useUserContext();
@@ -21,21 +22,30 @@ const ReactedFeed = () => {
   );
 
   return (
-    <>
-      {sorted.map((note: Event) => (
-        <ReactedNoteCard
-          key={note.id}
-          note={note}
-          reactions={Array.from(reactionEvents.values())}
-        />
-      ))}
-
-      <div style={{ textAlign: "center", margin: 20 }}>
-        <Button onClick={fetchReactedNotes} disabled={loading} variant="contained">
-          {loading ? <CircularProgress size={24} /> : "Load More"}
-        </Button>
-      </div>
-    </>
+    <div style={{ height: "100vh" }}>
+      <Virtuoso
+        data={sorted}
+        itemContent={(index, note: Event) => (
+          <ReactedNoteCard
+            key={note.id}
+            note={note}
+            reactions={Array.from(reactionEvents.values())}
+          />
+        )}
+        endReached={() => {
+          console.log("Reached bottom, loading more...");
+          fetchReactedNotes();
+        }}
+        components={{
+          Footer: () =>
+            loading ? (
+              <div style={{ textAlign: "center", padding: 20 }}>
+                <CircularProgress size={24} />
+              </div>
+            ) : null,
+        }}
+      />
+    </div>
   );
 };
 

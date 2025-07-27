@@ -8,7 +8,7 @@ import {
   Button,
   Stack,
 } from "@mui/material";
-import { signerManager } from "../Signer/SignerManager";
+import { signerManager } from "../../singletons/Signer/SignerManager";
 import { useUserContext } from "../../hooks/useUserContext";
 
 interface Props {

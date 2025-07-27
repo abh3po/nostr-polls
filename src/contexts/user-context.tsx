@@ -1,5 +1,6 @@
-import { createContext, ReactNode, useState } from "react";
+import { createContext, ReactNode, useEffect, useState } from "react";
 import { LoginModal } from "../components/Login/LoginModal";
+import { signerManager } from "../singletons/Signer/SignerManager";
 
 export type User = {
   name?: string;
@@ -22,6 +23,22 @@ export const UserContext = createContext<UserContextInterface | null>(null);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(false);
+  useEffect(() => {
+    if (!user) {
+      console.log("ATTEMPTING RESTORE FROM LOCAL STORAGE");
+      signerManager.restoreFromStorage();
+    }
+  }, []);
+  useEffect(() => {
+    signerManager.registerLoginModal(() => {
+      return new Promise<void>((resolve) => {
+        setLoginModalOpen(true);
+      });
+    });
+    signerManager.onChange(async () => {
+      setUser(await signerManager.getUser());
+    });
+  }, []);
 
   const requestLogin = () => {
     setLoginModalOpen(true);

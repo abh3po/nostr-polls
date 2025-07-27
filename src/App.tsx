@@ -29,7 +29,7 @@ import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadata
 import FeedsLayout from "./components/Feed/FeedsLayout";
 import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
-import { signerManager } from "./components/Signer/SignerManager";
+import { signerManager } from "./singletons/Signer/SignerManager";
 import { LoginModal } from "./components/Login/LoginModal";
 
 declare global {
@@ -39,16 +39,6 @@ declare global {
 }
 
 const App: React.FC = () => {
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
-  useEffect(() => {
-    // Register the login modal callback when app loads
-    signerManager.registerLoginModal(() => {
-      return new Promise<void>((resolve) => {
-        setLoginModalOpen(true);
-      });
-    });
-  }, []);
-
   return (
     <NotificationProvider>
       <ThemeProvider
@@ -109,12 +99,6 @@ const App: React.FC = () => {
                       />
                     </Routes>
                   </Router>
-                  <LoginModal
-                    open={loginModalOpen}
-                    onClose={function (): void {
-                      setLoginModalOpen(false);
-                    }}
-                  />
                 </RatingProvider>
               </ListProvider>
             </RelayProvider>

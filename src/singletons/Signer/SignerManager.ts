@@ -36,7 +36,10 @@ class SignerManager {
     const keys = getKeysFromLocalStorage();
     const bunkerUri = getBunkerUriInLocalStorage();
     const cachedUser = getUserDataFromLocalStorage();
-    if (cachedUser) this.user = cachedUser.user;
+
+    if (cachedUser) {
+      this.user = cachedUser.user;
+    }
 
     try {
       if (bunkerUri?.bunkerUri) {
@@ -47,6 +50,7 @@ class SignerManager {
     } catch (e) {
       console.error("Signer restore failed:", e);
     }
+    this.notify();
   }
 
   async loginWithNip07() {
