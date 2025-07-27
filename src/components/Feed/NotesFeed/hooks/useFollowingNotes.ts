@@ -35,8 +35,10 @@ export const useFollowingNotes = (user: any) => {
     setLoadingMore(false);
   };
   const fetchNewerNotes = async () => {
+    console.log("Fetch Newer Notes Called");
     if (!user?.follows?.length) return;
 
+    setLoadingMore(true);
     const pool = new SimplePool();
     const filter: Filter = {
       kinds: [1],
@@ -57,6 +59,7 @@ export const useFollowingNotes = (user: any) => {
       prev.forEach((e, id) => updated.set(id, e)); // keep existing
       return updated;
     });
+    setLoadingMore(false);
   };
 
   return { events, fetchNotes, fetchNewerNotes, loadingMore };

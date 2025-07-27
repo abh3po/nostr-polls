@@ -3,7 +3,7 @@ import { Button, CircularProgress } from "@mui/material";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { Notes } from "../../../Notes";
-import PullToRefresh from "react-pull-to-refresh";
+import { Virtuoso } from "react-virtuoso/dist";
 
 const FollowingFeed = () => {
   const { user, requestLogin } = useUserContext();
@@ -19,30 +19,26 @@ const FollowingFeed = () => {
     if (user) {
       fetchNotes();
     }
-  }, [user, fetchNotes]);
+  }, [user]);
 
   return (
-    <PullToRefresh onRefresh={fetchNewerNotes}>
-      {sorted.map((e) => (
-        <Notes key={e.id} event={e} />
-      ))}
-
-      <div style={{ textAlign: "center", margin: 20 }}>
-        <Button
-          onClick={!user ? requestLogin : fetchNotes}
-          variant="contained"
-          disabled={loadingMore}
-        >
-          {loadingMore ? (
-            <CircularProgress size={24} />
-          ) : !!user ? (
-            "Load More"
-          ) : (
-            "Login"
-          )}
-        </Button>
-      </div>
-    </PullToRefresh>
+    <div>
+      {" "}
+      <Virtuoso
+        data={sorted}
+        itemContent={(index, event) => <Notes event={event} />}
+        style={{ height: "100vh" }} // Fill screen
+        followOutput={false} // Prevent auto-scroll-to-bottom unless you want it
+        startReached={() => {
+          console.log("Top reached!");
+          fetchNewerNotes();
+        }}
+        endReached={() => {
+          console.log("Bottom reached!");
+          fetchNotes();
+        }}
+      />
+    </div>
   );
 };
 

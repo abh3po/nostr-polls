@@ -24,6 +24,7 @@
     "react-pull-to-refresh": "^2.0.1",
     "react-router-dom": "^6.24.0",
     "react-scripts": "5.0.1",
+    "react-virtuoso": "^4.13.0",
     "typescript": "^5.2.2"
   },
   "scripts": {
