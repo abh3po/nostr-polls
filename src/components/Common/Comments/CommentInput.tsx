@@ -20,16 +20,21 @@ const CommentInput: React.FC<CommentInputProps> = ({
   };
 
   return (
-    <div style={{ margin: "10px 0" }}>
+    <div>
       <TextField
         value={newComment}
         onChange={(e) => setNewComment(e.target.value)}
         label="Add a comment"
         fullWidth
         multiline
-        style={{ marginBottom: 5 }}
+        rows={2}
+        style={{ marginBottom: 8 }}
       />
-      <Button onClick={handleSubmit} variant="contained" color="secondary">
+      <Button 
+        onClick={handleSubmit} 
+        variant="contained" 
+        color="secondary"
+      >
         Submit Comment
       </Button>
     </div>
