@@ -45,8 +45,11 @@ const MoviePage = () => {
 
     const sub = pool.subscribeMany(relays, filters, {
       onevent(e) {
-        if (!newReviewMap.has(e.id)) {
-          newReviewMap.set(e.id, e);
+        if (newReviewMap.has(e.pubkey)) {
+          if (newReviewMap.get(e.pubkey)!.created_at < e.created_at)
+            newReviewMap.set(e.pubkey, e);
+        } else {
+          newReviewMap.set(e.pubkey, e);
         }
       },
       oneose() {

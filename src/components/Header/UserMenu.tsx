@@ -5,7 +5,7 @@ import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
-import { signerManager } from "../Signer/SignerManager";
+import { signerManager } from "../../singletons/Signer/SignerManager";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",

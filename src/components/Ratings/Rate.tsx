@@ -31,11 +31,10 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
         (t) => t[0] === "rating"
       )?.[1];
       if (userRating) {
-        console.log("USER RATING IS", userRating);
         setRatingValue(parseFloat(userRating) * 5);
       }
     }
-  }, [userRatingEvent]);
+  }, [userRatingEvent, hasExistingRating]);
 
   const handleSubmit = () => {
     if (ratingValue === null) {
@@ -54,8 +53,8 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
     if (newValue != null) {
       setRatingValue(newValue);
       setError("");
-      console.log("NEW VALUE IS", newValue);
-      submitRating(newValue, 5, entityType);
+      //If Review is being added we should not submit rating on rating change
+      if (!showContentInput) submitRating(newValue, 5, entityType);
     }
   };
 
@@ -71,7 +70,9 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <MuiRating
           name={`rating-${entityId}`}
-          value={averageRating ? averageRating * 5 : null}
+          value={
+            ratingValue ? ratingValue : averageRating ? averageRating * 5 : null
+          }
           max={5}
           precision={0.1}
           onChange={(e, newValue) => {

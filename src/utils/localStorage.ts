@@ -60,7 +60,10 @@ type UserData = {
   expiresAt: number;
 };
 
-export const setUserDataInLocalStorage = (user: User, ttlInHours = USER_DATA_TTL_HOURS) => {
+export const setUserDataInLocalStorage = (
+  user: User,
+  ttlInHours = USER_DATA_TTL_HOURS
+) => {
   const now = new Date();
   const expiresAt = now.setHours(now.getHours() + ttlInHours);
 
@@ -88,7 +91,7 @@ export const getUserDataFromLocalStorage = (): { user: User } | null => {
 
     return { user };
   } catch (error) {
-    console.error('Failed to parse user data from localStorage', error);
+    console.error("Failed to parse user data from localStorage", error);
     return null;
   }
 };

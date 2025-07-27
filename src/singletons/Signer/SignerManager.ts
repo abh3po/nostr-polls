@@ -36,7 +36,10 @@ class SignerManager {
     const keys = getKeysFromLocalStorage();
     const bunkerUri = getBunkerUriInLocalStorage();
     const cachedUser = getUserDataFromLocalStorage();
-    if (cachedUser) this.user = cachedUser.user;
+
+    if (cachedUser) {
+      this.user = cachedUser.user;
+    }
 
     try {
       if (bunkerUri?.bunkerUri) {
@@ -47,6 +50,7 @@ class SignerManager {
     } catch (e) {
       console.error("Signer restore failed:", e);
     }
+    this.notify();
   }
 
   async loginWithNip07() {
@@ -64,6 +68,7 @@ class SignerManager {
     this.user = userData;
     setUserDataInLocalStorage(userData);
     this.notify();
+    console.log("LOGGIN IN WITH NIP07 IS NOW COMPLETE");
   }
 
   async loginWithNip46(bunkerUri: string) {
@@ -92,6 +97,7 @@ class SignerManager {
     removeBunkerUriFromLocalStorage();
     removeAppSecretFromLocalStorage();
     removeUserDataFromLocalStorage();
+    console.log("Logged out from everywhere");
     this.notify();
   }
 
@@ -106,10 +112,8 @@ class SignerManager {
     throw new Error("No signer available and no login modal registered.");
   }
 
-  async getUser(): Promise<User> {
-    if (this.user) return this.user;
-    const pubkey = await (await this.getSigner()).getPublicKey();
-    return { pubkey };
+  getUser() {
+    return this.user;
   }
 
   onChange(cb: () => void) {

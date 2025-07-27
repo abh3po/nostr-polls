@@ -32,7 +32,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [aiSettings, setAISettings] = useState(
     JSON.parse(localStorage.getItem("ai-settings") || "{}")
   );
-
   const addEventToProfiles = (event: Event) => {
     if (profiles.has(event.pubkey)) return;
     try {

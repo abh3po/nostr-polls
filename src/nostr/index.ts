@@ -1,7 +1,7 @@
 import { Event, EventTemplate, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { pool } from "../singletons";
-import { signerManager } from "../components/Signer/SignerManager";
+import { signerManager } from "../singletons/Signer/SignerManager";
 
 export const defaultRelays = [
   "wss://relay.damus.io/",

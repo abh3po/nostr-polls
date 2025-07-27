@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAppContext } from "../../hooks/useAppContext";
 import { useRelays } from "../../hooks/useRelays";
 import { Event } from "nostr-tools";
 import { Notes } from ".";
@@ -16,16 +15,14 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ eventId }) => {
 
   useEffect(() => {
     const fetchEvent = async (id: string) => {
-      const filter = {
-        ids: [id],
-      };
+      const filter = { ids: [id] };
       let result = await pool.get(relays, filter);
       setEvent(result);
     };
     if (eventId && !event) {
       fetchEvent(eventId);
     }
-  }, [eventId, event]);
+  }, [eventId, event, , relays]);
 
   if (event) return <Notes event={event} />;
   else

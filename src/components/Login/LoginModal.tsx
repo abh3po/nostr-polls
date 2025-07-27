@@ -8,7 +8,7 @@ import {
   Button,
   Stack,
 } from "@mui/material";
-import { signerManager } from "../Signer/SignerManager";
+import { signerManager } from "../../singletons/Signer/SignerManager";
 import { useUserContext } from "../../hooks/useUserContext";
 
 interface Props {
@@ -20,7 +20,7 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   const { setUser } = useUserContext();
   const handleLoginWithNip07 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
-      setUser(await signerManager.getUser());
+      setUser(signerManager.getUser());
       unsubscribe();
     });
     try {
@@ -34,7 +34,7 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
 
   const handleLoginWithNip46 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
-      setUser(await signerManager.getUser());
+      setUser(signerManager.getUser());
       unsubscribe();
     });
     const bunkerUri = prompt("Enter your Bunker (NIP-46) URI:");

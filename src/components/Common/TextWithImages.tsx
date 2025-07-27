@@ -59,8 +59,6 @@ Text:\n\n${content}`;
         });
 
         const rawLang = result?.data?.response?.trim();
-        console.log("RAW LANG RETURNED WAS", rawLang);
-        // Onl y proceed if rawLang length is exactly 2 and it matches /^[a-z]{2}$/
         if (
           rawLang &&
           rawLang.length === 2 &&
