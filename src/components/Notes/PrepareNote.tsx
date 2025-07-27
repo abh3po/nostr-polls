@@ -27,7 +27,7 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({
     if (eventId && !event) {
       fetchEvent(eventId);
     }
-  }, [eventId, event]);
+  }, [eventId, event, onReady, relays]);
 
   if (event) return <Notes event={event} />;
   else

@@ -15,7 +15,7 @@ const FollowingFeed = () => {
     if (user) {
       fetchNotes();
     }
-  }, [user]);
+  }, [user, fetchNotes]);
 
   return (
     <>

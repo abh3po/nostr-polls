@@ -47,7 +47,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
-  }, []);
+  }, [event, fetchUserProfileThrottled, profiles]);
 
   useEffect(() => {
     checkOverflow();
