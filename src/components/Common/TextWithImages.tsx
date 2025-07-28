@@ -105,6 +105,7 @@ Text:\n\n${content}`;
   };
 
   const renderContent = (text: string) => {
+    if(!text) return null
     const lines = text.split(/\n/);
     return lines.map((line, lineIndex) => {
       const parts = line.split(/(\s+)/);
@@ -172,14 +173,22 @@ Text:\n\n${content}`;
             }
 
             if (part.startsWith("nostr:")) {
+              console.log("FOUND NOSTR LINK!");
               try {
                 const encoded = part.replace("nostr:", "");
                 const { type, data } = nip19.decode(encoded);
-
-                if (type === "nevent" || type === "note") {
+                console.log("TYPE OF NOSTR LINK!", type, data);
+                if (type === "nevent") {
                   return (
                     <div key={index} style={{ marginTop: "0.5rem" }}>
                       <PrepareNote eventId={(data as EventPointer).id} />
+                    </div>
+                  );
+                }
+                if (type === "note") {
+                  return (
+                    <div key={index} style={{ marginTop: "0.5rem" }}>
+                      <PrepareNote eventId={data} />
                     </div>
                   );
                 }

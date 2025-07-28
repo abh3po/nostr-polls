@@ -104,6 +104,7 @@ export const signEvent = async (event: EventTemplate, secret?: string) => {
     return signedEvent;
   }
   const signer = await signerManager.getSigner();
+
   if (!signer) {
     throw Error("Login Method Not Provided");
   }
