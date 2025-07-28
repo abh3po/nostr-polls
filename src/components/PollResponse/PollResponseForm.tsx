@@ -24,7 +24,7 @@ import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { useAppContext } from "../../hooks/useAppContext";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { TextWithImages } from "../Common/TextWithImages";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { Filters } from "./Filter";
 import { useUserContext } from "../../hooks/useUserContext";
 import { ProofofWorkModal } from "./ProofofWorkModal";

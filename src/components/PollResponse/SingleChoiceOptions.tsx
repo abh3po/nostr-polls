@@ -1,5 +1,5 @@
 import { FormControlLabel, Radio, RadioGroup } from "@mui/material";
-import { TextWithImages } from "../Common/TextWithImages";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import "./style.css";
 
 interface SingleChoiceOptionsProps {

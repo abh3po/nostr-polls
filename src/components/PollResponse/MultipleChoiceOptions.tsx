@@ -1,5 +1,5 @@
 import { Checkbox, FormControlLabel, FormGroup } from "@mui/material";
-import { TextWithImages } from "../Common/TextWithImages";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 
 interface MultipleChoiceOptionsProps {
   options: Array<[string, string, string]>;

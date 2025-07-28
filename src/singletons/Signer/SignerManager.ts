@@ -44,7 +44,8 @@ class SignerManager {
     try {
       if (bunkerUri?.bunkerUri) {
         await this.loginWithNip46(bunkerUri.bunkerUri);
-      } else if (keys.secret) {
+      } else if (keys.pubkey) {
+        console.log("Restoring loginWithNip07")
         await this.loginWithNip07();
       }
     } catch (e) {
@@ -102,6 +103,7 @@ class SignerManager {
   }
 
   async getSigner(): Promise<NostrSigner> {
+    console.log("EXisting signer is", this.signer)
     if (this.signer) return this.signer;
 
     if (this.loginModalCallback) {
