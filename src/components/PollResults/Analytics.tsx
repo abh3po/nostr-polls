@@ -10,7 +10,7 @@ import { Event } from "nostr-tools/lib/types/core";
 import { useEffect } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import OverlappingAvatars from "../Common/OverlappingAvatars";
-import { TextWithImages } from "../Common/TextWithImages";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 
 interface AnalyticsProps {
   pollEvent: Event;

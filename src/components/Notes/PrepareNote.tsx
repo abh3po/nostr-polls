@@ -17,7 +17,6 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ eventId }) => {
     const fetchEvent = async (id: string) => {
       const filter = { ids: [id] };
       let result = await pool.get(relays, filter);
-      console.log("FOUND EVENT", result)
       setEvent(result);
     };
     if (eventId && !event) {

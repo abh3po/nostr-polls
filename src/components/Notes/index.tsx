@@ -10,7 +10,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { Event, nip19 } from "nostr-tools";
-import { TextWithImages } from "../Common/TextWithImages";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";

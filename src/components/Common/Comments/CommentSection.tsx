@@ -15,7 +15,7 @@ import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import CommentIcon from "@mui/icons-material/Comment";
 import { useUserContext } from "../../../hooks/useUserContext";
-import { TextWithImages } from "../TextWithImages";
+import { TextWithImages } from "../Parsers/TextWithImages";
 import { calculateTimeAgo } from "../../../utils/common";
 import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
