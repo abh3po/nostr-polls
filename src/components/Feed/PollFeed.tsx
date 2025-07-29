@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Event, Filter } from "nostr-tools";
-import { useAppContext } from "../../hooks/useAppContext";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useRelays } from "../../hooks/useRelays";
@@ -18,6 +17,9 @@ import { pool } from "../../singletons";
 import { Virtuoso } from "react-virtuoso";
 import { Feed } from "./Feed";
 
+const KIND_POLL = 1068;
+const KIND_RESPONSE = [1018, 1070];
+
 const StyledSelect = styled(Select)`
   &::before,
   &::after {
@@ -31,55 +33,115 @@ const CenteredBox = styled(Box)`
 `;
 
 export const PollFeed = () => {
-  const [pollEvents, setPollEvents] = useState<Event[] | undefined>([]);
-  const [userResponses, setUserResponses] = useState<Event[] | undefined>([]);
+  const [pollEvents, setPollEvents] = useState<Event[]>([]);
+  const [userResponses, setUserResponses] = useState<Event[]>([]);
   const [eventSource, setEventSource] = useState<"global" | "following">("global");
   const [feedSubscription, setFeedSubscription] = useState<SubCloser | undefined>();
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
 
   const { user } = useUserContext();
   const { relays } = useRelays();
 
-  const KIND_FILTER = "Polls";
+  const mergeEvents = (existing: Event[], incoming: Event[]): Event[] => {
+    const map = new Map(existing.map(e => [e.id, e]));
+    for (const e of incoming) {
+      map.set(e.id, e); // Overwrite duplicates
+    }
+    return Array.from(map.values()).sort((a, b) => b.created_at - a.created_at);
+  };
 
   const loadMore = () => {
-    if (loadingMore || !pollEvents?.length) return;
+    if (loadingMore || !pollEvents.length) return;
     setLoadingMore(true);
 
-    const sorted = [...pollEvents].sort((a, b) => a.created_at - b.created_at);
-    const lastPollEvent = sorted[0];
-
+    const oldest = Math.min(...pollEvents.map(e => e.created_at));
     const filter: Filter = {
-      kinds: [1068],
-      until: lastPollEvent?.created_at || Math.floor(Date.now() / 1000),
+      kinds: [KIND_POLL],
+      until: oldest,
+      limit: 20,
     };
 
     if (eventSource === "following" && user?.follows?.length) {
       filter.authors = user.follows;
     }
 
-    if (feedSubscription) feedSubscription.close();
-    const newCloser = pool.subscribeMany(relays, [filter], {
+    const closer = pool.subscribeMany(relays, [filter], {
       onevent: (event: Event) => {
-        handleFeedEvents(event, newCloser);
-        setLoadingMore(false);
+        if (verifyEvent(event)) {
+          setPollEvents(prev => mergeEvents(prev, [event]));
+        }
       },
+      oneose: () => setLoadingMore(false),
     });
 
-    setFeedSubscription(newCloser);
+    setFeedSubscription(closer);
   };
 
-  const handleFeedEvents = (event: Event, closer: SubCloser) => {
-    if (
-      verifyEvent(event) &&
-      !pollEvents?.some((e) => e.id === event.id)
-    ) {
-      setPollEvents((prev) => [...(prev || []), event]);
+  const fetchInitialPolls = () => {
+    const filter: Filter = {
+      kinds: [KIND_POLL],
+      since: Math.floor(Date.now() / 1000) - 60 * 60 * 24, // last 24h
+      limit: 40,
+    };
+
+    if (eventSource === "following" && user?.follows?.length) {
+      filter.authors = user.follows;
     }
-    if ((pollEvents?.length || 0) >= 100) closer.close();
+
+    const closer = pool.subscribeMany(relays, [filter], {
+      onevent: (event: Event) => {
+        if (verifyEvent(event)) {
+          setPollEvents(prev => mergeEvents(prev, [event]));
+        }
+      },
+      oneose: () => setLoadingInitial(false),
+    });
+
+    return closer;
   };
 
-  const getUniqueLatestEvents = (events: Event[]) => {
+  const pollForNewPolls = () => {
+    const since = pollEvents[0]?.created_at || Math.floor(Date.now() / 1000);
+    const filter: Filter = {
+      kinds: [KIND_POLL],
+      since: since + 1,
+    };
+
+    if (eventSource === "following" && user?.follows?.length) {
+      filter.authors = user.follows;
+    }
+
+    return pool.subscribeMany(relays, [filter], {
+      onevent: (event: Event) => {
+        if (verifyEvent(event) && !pollEvents.find(e => e.id === event.id)) {
+          setPollEvents(prev => mergeEvents(prev, [event]));
+        }
+      },
+    });
+  };
+
+  const fetchUserResponses = () => {
+    if (!user) return;
+
+    const filter: Filter[] = [
+      {
+        kinds: KIND_RESPONSE,
+        authors: [user.pubkey],
+        limit: 40,
+      },
+    ];
+
+    return pool.subscribeMany(relays, filter, {
+      onevent: (event: Event) => {
+        if (verifyEvent(event)) {
+          setUserResponses(prev => [...prev, event]);
+        }
+      },
+    });
+  };
+
+  const getLatestResponsesByPoll = (events: Event[]) => {
     const map = new Map<string, Event>();
     for (const event of events) {
       const pollId = event.tags.find((t) => t[0] === "e")?.[1];
@@ -91,62 +153,34 @@ export const PollFeed = () => {
     return map;
   };
 
-  const handleResponseEvents = (event: Event) => {
-    setUserResponses((prev) => [...(prev || []), event]);
-  };
-
-  const fetchFeedEvents = () => {
-    const filter: Filter = {
-      kinds: [1068],
-      limit: 20,
-    };
-
-    if (eventSource === "following" && user?.follows?.length) {
-      filter.authors = user.follows;
-    }
-
-    const newCloser = pool.subscribeMany(relays, [filter], {
-      onevent: (event: Event) => {
-        handleFeedEvents(event, newCloser);
-      },
-    });
-
-    return newCloser;
-  };
-
-  const fetchResponseEvents = () => {
-    const filters: Filter[] = [
-      {
-        kinds: [1018, 1070],
-        authors: [user!.pubkey],
-        limit: 40,
-      },
-    ];
-
-    const closer = pool.subscribeMany(relays, filters, {
-      onevent: handleResponseEvents,
-    });
-
-    return closer;
-  };
+  const latestResponses = useMemo(
+    () => getLatestResponsesByPoll(userResponses),
+    [userResponses]
+  );
 
   useEffect(() => {
     if (feedSubscription) feedSubscription.close();
     setPollEvents([]);
-    const newCloser = fetchFeedEvents();
-    setFeedSubscription(newCloser);
-    return () => newCloser?.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setLoadingInitial(true);
+    const closer = fetchInitialPolls();
+    setFeedSubscription(closer);
+    return () => closer?.close();
   }, [eventSource]);
 
   useEffect(() => {
     let closer: SubCloser | undefined;
-    if (user && !userResponses?.length) {
-      closer = fetchResponseEvents();
+    if (user && userResponses.length === 0) {
+      closer = fetchUserResponses();
     }
     return () => closer?.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      pollForNewPolls();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [pollEvents, relays, eventSource]);
 
   return (
     <Container maxWidth="lg" disableGutters>
@@ -172,25 +206,30 @@ export const PollFeed = () => {
         </Grid>
 
         <Grid size={12}>
-          <div style={{ height: "80vh" }}>
-            <Virtuoso
-              data={pollEvents || []}
-              itemContent={(index, event) => (
-                <Feed
-                  events={[event]}
-                  userResponses={getUniqueLatestEvents(userResponses || [])}
-                />
-              )}
-              endReached={loadMore}
-              components={{
-                Footer: () =>
-                  loadingMore ? (
-                    <CenteredBox sx={{ mt: 2, mb: 2 }}>
-                      <CircularProgress size={24} />
-                    </CenteredBox>
-                  ) : null,
-              }}
-            />
+          <div style={{ height: "100vh" }}>
+            {loadingInitial ? (
+              <CenteredBox sx={{ mt: 4 }}>
+                <CircularProgress />
+              </CenteredBox>
+            ) : (
+              <Virtuoso
+                data={pollEvents}
+                itemContent={(index, event) => (
+                  <div key={event.id}>
+                    <Feed events={[event]} userResponses={latestResponses} />
+                  </div>
+                )}
+                endReached={loadMore}
+                components={{
+                  Footer: () =>
+                    loadingMore ? (
+                      <CenteredBox sx={{ mt: 2, mb: 2 }}>
+                        <CircularProgress size={24} />
+                      </CenteredBox>
+                    ) : null,
+                }}
+              />
+            )}
           </div>
         </Grid>
       </Grid>
