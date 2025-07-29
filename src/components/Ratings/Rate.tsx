@@ -16,25 +16,19 @@ interface Props {
 
 const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   const ratingKey = `${entityType}:${entityId}`;
-  const { averageRating, totalRatings, submitRating, userRatingEvent } =
+  const { averageRating, totalRatings, submitRating, getUserRating } =
     useRating(ratingKey);
   const [ratingValue, setRatingValue] = useState<number | null>(null);
   const [content, setContent] = useState("");
   const [showContentInput, setShowContentInput] = useState(false);
   const [error, setError] = useState("");
-
-  const hasExistingRating = !!userRatingEvent;
+  const userRating = getUserRating(ratingKey)
 
   useEffect(() => {
-    if (hasExistingRating) {
-      const userRating = userRatingEvent.tags.find(
-        (t) => t[0] === "rating"
-      )?.[1];
-      if (userRating) {
-        setRatingValue(parseFloat(userRating) * 5);
-      }
+    if (userRating) {
+      setRatingValue(userRating * 5);
     }
-  }, [userRatingEvent, hasExistingRating]);
+  }, [userRating]);
 
   const handleSubmit = () => {
     if (ratingValue === null) {
