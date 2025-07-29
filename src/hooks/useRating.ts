@@ -6,7 +6,7 @@ import { RatingContext } from "../contexts/RatingProvider";
 import { pool } from "../singletons";
 
 export const useRating = (entityId: string) => {
-  const { ratings, registerEntityId, userRatingEvent } =
+  const { ratings, registerEntityId, getUserRating } =
     useContext(RatingContext);
   const hasSubmittedRef = useRef(false);
   const { relays } = useRelays();
@@ -66,6 +66,6 @@ export const useRating = (entityId: string) => {
     averageRating: average,
     totalRatings: entityRatings?.size || 0,
     submitRating,
-    userRatingEvent,
+    getUserRating,
   };
 };

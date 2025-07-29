@@ -5,32 +5,30 @@ import { useUserContext } from "../hooks/useUserContext";
 import { pool } from "../singletons";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating
+type UserRatingMap = Map<string, Event>; // entityId -> Event
 
 interface RatingContextType {
   registerEntityId: (id: string) => void;
   getAverageRating: (id: string) => { avg: number; count: number } | null;
+  getUserRating: (id: string) => number | null;
   ratings: RatingMap;
-  userRatingEvent?: Event;
+  userRatingEvents: UserRatingMap;
 }
 
 export const RatingContext = createContext<RatingContextType>({
-  registerEntityId: (id: string) => null,
-  getAverageRating: (id: String) => {
-    return { avg: -1, count: -1 };
-  },
+  registerEntityId: () => null,
+  getAverageRating: () => ({ avg: -1, count: -1 }),
+  getUserRating: () => null,
   ratings: new Map(),
+  userRatingEvents: new Map(),
 });
 
-export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [ratings, setRatings] = useState<RatingMap>(new Map());
-  const [userRatingEvent, setUserRatingEvent] = useState<Event>();
+  const [userRatingEvents, setUserRatingEvents] = useState<UserRatingMap>(new Map());
   const trackedIdsRef = useRef<Set<string>>(new Set());
   const lastTrackedIds = useRef<string[]>([]);
-  const subscriptionRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(
-    null
-  );
+  const subscriptionRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
 
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -48,19 +46,24 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
     return { avg, count: values.length };
   };
 
+  const getUserRating = (entityId: string): number | null => {
+    const event = userRatingEvents.get(entityId);
+    const ratingTag = event?.tags.find((t) => t[0] === "rating")?.[1];
+    const value = ratingTag ? parseFloat(ratingTag) : NaN;
+    return !isNaN(value) ? value : null;
+  };
+
   const handleEvent = (ev: Event) => {
     const dTag = ev.tags.find((t) => t[0] === "d")?.[1];
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
-    if (user && user.pubkey === ev.pubkey) {
-      if (userRatingEvent && userRatingEvent.created_at > ev.created_at) return;
-      setUserRatingEvent(ev as Event);
-    }
 
     if (!dTag || !ratingTag || !pubkey) return;
+
     const value = parseFloat(ratingTag);
     if (isNaN(value) || value < 0 || value > 1) return;
 
+    // Update global ratings
     setRatings((prev) => {
       const next = new Map(prev);
       const entityMap = new Map(next.get(dTag) || []);
@@ -68,6 +71,19 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
       next.set(dTag, entityMap);
       return next;
     });
+
+    // Update user-specific ratings
+    if (user && user.pubkey === pubkey) {
+      setUserRatingEvents((prev) => {
+        const existing = prev.get(dTag);
+        if (!existing || existing.created_at < ev.created_at) {
+          const updated = new Map(prev);
+          updated.set(dTag, ev);
+          return updated;
+        }
+        return prev;
+      });
+    }
   };
 
   useEffect(() => {
@@ -77,6 +93,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
         ids.length !== lastTrackedIds.current.length ||
         ids.some((id, i) => id !== lastTrackedIds.current[i]);
       if (!hasChanged) return;
+
       lastTrackedIds.current = ids;
 
       if (subscriptionRef.current) {
@@ -95,7 +112,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
       subscriptionRef.current = pool.subscribeMany(relays, filters, {
         onevent: handleEvent,
       });
-    }, 3000); // Adjust frequency as needed
+    }, 3000);
 
     return () => {
       clearInterval(interval);
@@ -105,7 +122,13 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <RatingContext.Provider
-      value={{ registerEntityId, getAverageRating, ratings, userRatingEvent }}
+      value={{
+        registerEntityId,
+        getAverageRating,
+        getUserRating,
+        ratings,
+        userRatingEvents,
+      }}
     >
       {children}
     </RatingContext.Provider>

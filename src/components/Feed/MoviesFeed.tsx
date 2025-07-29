@@ -115,6 +115,7 @@ const MoviesFeed: React.FC = () => {
         </Box>
       ) : (
         <Box>
+          <Typography style={{margin: 10, fontSize: 18}}>Recently Rated</Typography>
           {Array.from(movieIds).map((id) => (
             <div
               key={id}
