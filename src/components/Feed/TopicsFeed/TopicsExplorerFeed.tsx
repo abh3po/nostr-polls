@@ -5,8 +5,6 @@ import {
   Button,
   CircularProgress,
   Typography,
-  ToggleButton,
-  ToggleButtonGroup,
   Tabs,
   Tab,
 } from "@mui/material";
@@ -17,91 +15,108 @@ import { Notes } from "../../Notes/index";
 import PollResponseForm from "../../PollResponse/PollResponseForm";
 import { ArrowBack } from "@mui/icons-material";
 import { Virtuoso } from "react-virtuoso";
+import Rate from "../../../components/Ratings/Rate";
 
 const TopicExplorer: React.FC = () => {
   const { tag } = useParams<{ tag: string }>();
   const { relays } = useRelays();
   const { user } = useUserContext();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [curationMap, setCurationMap] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"uncurated" | "curated">(
-    "uncurated"
-  );
-  const [tabValue, setTabValue] = useState<0 | 1>(0); // 0 = Notes, 1 = Polls
-
-  const seenEventIds = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!tag || !relays.length) return;
-    if (events.length !== 0) return;
-    const pool = new SimplePool();
-    const curatedOffTopic = new Set<string>();
-    setLoading(true);
-    seenEventIds.current.clear();
+  const [notesEvents, setNotesEvents] = useState<Event[]>([]);
+  const [pollsEvents, setPollsEvents] = useState<Event[]>([]);
+  const [curationMap, setCurationMap] = useState<Set<string>>(new Set());
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingPolls, setLoadingPolls] = useState(false);
+  const [tabValue, setTabValue] = useState<0 | 1>(0); // 0 = Notes, 1 = Polls
 
-    const filters = [
-      {
-        kinds: [1, 1068],
+  const curatedOffTopic = useRef<Set<string>>(new Set());
+  const seenNoteIds = useRef<Set<string>>(new Set());
+  const seenPollIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!tag || !relays.length || !user) return;
+
+    const pool = new SimplePool();
+    const filters = [];
+
+    if (tabValue === 0 && notesEvents.length === 0) {
+      filters.push({
+        kinds: [1],
         "#t": [tag],
         limit: 50,
-      },
-      {
-        kinds: [40009],
+      });
+      setLoadingNotes(true);
+    }
+
+    if (tabValue === 1 && pollsEvents.length === 0) {
+      filters.push({
+        kinds: [1068],
         "#t": [tag],
-        authors: user?.follows,
         limit: 50,
-      },
-    ];
+      });
+      setLoadingPolls(true);
+    }
+
+    // Always fetch curation metadata
+    filters.push({
+      kinds: [40009],
+      "#t": [tag],
+      authors: user.follows,
+      limit: 50,
+    });
 
     const sub = pool.subscribeMany(relays, filters, {
       onevent: (event) => {
-        setLoading(false);
-
         if (event.kind === 40009) {
           const taggedEvent = event.tags.find((t) => t[0] === "e")?.[1];
           if (taggedEvent) {
-            curatedOffTopic.add(taggedEvent);
-            setCurationMap(new Set(curatedOffTopic));
+            curatedOffTopic.current.add(taggedEvent);
+            setCurationMap(new Set(curatedOffTopic.current));
           }
-        } else {
-          if (!seenEventIds.current.has(event.id)) {
-            seenEventIds.current.add(event.id);
-            setEvents((prev) => [...prev, event]);
-          }
+          return;
         }
+
+        if (event.kind === 1 && !seenNoteIds.current.has(event.id)) {
+          seenNoteIds.current.add(event.id);
+          setNotesEvents((prev) => [...prev, event]);
+          setLoadingNotes(false);
+        }
+
+        if (event.kind === 1068 && !seenPollIds.current.has(event.id)) {
+          seenPollIds.current.add(event.id);
+          setPollsEvents((prev) => [...prev, event]);
+          setLoadingPolls(false);
+        }
+      },
+      onclose: () => {
+        setLoadingNotes(false);
+        setLoadingPolls(false);
       },
     });
 
     return () => sub.close();
-  }, [tag, relays, user?.follows]);
+  }, [
+    tag,
+    relays,
+    user?.follows,
+    tabValue,
+    notesEvents.length,
+    pollsEvents.length,
+  ]);
 
   const filteredEvents = useMemo(() => {
-    const base =
-      viewMode === "curated"
-        ? events.filter((e) => !curationMap.has(e.id))
-        : events;
-
-    return base.sort((a, b) => b.created_at - a.created_at);
-  }, [events, viewMode, curationMap]);
-
-  const tabFilteredEvents = useMemo(() => {
-    return filteredEvents.filter((e) =>
-      tabValue === 0 ? e.kind === 1 : e.kind === 1068
-    );
-  }, [filteredEvents, tabValue]);
-
-  const handleToggle = (
-    _: React.MouseEvent<HTMLElement>,
-    newMode: "uncurated" | "curated" | null
-  ) => {
-    if (newMode) setViewMode(newMode);
-  };
+    const base = tabValue === 0 ? notesEvents : pollsEvents;
+    return base
+      .filter((e) => !curationMap.has(e.id))
+      .sort((a, b) => b.created_at - a.created_at);
+  }, [tabValue, notesEvents, pollsEvents, curationMap]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue as 0 | 1);
   };
+
+  const loading = tabValue === 0 ? loadingNotes : loadingPolls;
 
   return (
     <Box sx={{ px: 2, py: 4 }}>
@@ -117,8 +132,10 @@ const TopicExplorer: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Topic: #{tag}
       </Typography>
+      <Rate entityId={tag!} entityType={"hashtag"} />
 
-      <ToggleButtonGroup
+      {/* Future toggle (optional) */}
+      {/* <ToggleButtonGroup
         value={viewMode}
         exclusive
         onChange={handleToggle}
@@ -127,7 +144,7 @@ const TopicExplorer: React.FC = () => {
       >
         <ToggleButton value="uncurated">Uncurated</ToggleButton>
         <ToggleButton value="curated">Curated by your follows</ToggleButton>
-      </ToggleButtonGroup>
+      </ToggleButtonGroup> */}
 
       <Tabs
         value={tabValue}
@@ -143,13 +160,13 @@ const TopicExplorer: React.FC = () => {
         <Box display="flex" justifyContent="center" py={6}>
           <CircularProgress />
         </Box>
-      ) : tabFilteredEvents.length === 0 ? (
+      ) : filteredEvents.length === 0 ? (
         <Typography>
           No {tabValue === 0 ? "notes" : "polls"} found for this topic.
         </Typography>
       ) : (
         <Virtuoso
-          data={tabFilteredEvents}
+          data={filteredEvents}
           itemContent={(_, event) => {
             if (event.kind === 1) {
               return <Notes key={event.id} event={event} />;
@@ -159,7 +176,7 @@ const TopicExplorer: React.FC = () => {
               return null;
             }
           }}
-          style={{ height: "calc(100vh - 250px)" }}
+          style={{ height: "100vh" }}
           followOutput={false}
         />
       )}

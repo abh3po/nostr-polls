@@ -37,7 +37,6 @@ import { FeedbackMenu } from "../FeedbackMenu";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import { pool } from "../../singletons";
-import { useNavigate } from "react-router-dom";
 
 interface PollResponseFormProps {
   pollEvent: Event;
@@ -70,8 +69,6 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   )?.[0]?.[1];
   const now = dayjs();
   const { minePow, cancelMining, progress } = useMiningWorker(difficulty);
-  const navigate = useNavigate();
-
   const pollType =
     pollEvent.tags.find((t) => t[0] === "polltype")?.[1] || "singlechoice";
 
@@ -195,16 +192,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
         <form onSubmit={handleSubmitResponse}>
           <Card variant="outlined">
             <CardHeader
-              title={
-                <Box
-                  onClick={(e) => {
-                    navigate(`/respond/${pollEvent.id}`);
-                  }}
-                  style={{ cursor: "pointer", display: "inline-block" }}
-                >
-                  <TextWithImages content={label} />
-                </Box>
-              }
+              title={<TextWithImages content={label} />}
               subheader={
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <Typography sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}>

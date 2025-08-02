@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Event, SimplePool } from "nostr-tools";
 import { useRelays } from "../../../hooks/useRelays";
 import { useNavigate, Outlet, useParams } from "react-router-dom";
@@ -9,10 +9,10 @@ import {
   Box,
   CircularProgress,
 } from "@mui/material";
+import Rate from "../../../components/Ratings/Rate";
 
 const TopicsFeed: React.FC = () => {
-  const tagsSet = useRef<Set<string>>(new Set());
-  const [refresh, setRefresh] = useState(0); // just to trigger re-render
+  const [tagsMap, setTagsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const { relays } = useRelays();
   const navigate = useNavigate();
@@ -36,7 +36,6 @@ const TopicsFeed: React.FC = () => {
 
   useEffect(() => {
     if (tag || relays.length === 0) return;
-
     const pool = new SimplePool();
 
     const sub = pool.subscribeMany(
@@ -49,10 +48,14 @@ const TopicsFeed: React.FC = () => {
 
           if (parsedDTag && parsedDTag.type === "hashtag") {
             const id = parsedDTag.id;
-            if (!tagsSet.current.has(id)) {
-              tagsSet.current.add(id);
-              setRefresh((r) => r + 1); // trigger rerender
-            }
+            setTagsMap((prev: Map<string, number>) => {
+              let newMap = new Map(prev);
+              const existingTimestamp = tagsMap.get(id) || 0;
+              if (event.created_at > existingTimestamp) {
+                newMap.set(id, event.created_at);
+              }
+              return newMap;
+            });
           }
         },
         oneose: () => {
@@ -75,7 +78,9 @@ const TopicsFeed: React.FC = () => {
 
   if (tag) return <Outlet />;
 
-  const tags = Array.from(tagsSet.current);
+  const tags = Array.from(tagsMap.entries())
+    .sort((a, b) => b[1] - a[1]) // Sort by most recent timestamp
+    .map(([tag]) => tag); // Extract tag names
 
   return (
     <Box sx={{ px: 2, py: 4 }}>
@@ -102,6 +107,7 @@ const TopicsFeed: React.FC = () => {
               <Typography variant="body2" color="text.secondary">
                 Click to explore notes and polls about this topic.
               </Typography>
+              <Rate entityId={tag} entityType={"hashtag"} />
             </CardContent>
           </Card>
         ))

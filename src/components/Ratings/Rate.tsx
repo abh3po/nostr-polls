@@ -22,7 +22,7 @@ const Rate: React.FC<Props> = ({ entityId, entityType = "event" }) => {
   const [content, setContent] = useState("");
   const [showContentInput, setShowContentInput] = useState(false);
   const [error, setError] = useState("");
-  const userRating = getUserRating(ratingKey)
+  const userRating = getUserRating(ratingKey);
 
   useEffect(() => {
     if (userRating) {
