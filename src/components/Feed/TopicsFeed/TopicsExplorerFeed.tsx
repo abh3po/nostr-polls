@@ -17,6 +17,7 @@ import { Notes } from "../../Notes/index";
 import PollResponseForm from "../../PollResponse/PollResponseForm";
 import { ArrowBack } from "@mui/icons-material";
 import { Virtuoso } from "react-virtuoso";
+import Rate from "../../../components/Ratings/Rate";
 
 const TopicExplorer: React.FC = () => {
   const { tag } = useParams<{ tag: string }>();
@@ -117,8 +118,8 @@ const TopicExplorer: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Topic: #{tag}
       </Typography>
-
-      <ToggleButtonGroup
+      <Rate entityId={tag!} entityType={"hashtag"} />
+      {/* <ToggleButtonGroup
         value={viewMode}
         exclusive
         onChange={handleToggle}
@@ -127,7 +128,7 @@ const TopicExplorer: React.FC = () => {
       >
         <ToggleButton value="uncurated">Uncurated</ToggleButton>
         <ToggleButton value="curated">Curated by your follows</ToggleButton>
-      </ToggleButtonGroup>
+      </ToggleButtonGroup> */}
 
       <Tabs
         value={tabValue}
@@ -159,7 +160,7 @@ const TopicExplorer: React.FC = () => {
               return null;
             }
           }}
-          style={{ height: "calc(100vh - 250px)" }}
+          style={{ height: "100vh" }}
           followOutput={false}
         />
       )}
