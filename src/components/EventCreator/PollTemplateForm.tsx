@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -10,6 +10,7 @@ import {
   Select,
   MenuItem,
   Collapse,
+  Chip,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
@@ -72,6 +73,8 @@ const PollTemplateForm: React.FC<{
   const [poW, setPoW] = useState<number | null>(null);
   const [expiration, setExpiration] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [topics, setTopics] = useState<string[]>([]);
+
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -81,14 +84,26 @@ const PollTemplateForm: React.FC<{
   const addOption = () => {
     setOptions([...options, [generateOptionId(), ""]]);
   };
+
   const onEditOptions = (newOptions: Option[]) => {
     setOptions(newOptions);
   };
+
   const removeOption = (index: number) => {
     const updatedOptions = [...options];
     updatedOptions.splice(index, 1);
     setOptions(updatedOptions);
   };
+
+  const extractHashtags = (text: string): string[] => {
+    const hashtagRegex = /#(\w+)/g;
+    const matches = text.matchAll(hashtagRegex);
+    return Array.from(new Set(matches.map((m) => m[1].toLowerCase())));
+  };
+
+  useEffect(() => {
+    setTopics(extractHashtags(eventContent));
+  }, [eventContent]);
 
   const publishPollEvent = async (secret?: string) => {
     try {
@@ -104,25 +119,31 @@ const PollTemplateForm: React.FC<{
         showNotification(NOTIFICATION_MESSAGES.EMPTY_POLL_OPTIONS, "error");
         return;
       }
+
       const pollEvent = {
         kind: NOSTR_EVENT_KINDS.POLL,
         content: eventContent,
         tags: [
           ...options.map((option: Option) => ["option", option[0], option[1]]),
           ...relays.map((relay) => ["relay", relay]),
+          ...topics.map((tag) => ["t", tag]), // Add topic tags
         ],
         created_at: Math.floor(Date.now() / 1000),
       };
+
       if (poW) pollEvent.tags.push(["PoW", poW.toString()]);
       if (pollType) pollEvent.tags.push(["polltype", pollType]);
       if (expiration) pollEvent.tags.push(["endsAt", expiration.toString()]);
+
       setIsSubmitting(true);
       const signedEvent = await signEvent(pollEvent, user?.privateKey);
       setIsSubmitting(false);
+
       if (!signedEvent) {
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
+
       pool.publish(relays, signedEvent);
       showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
       navigate("/feeds/polls");
@@ -149,6 +170,7 @@ const PollTemplateForm: React.FC<{
       ["polltype", pollType],
       ...(expiration ? [["endsAt", expiration.toString()]] : []),
       ...(poW ? [["PoW", poW.toString()]] : []),
+      ...topics.map((tag) => ["t", tag]),
     ],
   };
 
@@ -165,9 +187,28 @@ const PollTemplateForm: React.FC<{
             minRows={4}
             maxRows={8}
             fullWidth
-            placeholder="Ask a question."
+            placeholder="Ask a question. Use #hashtags to tag topics."
           />
         </Box>
+
+        {topics.length > 0 && (
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Topics
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {topics.map((topic, index) => (
+                <Chip
+                  key={index}
+                  label={`#${topic}`}
+                  color="secondary"
+                  variant="outlined"
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
         <Box>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Poll Options
@@ -179,6 +220,7 @@ const PollTemplateForm: React.FC<{
             options={options}
           />
         </Box>
+
         <Box>
           <Typography variant="h6" sx={{ mb: 3 }}>
             Poll Settings
@@ -238,6 +280,7 @@ const PollTemplateForm: React.FC<{
             </Grid>
           </Grid>
         </Box>
+
         <Box>
           <Typography variant="h6" sx={{ mb: 3 }}>
             Advanced Settings
@@ -251,6 +294,7 @@ const PollTemplateForm: React.FC<{
             fullWidth
           />
         </Box>
+
         <Box sx={{ pt: 2 }}>
           <Box display="flex" flexDirection="column" gap={2}>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
