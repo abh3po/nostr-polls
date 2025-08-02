@@ -26,7 +26,6 @@ const ProfilesFeed: React.FC = () => {
   const seen = useRef<Set<string>>(new Set());
 
   const fetchRatedProfiles = async () => {
-    if (!user || !user.follows || user.follows.length === 0 || loading) return;
     setLoading(true);
 
     const pool = new SimplePool();
@@ -38,7 +37,6 @@ const ProfilesFeed: React.FC = () => {
     const ratingFilter: Filter = {
       kinds: [34259],
       "#m": ["profile"],
-      authors: user.follows,
       limit: BATCH_SIZE,
       until: currentCursor || now,
     };
@@ -120,7 +118,6 @@ const ProfilesFeed: React.FC = () => {
   const sortedProfiles = Array.from(profileEvents.values()).sort(
     (a, b) => b.created_at - a.created_at
   );
-  console.log("profiles", sortedProfiles)
 
   return (
     <>
