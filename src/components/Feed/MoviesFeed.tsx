@@ -119,7 +119,6 @@ const MoviesFeed: React.FC = () => {
           {Array.from(movieIds).map((id) => (
             <div
               key={id}
-              onClick={() => navigate(`${id}`)}
               style={{ cursor: "pointer" }}
             >
               <MovieCard imdbId={id} />

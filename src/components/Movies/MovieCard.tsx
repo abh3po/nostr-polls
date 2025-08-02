@@ -14,6 +14,7 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { selectBestMetadataEvent } from "./utils";
 import { useMovieMetadata } from "./context/MovieMetadataProvider";
+import { useNavigate } from "react-router/dist";
 
 interface MovieCardProps {
   imdbId: string;
@@ -44,8 +45,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
   const year = activeEvent?.tags.find((t) => t[0] === "year")?.[1];
   const summary = activeEvent?.tags.find((t) => t[0] === "summary")?.[1];
   const pubkey = activeEvent?.pubkey;
-
-  const metadataUser = pubkey
+  const navigate = useNavigate();
+  const metadataUser = metadataEvent
+    ? { pubkey: pubkey, name: "Preview User" }
+    : pubkey
     ? profiles?.get(pubkey) ||
       (() => {
         fetchUserProfileThrottled(pubkey);
@@ -93,7 +96,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "action.hover"
+              bgcolor: "action.hover",
             }}
           >
             <Button size="small" onClick={() => setModalOpen(true)}>
@@ -104,7 +107,9 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
 
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
           <CardContent>
-            <Typography variant="h6">{title}</Typography>
+            <div onClick={() => navigate(`${imdbId}`)}>
+              <Typography variant="h6">{title}</Typography>
+            </div>
             {year && (
               <Typography variant="body2" color="text.secondary">
                 {year}
@@ -116,7 +121,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
               </Typography>
             )}
             {pubkey && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ wordBreak: "break-word", whiteSpace: "normal" }}
+              >
                 Metadata by {metadataUser?.name || nip19.npubEncode(pubkey)}
               </Typography>
             )}
