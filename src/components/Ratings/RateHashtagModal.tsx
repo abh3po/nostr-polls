@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Button, Modal, TextField, Typography } from "@mui/material";
-import HashtagCard from "../Hashtag/HashtagCard";
+import HashtagCard from "../Topics/HashtagCard";
 
 interface RateHashtagModalProps {
   open: boolean;
