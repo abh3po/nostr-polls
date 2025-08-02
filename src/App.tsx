@@ -22,7 +22,6 @@ import { RatingProvider } from "./contexts/RatingProvider";
 import MoviePage from "./components/Movies/MoviePage";
 import NotesFeed from "./components/Feed/NotesFeed/components";
 import ProfilesFeed from "./components/Feed/ProfileFeed";
-import HashtagsFeed from "./components/Feed/HashtagsFeed";
 import { PollFeed } from "./components/Feed/PollFeed";
 import MoviesFeed from "./components/Feed/MoviesFeed";
 import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadataProvider";
@@ -31,6 +30,8 @@ import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
 import { signerManager } from "./singletons/Signer/SignerManager";
 import { LoginModal } from "./components/Login/LoginModal";
+import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
+import TopicsFeed from "./components/Feed/TopicsFeed";
 
 declare global {
   interface Window {
@@ -67,7 +68,9 @@ const App: React.FC = () => {
                       <Route path="/feeds" element={<FeedsLayout />}>
                         <Route path="notes" element={<NotesFeed />} />
                         <Route path="profiles" element={<ProfilesFeed />} />
-                        <Route path="hashtags" element={<HashtagsFeed />} />
+                        <Route path="topics" element={<TopicsFeed />}>
+                          <Route path=":tag" element={<TopicExplorer />} />
+                        </Route>
                         <Route
                           path="polls"
                           index={true}

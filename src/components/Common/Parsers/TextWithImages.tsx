@@ -75,7 +75,7 @@ const HashtagParser = ({ part, index }: { part: string; index: number }) => {
   return hashtagRegex.test(part) ? (
     <a
       key={index}
-      href={`https://snort.social/t/${part.replace("#", "")}`}
+      href={`topics/${part.replace("#", "")}`}
       style={{ color: "#FAD13F", textDecoration: "underline" }}
     >
       {part}

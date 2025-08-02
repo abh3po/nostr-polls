@@ -7,7 +7,7 @@ const feedOptions = [
   { value: "notes", label: "Notes" },
   { value: "movies", label: "Movies" },
   { value: "profiles", label: "Profiles" },
-  { value: "hashtags", label: "Hashtags" },
+  { value: "topics", label: "Topics" },
 ];
 
 const FeedsLayout: React.FC = () => {
