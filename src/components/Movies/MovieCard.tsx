@@ -79,9 +79,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
                 p: 0.5,
                 backgroundColor: "black",
                 borderRadius: "50%",
-                "&:hover": {
-                  backgroundColor: "black",
-                },
               }}
               title="Edit Metadata"
             >
@@ -107,8 +104,22 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
 
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
           <CardContent>
-            <div onClick={() => navigate(`${imdbId}`)}>
-              <Typography variant="h6">{title}</Typography>
+            <div
+              onClick={() => navigate(`${imdbId}`)}
+              style={{ cursor: "pointer" }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  display: "inline-block",
+                  textDecoration: "none",
+                  "&:hover": {
+                    textDecoration: "underline",
+                  },
+                }}
+              >
+                {title}
+              </Typography>
             </div>
             {year && (
               <Typography variant="body2" color="text.secondary">
