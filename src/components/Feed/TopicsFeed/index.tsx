@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Event, SimplePool } from "nostr-tools";
+import React, { useEffect, useState, useRef } from "react";
+import { Event } from "nostr-tools";
 import { useRelays } from "../../../hooks/useRelays";
 import { useNavigate, Outlet, useParams } from "react-router-dom";
 import {
@@ -8,35 +8,55 @@ import {
   Typography,
   Box,
   CircularProgress,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
+  Button,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import Rate from "../../../components/Ratings/Rate";
+import { pool } from "../../../singletons";
+import { Virtuoso } from "react-virtuoso";
 
 const TopicsFeed: React.FC = () => {
   const [tagsMap, setTagsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const { relays } = useRelays();
   const navigate = useNavigate();
   const { tag } = useParams();
 
-  function parseRatingDTag(dTagValue: string): { type: string; id: string } {
-    const ratingDTagArray = dTagValue.split(":");
-    const cleanTag =
-      ratingDTagArray.length === 2
-        ? ratingDTagArray[1].startsWith("#")
-          ? ratingDTagArray[1].slice(1)
-          : ratingDTagArray[1]
-        : ratingDTagArray[0];
+  const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
 
-    if (ratingDTagArray.length === 2) {
-      return { type: ratingDTagArray[0], id: cleanTag };
-    } else {
-      return { type: "event", id: cleanTag };
-    }
+  function parseRatingDTag(dTagValue: string): { type: string; id: string } {
+    const parts = dTagValue.split(":");
+    const cleanTag =
+      parts.length === 2
+        ? parts[1].startsWith("#")
+          ? parts[1].slice(1)
+          : parts[1]
+        : parts[0];
+
+    return {
+      type: parts.length === 2 ? parts[0] : "event",
+      id: cleanTag,
+    };
   }
 
   useEffect(() => {
     if (tag || relays.length === 0) return;
-    const pool = new SimplePool();
+
+    setLoading(true);
+
+    if (subRef.current) {
+      subRef.current.close();
+      subRef.current = null;
+    }
 
     const sub = pool.subscribeMany(
       relays,
@@ -48,22 +68,25 @@ const TopicsFeed: React.FC = () => {
 
           if (parsedDTag && parsedDTag.type === "hashtag") {
             const id = parsedDTag.id;
-            setTagsMap((prev: Map<string, number>) => {
-              let newMap = new Map(prev);
-              const existingTimestamp = tagsMap.get(id) || 0;
-              if (event.created_at > existingTimestamp) {
-                newMap.set(id, event.created_at);
+
+            setTagsMap((prev) => {
+              const current = prev.get(id) || 0;
+              if (event.created_at > current) {
+                const updated = new Map(prev);
+                updated.set(id, event.created_at);
+                return updated;
               }
-              return newMap;
+              return prev;
             });
           }
         },
         oneose: () => {
           setLoading(false);
-          sub.close();
         },
       }
     );
+
+    subRef.current = sub;
 
     const timeout = setTimeout(() => {
       setLoading(false);
@@ -72,20 +95,50 @@ const TopicsFeed: React.FC = () => {
 
     return () => {
       clearTimeout(timeout);
-      sub.close();
+      if (subRef.current) {
+        subRef.current.close();
+        subRef.current = null;
+      }
     };
   }, [tag, relays]);
+
+  const handleSearchSubmit = () => {
+    if (searchTerm.trim()) {
+      setSearchOpen(false);
+      navigate(`/feeds/topics/${searchTerm.trim()}`);
+    }
+  };
 
   if (tag) return <Outlet />;
 
   const tags = Array.from(tagsMap.entries())
-    .sort((a, b) => b[1] - a[1]) // Sort by most recent timestamp
-    .map(([tag]) => tag); // Extract tag names
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag);
 
   return (
-    <Box sx={{ px: 2, py: 4 }}>
-      <Typography variant="h5" gutterBottom>
-        Discover Topics
+    <Box
+      sx={{
+        px: 2,
+        py: 4,
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Typography variant="h5" gutterBottom>
+          Discover Topics
+        </Typography>
+        <IconButton
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search topics"
+        >
+          <SearchIcon />
+        </IconButton>
+      </Box>
+
+      <Typography variant="h6" gutterBottom>
+        Recently Rated
       </Typography>
 
       {loading ? (
@@ -95,23 +148,51 @@ const TopicsFeed: React.FC = () => {
       ) : tags.length === 0 ? (
         <Typography>No topics found yet.</Typography>
       ) : (
-        tags.map((tag) => (
-          <Card
-            key={tag}
-            variant="outlined"
-            sx={{ mb: 2, cursor: "pointer" }}
-            onClick={() => navigate(`/feeds/topics/${tag}`)}
-          >
-            <CardContent>
-              <Typography variant="h6">#{tag}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Click to explore notes and polls about this topic.
-              </Typography>
-              <Rate entityId={tag} entityType={"hashtag"} />
-            </CardContent>
-          </Card>
-        ))
+        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+          <Virtuoso
+            data={tags}
+            itemContent={(index, tag) => (
+              <Card
+                key={tag}
+                variant="outlined"
+                sx={{ mb: 2, cursor: "pointer" }}
+                onClick={() => navigate(`/feeds/topics/${tag}`)}
+              >
+                <CardContent>
+                  <Typography variant="h6">{tag}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Click to explore notes and polls about this topic.
+                  </Typography>
+                  <Rate entityId={tag} entityType={"hashtag"} />
+                </CardContent>
+              </Card>
+            )}
+          />
+        </Box>
       )}
+
+      <Dialog open={searchOpen} onClose={() => setSearchOpen(false)} fullWidth>
+        <DialogTitle>Search Topic</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Enter topic name"
+            fullWidth
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSearchSubmit();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSearchOpen(false)}>Cancel</Button>
+          <Button onClick={handleSearchSubmit}>Search</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
