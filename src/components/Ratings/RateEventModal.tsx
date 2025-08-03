@@ -15,7 +15,7 @@ import { Notes } from "../Notes";
 interface Props {
   open: boolean;
   onClose: () => void;
-  initialEventId?: string; // 👈 new
+  initialEventId?: string | null;
 }
 
 const RateEventModal: React.FC<Props> = ({ open, onClose, initialEventId }) => {
@@ -105,8 +105,13 @@ const RateEventModal: React.FC<Props> = ({ open, onClose, initialEventId }) => {
               placeholder="nevent1..."
               sx={{ mb: 2 }}
             />
-            <Button type="contained" onClick={fetchEvent}>
-              {loading ? <CircularProgress size={24} /> : "Load Event"}
+            <Button
+              variant="contained"
+              onClick={() => fetchEvent()}
+              disabled={loading || !input.trim()}
+              startIcon={loading ? <CircularProgress size={20} /> : undefined}
+            >
+              {loading ? "Loading..." : "Load Event"}
             </Button>
             {error && (
               <Typography color="error" mt={2}>

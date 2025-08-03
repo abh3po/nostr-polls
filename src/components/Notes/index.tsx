@@ -81,7 +81,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
-  }, [event.pubkey, profiles, fetchUserProfileThrottled]);
+  }, [event.pubkey, profiles]);
 
   useResizeObserver(contentRef, checkOverflow);
 
@@ -210,7 +210,7 @@ export const Notes: React.FC<NotesProps> = ({ event }) => {
           setParentModalOpen(false);
           setParentEventId(null);
         }}
-        initialEventId={referencedEventId}
+        initialEventId={parentEventId}
       />
     </>
   );
