@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Avatar, Box, Typography } from "@mui/material";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
@@ -12,7 +12,14 @@ const OverlappingAvatars: React.FC<OverlappingAvatarsProps> = ({
   ids,
   maxAvatars = 5,
 }) => {
-  let { profiles } = useAppContext();
+  let { profiles, fetchUserProfileThrottled } = useAppContext();
+
+  useEffect(() => {
+    const visibleIds = ids.slice(0, maxAvatars);
+    visibleIds.forEach((id) => {
+      if (!profiles?.get(id)) fetchUserProfileThrottled(id);
+    });
+  }, []);
   const visibleIds = ids.slice(0, maxAvatars);
   let additionalCount = ids.length - visibleIds.length;
   const excessIds = additionalCount > 0 ? additionalCount : 0;

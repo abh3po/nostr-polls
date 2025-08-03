@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
   Box,
   Button,
@@ -7,86 +6,136 @@ import {
   Typography,
   Tabs,
   Tab,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
 } from "@mui/material";
-import { SimplePool, Event } from "nostr-tools";
-import { useRelays } from "../../../hooks/useRelays";
-import { useUserContext } from "../../../hooks/useUserContext";
-import { Notes } from "../../Notes/index";
-import PollResponseForm from "../../PollResponse/PollResponseForm";
 import { ArrowBack } from "@mui/icons-material";
-import { Virtuoso } from "react-virtuoso";
+import { useNavigate, useParams } from "react-router-dom";
+import { Event, SimplePool } from "nostr-tools";
+import { useUserContext } from "../../../hooks/useUserContext";
+import { useRelays } from "../../../hooks/useRelays";
+import { Notes } from "../../Notes";
+import PollResponseForm from "../../PollResponse/PollResponseForm";
 import Rate from "../../../components/Ratings/Rate";
+import { Virtuoso } from "react-virtuoso";
+import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
+import { signEvent } from "../../../nostr";
+import { pool } from "../../../singletons";
+
+const OFFTOPIC_KIND = 1011;
 
 const TopicExplorer: React.FC = () => {
   const { tag } = useParams<{ tag: string }>();
   const { relays } = useRelays();
-  const { user } = useUserContext();
+  const { user, requestLogin } = useUserContext();
   const navigate = useNavigate();
 
+  const [tabValue, setTabValue] = useState<0 | 1>(0);
+  const [feedMode, setFeedMode] = useState<
+    "unfiltered" | "global" | "contacts"
+  >("global");
   const [notesEvents, setNotesEvents] = useState<Event[]>([]);
   const [pollsEvents, setPollsEvents] = useState<Event[]>([]);
-  const [curationMap, setCurationMap] = useState<Set<string>>(new Set());
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingPolls, setLoadingPolls] = useState(false);
-  const [tabValue, setTabValue] = useState<0 | 1>(0); // 0 = Notes, 1 = Polls
 
-  const curatedOffTopic = useRef<Set<string>>(new Set());
+  const curatedByMap = useRef<Map<string, Set<string>>>(new Map());
+  const [curatedIds, setCuratedIds] = useState<Set<string>>(new Set());
+  const [showAnywaySet, setShowAnywaySet] = useState<Set<string>>(new Set());
+
   const seenNoteIds = useRef<Set<string>>(new Set());
   const seenPollIds = useRef<Set<string>>(new Set());
+  const hasSubscribed = useRef({ notes: false, polls: false, curated: false });
+
+  const toggleShowAnyway = (id: string) => {
+    setShowAnywaySet((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(id)) {
+        updated.delete(id);
+      } else {
+        updated.add(id);
+      }
+      return updated;
+    });
+  };
+
+  const handleMarkOffTopic = async (noteEvent: Event) => {
+    if (!user) return requestLogin();
+    if (!tag) return;
+
+    const tags = [
+      ["e", noteEvent.id],
+      ["t", tag],
+    ];
+
+    const unsignedEvent = {
+      kind: OFFTOPIC_KIND,
+      created_at: Math.floor(Date.now() / 1000),
+      tags,
+      content: "Marked as off-topic",
+      pubkey: user.pubkey,
+    };
+
+    const signed = await signEvent(unsignedEvent);
+    await pool.publish(relays, signed);
+
+    // Manually update the curated map so UI reflects immediately
+    if (!curatedByMap.current.has(noteEvent.id)) {
+      curatedByMap.current.set(noteEvent.id, new Set());
+    }
+    curatedByMap.current.get(noteEvent.id)!.add(user.pubkey);
+    setCuratedIds(new Set(curatedByMap.current.keys()));
+  };
+
+  const subRef = useRef<ReturnType<SimplePool["subscribeMany"]> | null>(null);
 
   useEffect(() => {
-    if (!tag || !relays.length || !user) return;
+    if (!tag || relays.length === 0) return;
 
-    const pool = new SimplePool();
-    const filters = [];
+    // Reset state and internal caches
+    curatedByMap.current.clear();
+    seenNoteIds.current.clear();
+    seenPollIds.current.clear();
+    setNotesEvents([]);
+    setPollsEvents([]);
+    setCuratedIds(new Set());
+    setLoadingNotes(true);
+    setLoadingPolls(true);
 
-    if (tabValue === 0 && notesEvents.length === 0) {
-      filters.push({
-        kinds: [1],
-        "#t": [tag],
-        limit: 50,
-      });
-      setLoadingNotes(true);
-    }
+    // Clean up previous subscription
+    subRef.current?.close();
 
-    if (tabValue === 1 && pollsEvents.length === 0) {
-      filters.push({
-        kinds: [1068],
-        "#t": [tag],
-        limit: 50,
-      });
-      setLoadingPolls(true);
-    }
-
-    // Always fetch curation metadata
-    filters.push({
-      kinds: [40009],
-      "#t": [tag],
-      authors: user.follows,
-      limit: 50,
-    });
+    const filters = [
+      { kinds: [OFFTOPIC_KIND], "#t": [tag], limit: 200 },
+      { kinds: [1], "#t": [tag], limit: 50 },
+      { kinds: [1068], "#t": [tag], limit: 50 },
+    ];
 
     const sub = pool.subscribeMany(relays, filters, {
       onevent: (event) => {
-        if (event.kind === 40009) {
-          const taggedEvent = event.tags.find((t) => t[0] === "e")?.[1];
-          if (taggedEvent) {
-            curatedOffTopic.current.add(taggedEvent);
-            setCurationMap(new Set(curatedOffTopic.current));
+        if (event.kind === OFFTOPIC_KIND) {
+          const eTags = event.tags.filter((t) => t[0] === "e").map((t) => t[1]);
+          for (const e of eTags) {
+            if (!curatedByMap.current.has(e)) {
+              curatedByMap.current.set(e, new Set());
+            }
+            curatedByMap.current.get(e)!.add(event.pubkey);
           }
+          setCuratedIds(new Set(curatedByMap.current.keys()));
           return;
         }
 
         if (event.kind === 1 && !seenNoteIds.current.has(event.id)) {
           seenNoteIds.current.add(event.id);
           setNotesEvents((prev) => [...prev, event]);
-          setLoadingNotes(false);
         }
 
         if (event.kind === 1068 && !seenPollIds.current.has(event.id)) {
           seenPollIds.current.add(event.id);
           setPollsEvents((prev) => [...prev, event]);
-          setLoadingPolls(false);
         }
       },
       onclose: () => {
@@ -95,28 +144,103 @@ const TopicExplorer: React.FC = () => {
       },
     });
 
-    return () => sub.close();
-  }, [
-    tag,
-    relays,
-    user?.follows,
-    tabValue,
-    notesEvents.length,
-    pollsEvents.length,
-  ]);
+    subRef.current = sub;
 
-  const filteredEvents = useMemo(() => {
+    return () => {
+      sub.close();
+    };
+  }, [tag, relays]);
+
+  const sortedEvents = useMemo(() => {
     const base = tabValue === 0 ? notesEvents : pollsEvents;
-    return base
-      .filter((e) => !curationMap.has(e.id))
-      .sort((a, b) => b.created_at - a.created_at);
-  }, [tabValue, notesEvents, pollsEvents, curationMap]);
-
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue as 0 | 1);
-  };
+    return base.sort((a, b) => b.created_at - a.created_at);
+  }, [tabValue, notesEvents, pollsEvents]);
 
   const loading = tabValue === 0 ? loadingNotes : loadingPolls;
+
+  const itemContent = useMemo(
+    () => (_: any, event: Event) => {
+      const allCurators =
+        curatedByMap.current.get(event.id) ?? new Set<string>();
+
+      // Filter curators based on feed mode
+      const visibleCurators =
+        feedMode === "contacts" && user?.follows
+          ? Array.from(allCurators).filter((id) => user.follows!.includes(id))
+          : Array.from(allCurators);
+
+      const isHidden =
+        feedMode !== "unfiltered" &&
+        visibleCurators.length > 0 &&
+        !showAnywaySet.has(event.id);
+
+      const showReason =
+        visibleCurators.length > 0 ? (
+          <Box>
+            <Typography style={{ margin: 10 }}>
+              Marked as off-topic by:
+            </Typography>
+            <div style={{ margin: 10 }}>
+              <OverlappingAvatars ids={visibleCurators} />
+            </div>
+            <Button
+              size="small"
+              variant="text"
+              sx={{ mt: 1 }}
+              onClick={() => toggleShowAnyway(event.id)}
+            >
+              <Typography style={{ margin: 10 }}>Show Anyway</Typography>
+            </Button>
+          </Box>
+        ) : undefined;
+
+      return (
+        <Box sx={{ position: "relative" }}>
+          {event.kind === 1 ? (
+            <Notes
+              event={event}
+              hidden={isHidden}
+              showReason={showReason}
+              extras={
+                <>
+                  {!allCurators.has(user?.pubkey || "") && (
+                    <MenuItem onClick={() => handleMarkOffTopic(event)}>
+                      Mark Off-Topic
+                    </MenuItem>
+                  )}
+                  {feedMode !== "unfiltered" &&
+                    showAnywaySet.has(event.id) &&
+                    visibleCurators.length > 0 && (
+                      <MenuItem onClick={() => toggleShowAnyway(event.id)}>
+                        Hide Again
+                      </MenuItem>
+                    )}
+                </>
+              }
+            />
+          ) : (
+            <>
+              <PollResponseForm pollEvent={event} />
+              {feedMode !== "unfiltered" &&
+                showAnywaySet.has(event.id) &&
+                visibleCurators.length > 0 && (
+                  <Box sx={{ ml: 2, mt: 1 }}>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => toggleShowAnyway(event.id)}
+                    >
+                      Hide Again
+                    </Button>
+                  </Box>
+                )}
+            </>
+          )}
+        </Box>
+      );
+    },
+    [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey]
+  );
 
   return (
     <Box sx={{ px: 2, py: 4 }}>
@@ -130,28 +254,44 @@ const TopicExplorer: React.FC = () => {
       </Button>
 
       <Typography variant="h4" gutterBottom>
-        Topic: #{tag}
+        Topic: {tag}
       </Typography>
-      <Rate entityId={tag!} entityType={"hashtag"} />
+      <Rate entityId={tag!} entityType="hashtag" />
 
-      {/* Future toggle (optional) */}
-      {/* <ToggleButtonGroup
-        value={viewMode}
-        exclusive
-        onChange={handleToggle}
-        aria-label="view mode"
-        sx={{ mb: 2 }}
-      >
-        <ToggleButton value="uncurated">Uncurated</ToggleButton>
-        <ToggleButton value="curated">Curated by your follows</ToggleButton>
-      </ToggleButtonGroup> */}
+      <FormControl sx={{ mt: 2, mb: 1 }} size="small">
+        <InputLabel>Feed Mode</InputLabel>
+        <Select
+          value={feedMode}
+          label="Feed Mode"
+          onChange={(e: SelectChangeEvent) => {
+            if (!user && e.target.value === "contacts") return;
+            setFeedMode(e.target.value as typeof feedMode);
+          }}
+        >
+          <MenuItem value="unfiltered">Unfiltered</MenuItem>
+          <MenuItem value="global">Filtered (Global)</MenuItem>
+          <MenuItem
+            value="contacts"
+            onClick={(e: any) => {
+              if (!user) {
+                requestLogin();
+                return;
+              } else {
+                setFeedMode("contacts");
+              }
+            }}
+            sx={{
+              color: !user ? "text.disabled" : "inherit",
+              pointerEvents: "auto",
+              opacity: !user ? 0.5 : 1,
+            }}
+          >
+            Filtered (My Contacts)
+          </MenuItem>
+        </Select>
+      </FormControl>
 
-      <Tabs
-        value={tabValue}
-        onChange={handleTabChange}
-        aria-label="notes and polls tab"
-        sx={{ mb: 2 }}
-      >
+      <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
         <Tab label="Notes" />
         <Tab label="Polls" />
       </Tabs>
@@ -160,22 +300,12 @@ const TopicExplorer: React.FC = () => {
         <Box display="flex" justifyContent="center" py={6}>
           <CircularProgress />
         </Box>
-      ) : filteredEvents.length === 0 ? (
-        <Typography>
-          No {tabValue === 0 ? "notes" : "polls"} found for this topic.
-        </Typography>
+      ) : sortedEvents.length === 0 ? (
+        <Typography>No content found for this topic.</Typography>
       ) : (
         <Virtuoso
-          data={filteredEvents}
-          itemContent={(_, event) => {
-            if (event.kind === 1) {
-              return <Notes key={event.id} event={event} />;
-            } else if (event.kind === 1068) {
-              return <PollResponseForm key={event.id} pollEvent={event} />;
-            } else {
-              return null;
-            }
-          }}
+          data={sortedEvents}
+          itemContent={itemContent}
           style={{ height: "100vh" }}
           followOutput={false}
         />

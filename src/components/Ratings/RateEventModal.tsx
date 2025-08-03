@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -15,14 +15,23 @@ import { Notes } from "../Notes";
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialEventId?: string | null;
 }
 
-const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
+const RateEventModal: React.FC<Props> = ({ open, onClose, initialEventId }) => {
   const [input, setInput] = useState("");
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { relays } = useRelays();
+
+  useEffect(() => {
+    if (open && initialEventId) {
+      setInput(initialEventId);
+      fetchEvent(initialEventId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialEventId]);
 
   const handleClose = () => {
     setInput("");
@@ -32,35 +41,40 @@ const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
     onClose();
   };
 
-  const fetchEvent = async () => {
-    try {
-      setError(null);
-      setLoading(true);
-      const decoded = nip19.decode(input.trim());
+  const fetchEvent = async (hexIdInput?: string) => {
+    let eventId = "";
+    if (hexIdInput) eventId = hexIdInput;
+    else {
+      try {
+        setError(null);
+        setLoading(true);
+        const decoded = nip19.decode(input.trim());
 
-      if (decoded.type !== "nevent" || !decoded.data?.id) {
-        setError("Invalid nevent format.");
+        if (decoded.type !== "nevent" || !decoded.data?.id) {
+          setError("Invalid nevent format.");
+          setLoading(false);
+          return;
+        }
+        eventId = decoded.data.id;
+      } catch (err: any) {
+        console.error(err);
+        setError("Failed to decode or fetch event.");
         setLoading(false);
-        return;
       }
-
-      const pool = new SimplePool();
-      const ev = await pool.get(relays, {
-        ids: [decoded.data.id],
-      });
-
-      if (!ev) {
-        setError("Event not found.");
-      } else {
-        setEvent(ev);
-      }
-
-      setLoading(false);
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to decode or fetch event.");
-      setLoading(false);
     }
+
+    const pool = new SimplePool();
+    const ev = await pool.get(relays, {
+      ids: [eventId],
+    });
+
+    if (!ev) {
+      setError("Event not found.");
+    } else {
+      setEvent(ev);
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -91,8 +105,13 @@ const RateEventModal: React.FC<Props> = ({ open, onClose }) => {
               placeholder="nevent1..."
               sx={{ mb: 2 }}
             />
-            <Button variant="contained" fullWidth onClick={fetchEvent}>
-              {loading ? <CircularProgress size={24} /> : "Load Event"}
+            <Button
+              variant="contained"
+              onClick={() => fetchEvent()}
+              disabled={loading || !input.trim()}
+              startIcon={loading ? <CircularProgress size={20} /> : undefined}
+            >
+              {loading ? "Loading..." : "Load Event"}
             </Button>
             {error && (
               <Typography color="error" mt={2}>
