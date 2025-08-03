@@ -95,17 +95,6 @@ const TopicExplorer: React.FC = () => {
   useEffect(() => {
     if (!tag || relays.length === 0) return;
 
-    // Reset state and internal caches
-    curatedByMap.current.clear();
-    seenNoteIds.current.clear();
-    seenPollIds.current.clear();
-    setNotesEvents([]);
-    setPollsEvents([]);
-    setCuratedIds(new Set());
-    setLoadingNotes(true);
-    setLoadingPolls(true);
-
-    // Clean up previous subscription
     subRef.current?.close();
 
     const filters = [
