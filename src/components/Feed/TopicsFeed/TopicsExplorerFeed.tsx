@@ -180,8 +180,8 @@ const TopicExplorer: React.FC = () => {
             <Typography style={{ margin: 10 }}>
               Marked as off-topic by:
             </Typography>
-            <div style={{ margin: 10 }}>
-              <OverlappingAvatars ids={visibleCurators} />
+            <div style={{ marginTop: 30 }}>
+              <OverlappingAvatars ids={visibleCurators} maxAvatars={3} />
             </div>
             <Button
               size="small"
@@ -189,7 +189,7 @@ const TopicExplorer: React.FC = () => {
               sx={{ mt: 1 }}
               onClick={() => toggleShowAnyway(event.id)}
             >
-              <Typography style={{ margin: 10 }}>Show Anyway</Typography>
+              <Typography style={{ marginTop: 10 }}>Show Anyway</Typography>
             </Button>
           </Box>
         ) : undefined;

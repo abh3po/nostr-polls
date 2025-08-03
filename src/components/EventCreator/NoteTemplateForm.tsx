@@ -1,5 +1,13 @@
-import React, { useState } from "react";
-import { Box, Button, Stack, TextField, Collapse } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Stack,
+  TextField,
+  Collapse,
+  Typography,
+  Chip,
+} from "@mui/material";
 import { useNotification } from "../../contexts/notification-context";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useNavigate } from "react-router-dom";
@@ -19,13 +27,27 @@ const NoteTemplateForm: React.FC<{
 }> = ({ eventContent, setEventContent }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [topics, setTopics] = useState<string[]>([]);
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();
   const navigate = useNavigate();
 
+  // Extract hashtags like #example from the text
+  const extractHashtags = (text: string): string[] => {
+    const hashtagRegex = /#(\w+)/g;
+    const matches = text.matchAll(hashtagRegex);
+    return Array.from(new Set(Array.from(matches, (m) => m[1].toLowerCase())));
+  };
+
+  // Update topics whenever eventContent changes
+  useEffect(() => {
+    setTopics(extractHashtags(eventContent));
+  }, [eventContent]);
+
   const previewEvent: Partial<Event> = {
     content: eventContent,
+    tags: topics.map((tag) => ["t", tag]),
   };
 
   const publishNoteEvent = async (secret?: string) => {
@@ -37,7 +59,10 @@ const NoteTemplateForm: React.FC<{
       const noteEvent = {
         kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
         content: eventContent,
-        tags: [...relays.map((relay) => ["relay", relay])],
+        tags: [
+          ...relays.map((relay) => ["relay", relay]),
+          ...topics.map((tag) => ["t", tag]),
+        ],
         created_at: Math.floor(Date.now() / 1000),
       };
       setIsSubmitting(true);
@@ -75,9 +100,28 @@ const NoteTemplateForm: React.FC<{
             minRows={4}
             maxRows={8}
             fullWidth
-            placeholder="Share your thoughts."
+            placeholder="Share your thoughts. Use #hashtags to tag topics."
           />
         </Box>
+
+        {topics.length > 0 && (
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Topics
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {topics.map((topic, index) => (
+                <Chip
+                  key={index}
+                  label={`#${topic}`}
+                  color="secondary"
+                  variant="outlined"
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
         <Box sx={{ pt: 2 }}>
           <Box display="flex" flexDirection="column" gap={2}>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
