@@ -35,7 +35,7 @@ const TopicExplorer: React.FC = () => {
   const seenPollIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!tag || !relays.length || !user) return;
+    if (!tag || !relays.length) return;
 
     const pool = new SimplePool();
     const filters = [];
@@ -62,7 +62,7 @@ const TopicExplorer: React.FC = () => {
     filters.push({
       kinds: [40009],
       "#t": [tag],
-      authors: user.follows,
+      authors: user?.follows,
       limit: 50,
     });
 
@@ -101,8 +101,6 @@ const TopicExplorer: React.FC = () => {
     relays,
     user?.follows,
     tabValue,
-    notesEvents.length,
-    pollsEvents.length,
   ]);
 
   const filteredEvents = useMemo(() => {
