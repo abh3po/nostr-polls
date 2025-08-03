@@ -32,6 +32,7 @@ const TopicsFeed: React.FC = () => {
   const { tag } = useParams();
 
   const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
+  const isMounted = useRef(true);
 
   function parseRatingDTag(dTagValue: string): { type: string; id: string } {
     const parts = dTagValue.split(":");
@@ -49,6 +50,18 @@ const TopicsFeed: React.FC = () => {
   }
 
   useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      isMounted.current = false;
+      if (subRef.current) {
+        subRef.current.close();
+        subRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // If a specific tag is selected or no relays, don't fetch topics
     if (tag || relays.length === 0) return;
 
     setLoading(true);
@@ -58,11 +71,13 @@ const TopicsFeed: React.FC = () => {
       subRef.current = null;
     }
 
+    // Subscribe once
     const sub = pool.subscribeMany(
       relays,
       [{ kinds: [34259], "#m": ["hashtag"], limit: 100 }],
       {
         onevent: (event: Event) => {
+          setLoading(false);
           const dTag = event.tags.find((t) => t[0] === "d");
           const parsedDTag = dTag ? parseRatingDTag(dTag[1]) : null;
 
@@ -70,8 +85,8 @@ const TopicsFeed: React.FC = () => {
             const id = parsedDTag.id;
 
             setTagsMap((prev) => {
-              const current = prev.get(id) || 0;
-              if (event.created_at > current) {
+              const currentTimestamp = prev.get(id) || 0;
+              if (event.created_at > currentTimestamp) {
                 const updated = new Map(prev);
                 updated.set(id, event.created_at);
                 return updated;
@@ -81,16 +96,20 @@ const TopicsFeed: React.FC = () => {
           }
         },
         oneose: () => {
-          setLoading(false);
+          if (isMounted.current) setLoading(false);
         },
       }
     );
 
     subRef.current = sub;
 
+    // Timeout to stop loading even if no oneose event
     const timeout = setTimeout(() => {
-      setLoading(false);
-      sub.close();
+      if (isMounted.current) setLoading(false);
+      if (subRef.current) {
+        subRef.current.close();
+        subRef.current = null;
+      }
     }, 5000);
 
     return () => {
