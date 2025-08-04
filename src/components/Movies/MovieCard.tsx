@@ -12,8 +12,8 @@ import MovieMetadataModal from "./MovieMetadataModal";
 import Rate from "../Ratings/Rate";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
-import { selectBestMetadataEvent } from "./utils";
-import { useMovieMetadata } from "./context/MovieMetadataProvider";
+import { selectBestMetadataEvent } from "../../utils/utils";
+import { useMetadata } from "../../hooks/MetadataProvider";
 import { useNavigate } from "react-router/dist";
 
 interface MovieCardProps {
@@ -25,10 +25,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const { fetchUserProfileThrottled, profiles } = useAppContext();
   const { user } = useUserContext();
-  const { registerMovie, metadata } = useMovieMetadata();
+  const { registerEntity, metadata } = useMetadata();
 
   useEffect(() => {
-    registerMovie(imdbId);
+    registerEntity('movie', imdbId);
   }, [imdbId]);
 
   let activeEvent;

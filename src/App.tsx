@@ -24,12 +24,10 @@ import NotesFeed from "./components/Feed/NotesFeed/components";
 import ProfilesFeed from "./components/Feed/ProfileFeed";
 import { PollFeed } from "./components/Feed/PollFeed";
 import MoviesFeed from "./components/Feed/MoviesFeed";
-import { MovieMetadataProvider } from "./components/Movies/context/MovieMetadataProvider";
+import { MetadataProvider } from "./hooks/MetadataProvider";
 import FeedsLayout from "./components/Feed/FeedsLayout";
 import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
-import { signerManager } from "./singletons/Signer/SignerManager";
-import { LoginModal } from "./components/Login/LoginModal";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import TopicsFeed from "./components/Feed/TopicsFeed";
 
@@ -52,56 +50,52 @@ const App: React.FC = () => {
               <ListProvider>
                 <RatingProvider>
                   <CssBaseline />
-                  <Router>
-                    <Header />
-                    <Routes>
-                      <Route path="/create" element={<EventCreator />} />
-                      <Route
-                        path="/respond/:eventId"
-                        element={<PollResponse />}
-                      />
-                      <Route
-                        path="/result/:eventId"
-                        element={<PollResults />}
-                      />
-                      <Route path="/ratings" element={<EventList />} />
-                      <Route path="/feeds" element={<FeedsLayout />}>
-                        <Route path="notes" element={<NotesFeed />} />
-                        <Route path="profiles" element={<ProfilesFeed />} />
-                        <Route path="topics" element={<TopicsFeed />}>
-                          <Route path=":tag" element={<TopicExplorer />} />
-                        </Route>
+                  <MetadataProvider>
+                    <Router>
+                      <Header />
+                      <Routes>
+                        <Route path="/create" element={<EventCreator />} />
                         <Route
-                          path="polls"
-                          index={true}
-                          element={<PollFeed />}
+                          path="/respond/:eventId"
+                          element={<PollResponse />}
                         />
-
-                        {/* Wrap the movies routes inside MovieMetadataProvider */}
                         <Route
-                          element={
-                            <MovieMetadataProvider>
-                              <Outlet />
-                            </MovieMetadataProvider>
-                          }
-                        >
-                          <Route path="movies" element={<MoviesFeed />} />
+                          path="/result/:eventId"
+                          element={<PollResults />}
+                        />
+                        <Route path="/ratings" element={<EventList />} />
+                        <Route path="/feeds" element={<FeedsLayout />}>
+                          <Route path="notes" element={<NotesFeed />} />
+                          <Route path="profiles" element={<ProfilesFeed />} />
+                          <Route path="topics" element={<TopicsFeed />}>
+                            <Route path=":tag" element={<TopicExplorer />} />
+                          </Route>
                           <Route
-                            path="movies/:imdbId"
-                            element={<MoviePage />}
+                            path="polls"
+                            index={true}
+                            element={<PollFeed />}
                           />
-                        </Route>
 
-                        {/* default route inside feeds */}
-                        <Route index element={<PollFeed />} />
-                      </Route>
-                      <Route
-                        index
-                        path="/"
-                        element={<Navigate to="/feeds/polls" replace />}
-                      />
-                    </Routes>
-                  </Router>
+                          {/* Wrap the movies routes inside MovieMetadataProvider */}
+                          <Route element={<Outlet />}>
+                            <Route path="movies" element={<MoviesFeed />} />
+                            <Route
+                              path="movies/:imdbId"
+                              element={<MoviePage />}
+                            />
+                          </Route>
+
+                          {/* default route inside feeds */}
+                          <Route index element={<PollFeed />} />
+                        </Route>
+                        <Route
+                          index
+                          path="/"
+                          element={<Navigate to="/feeds/polls" replace />}
+                        />
+                      </Routes>
+                    </Router>
+                  </MetadataProvider>
                 </RatingProvider>
               </ListProvider>
             </RelayProvider>

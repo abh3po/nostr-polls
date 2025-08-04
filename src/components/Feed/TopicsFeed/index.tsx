@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Event } from "nostr-tools";
+import { Event, Filter } from "nostr-tools";
 import { useRelays } from "../../../hooks/useRelays";
 import { useNavigate, Outlet, useParams } from "react-router-dom";
 import {
-  Card,
-  CardContent,
   Typography,
   Box,
   CircularProgress,
@@ -20,12 +18,14 @@ import SearchIcon from "@mui/icons-material/Search";
 import Rate from "../../../components/Ratings/Rate";
 import { pool } from "../../../singletons";
 import { Virtuoso } from "react-virtuoso";
+import TopicCard from "./TopicsCard";
 
 const TopicsFeed: React.FC = () => {
   const [tagsMap, setTagsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [metadataMap, setMetadataMap] = useState<Map<string, Event>>(new Map());
 
   const { relays } = useRelays();
   const navigate = useNavigate();
@@ -59,6 +59,36 @@ const TopicsFeed: React.FC = () => {
       }
     };
   }, []);
+  useEffect(() => {
+    if (tagsMap.size === 0 || relays.length === 0) return;
+    const filter: Filter = {
+        kinds: [30300],
+        "#d": Array.from(tagsMap.keys()).map((tag) => `hashtag:${tag}`)
+      };
+    
+    
+  
+    const sub = pool.subscribeMany(
+      relays,
+      [filter],
+      {
+        onevent: (event) => {
+          const dTag = event.tags.find((t) => t[0] === "d");
+          if (!dTag || !dTag[1].startsWith("hashtag:")) return;
+  
+          const topicName = dTag[1].split(":")[1];
+          setMetadataMap((prev) => {
+            if (prev.has(topicName)) return prev;
+            const updated = new Map(prev);
+            updated.set(topicName, event);
+            return updated;
+          });
+        },
+      }
+    );
+  
+    return () => sub.close();
+  }, [relays, tagsMap]);
 
   useEffect(() => {
     // If a specific tag is selected or no relays, don't fetch topics
@@ -171,20 +201,7 @@ const TopicsFeed: React.FC = () => {
           <Virtuoso
             data={tags}
             itemContent={(index, tag) => (
-              <Card
-                key={tag}
-                variant="outlined"
-                sx={{ mb: 2, cursor: "pointer" }}
-                onClick={() => navigate(`/feeds/topics/${tag}`)}
-              >
-                <CardContent>
-                  <Typography variant="h6">{tag}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Click to explore notes and polls about this topic.
-                  </Typography>
-                  <Rate entityId={tag} entityType={"hashtag"} />
-                </CardContent>
-              </Card>
+              <TopicCard tag={tag} metadataEvent={metadataMap.get(tag)} />
             )}
           />
         </Box>
