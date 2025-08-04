@@ -1,6 +1,5 @@
 import React, { useState, lazy, Suspense } from "react";
 import { Typography, CircularProgress } from "@mui/material";
-import RateEventCard from "../../../Ratings/RateEventCard";
 import RateEventModal from "../../../Ratings/RateEventModal";
 import NotesFeedTabs from "./NotesFeedTabs";
 
@@ -14,8 +13,6 @@ const NotesFeed = () => {
   return (
     <>
       <NotesFeedTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      <RateEventCard onClick={() => setModalOpen(true)} />
 
       <Typography sx={{ mt: 2 }}>
         {activeTab === "following"
