@@ -4,10 +4,9 @@ import { useNavigate, useLocation, Outlet } from "react-router-dom";
 
 const feedOptions = [
   { value: "polls", label: "Polls" },
+  { value: "topics", label: "Topics" },
   { value: "notes", label: "Notes" },
   { value: "movies", label: "Movies" },
-  { value: "profiles", label: "Profiles" },
-  { value: "topics", label: "Topics" },
 ];
 
 const FeedsLayout: React.FC = () => {

@@ -12,6 +12,7 @@ interface ListContextInterface {
   lists: Map<string, Event> | undefined;
   selectedList: string | undefined;
   handleListSelected: (id: string | null) => void;
+  fetchLatestContactList(): Promise<Event | null>
 }
 
 export const ListContext = createContext<ListContextInterface | null>(null);
@@ -19,8 +20,41 @@ export const ListContext = createContext<ListContextInterface | null>(null);
 export function ListProvider({ children }: { children: ReactNode }) {
   const [lists, setLists] = useState<Map<string, Event> | undefined>();
   const [selectedList, setSelectedList] = useState<string | undefined>();
-  const { user, setUser } = useUserContext();
+  const { user, setUser, requestLogin } = useUserContext();
   const { relays } = useRelays();
+
+  const fetchLatestContactList = (): Promise<Event | null> => {
+    if(!user) { requestLogin(); return Promise.resolve(null);}
+
+    return new Promise((resolve) => {
+      let filter = {
+        kinds: [3],
+        authors: [user.pubkey],
+        limit: 1,
+      };
+      let resolved = false;
+      const closer = pool.subscribeMany(relays, [filter], {
+        onevent(event: Event) {
+          if (!resolved) {
+            resolved = true;
+            resolve(event);
+            closer.close();
+          }
+        },
+        onclose() {
+          if (!resolved) {
+            resolve(null);
+          }
+        },
+      });
+      setTimeout(() => {
+        if (!resolved) {
+          closer.close();
+          resolve(null);
+        }
+      }, 2000);
+    });
+  };
 
   const handleListEvent = (event: Event) => {
     setLists((prevMap) => {
@@ -86,14 +120,14 @@ export function ListProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     if (!pool) return;
-    if (user && !lists) {
-      fetchLists();
+    if (user) {
+      if(!lists) fetchLists();
       fetchContacts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, user]);
   return (
-    <ListContext.Provider value={{ lists, selectedList, handleListSelected }}>
+    <ListContext.Provider value={{ lists, selectedList, handleListSelected, fetchLatestContactList }}>
       {children}
     </ListContext.Provider>
   );
