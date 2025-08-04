@@ -8,15 +8,14 @@ import {
   Menu,
   Snackbar,
   MenuItem,
-  Box,
   IconButton,
 } from "@mui/material";
-import { Event, nip19 } from "nostr-tools";
+import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
-import { openProfileTab } from "../../nostr";
+import { openProfileTab, parseContacts, signEvent } from "../../nostr";
 import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
@@ -24,6 +23,10 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { useResizeObserver } from "../../hooks/useResizeObserver";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RateEventModal from "../../components/Ratings/RateEventModal";
+import { useUserContext } from "../../hooks/useUserContext";
+import { useListContext } from "../../hooks/useListContext";
+import { pool } from "../../singletons";
+import { useRelays } from "../../hooks/useRelays";
 
 interface NotesProps {
   event: Event;
@@ -39,6 +42,9 @@ export const Notes: React.FC<NotesProps> = ({
   showReason,
 }) => {
   const { profiles, fetchUserProfileThrottled } = useAppContext();
+  let { user, requestLogin, setUser } = useUserContext();
+  let { relays} = useRelays();
+  let { fetchLatestContactList } = useListContext();
   const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
 
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +55,55 @@ export const Notes: React.FC<NotesProps> = ({
 
   const [parentModalOpen, setParentModalOpen] = useState(false);
   const [parentEventId, setParentEventId] = useState<string | null>(null);
+
+  const addToContacts = async () => {
+    if (!user) {
+      requestLogin();
+      return;
+    }
+  
+    const pubkeyToAdd = event.pubkey;
+  
+    // Step 2: Fetch the latest contact list
+    const contactEvent = await fetchLatestContactList();
+  
+    // Step 3: Parse existing "p" tags
+    const existingTags = contactEvent?.tags || [];
+    const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
+    const hasAlready = pTags.includes(pubkeyToAdd);
+    const existingFollows = existingTags
+      .filter(([t]) => t === "p")
+      .map(([, pk]) => pk);
+  
+    if (existingFollows.includes(pubkeyToAdd)) {
+      return; // Already followed
+    }
+  
+    if (hasAlready) {
+      return; // Already followed
+    }
+  
+    // Step 4: Add new "p" tag, preserve all other tags
+    const updatedFollows = [...existingFollows, pubkeyToAdd];
+    const updatedTags = [...existingTags, ["p", pubkeyToAdd]];
+  
+    const newEvent: EventTemplate = {
+      kind: 3,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: updatedTags,
+      content: contactEvent?.content || "",
+    };
+    // Step 6: Sign and publish
+    console.log("TRYING TO SIGN", newEvent)
+    const signed = await signEvent(newEvent)
+    pool.publish(relays, signed);
+    setUser({
+      ...user,
+      follows: updatedFollows,
+    });
+  };
+  
+  
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -95,6 +150,7 @@ export const Notes: React.FC<NotesProps> = ({
   useResizeObserver(contentRef, checkOverflow);
 
   const timeAgo = calculateTimeAgo(event.created_at);
+  console.log("Follow DEBUG",user, user?.follows, user?.follows?.includes(event.pubkey) && user.follows && !user.follows.includes(event.pubkey) )
 
   return (
     <>
@@ -147,10 +203,18 @@ export const Notes: React.FC<NotesProps> = ({
               />
             }
             title={
-              profiles?.get(event.pubkey)?.name ||
-              profiles?.get(event.pubkey)?.username ||
-              profiles?.get(event.pubkey)?.nip05 ||
-              nip19.npubEncode(event.pubkey).slice(0, 10) + "..."
+              <div style={{display: "flex", justifyContent: "space-between"}}>
+                <Typography>
+                  {profiles?.get(event.pubkey)?.name ||
+                    profiles?.get(event.pubkey)?.username ||
+                    profiles?.get(event.pubkey)?.nip05 ||
+                    (() => {
+                      const npub = nip19.npubEncode(event.pubkey);
+                      return npub.slice(0, 6) + "…" + npub.slice(-4);
+                    })()}
+                </Typography>
+                {user && user.follows && !user.follows.includes(event.pubkey) ? <Button onClick={addToContacts}>Follow</Button> : null}
+              </div>
             }
             action={
               <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)}>
