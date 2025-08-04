@@ -24,6 +24,8 @@ import { Virtuoso } from "react-virtuoso";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
 import { pool } from "../../../singletons";
+import { useMetadata } from "../../../hooks/MetadataProvider";
+import { selectBestMetadataEvent } from "../../../utils/utils";
 
 const OFFTOPIC_KIND = 1011;
 
@@ -31,6 +33,7 @@ const TopicExplorer: React.FC = () => {
   const { tag } = useParams<{ tag: string }>();
   const { relays } = useRelays();
   const { user, requestLogin } = useUserContext();
+  const { metadata } = useMetadata();
   const navigate = useNavigate();
 
   const [tabValue, setTabValue] = useState<0 | 1>(0);
@@ -49,6 +52,19 @@ const TopicExplorer: React.FC = () => {
   const seenNoteIds = useRef<Set<string>>(new Set());
   const seenPollIds = useRef<Set<string>>(new Set());
   const hasSubscribed = useRef({ notes: false, polls: false, curated: false });
+
+  const topicMetadataEvent = useMemo(() => {
+    const events = metadata.get(tag ?? "") ?? [];
+    return selectBestMetadataEvent(events, user?.follows);
+  }, [metadata, tag, user?.follows]);
+
+  const tagMap: Record<string, string> = {};
+  topicMetadataEvent?.tags.forEach(([key, val]) => {
+    if (key && val) tagMap[key] = val;
+  });
+
+  const topicImage = tagMap["image"];
+  const topicDescription = tagMap["description"];
 
   const toggleShowAnyway = (id: string) => {
     setShowAnywaySet((prev) => {
@@ -242,9 +258,39 @@ const TopicExplorer: React.FC = () => {
         Back to Topics
       </Button>
 
-      <Typography variant="h4" gutterBottom>
-        Topic: {tag}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+        {topicImage && (
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: 1,
+              overflow: "hidden",
+              mr: 2,
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={topicImage}
+              alt={tag}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </Box>
+        )}
+        <Box>
+          <Typography variant="h5">#{tag}</Typography>
+          {topicDescription && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.5, fontStyle: "italic" }}
+            >
+              {topicDescription}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+
       <Rate entityId={tag!} entityType="hashtag" />
 
       <FormControl sx={{ mt: 2, mb: 1 }} size="small">

@@ -17,6 +17,7 @@ import TopicMetadataModal from "./TopicMetadataModal";
 import { useMetadata } from "../../../hooks/MetadataProvider";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useNavigate } from "react-router-dom";
+import { Profile } from "../../../nostr/types";
 
 interface TopicCardProps {
   tag: string;
@@ -47,15 +48,17 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
   const description = activeEvent?.tags.find((t) => t[0] === "description")?.[1];
   const pubkey = activeEvent?.pubkey;
 
-  const metadataUser = metadataEvent
-    ? { pubkey, name: "Preview User" }
-    : pubkey
-    ? profiles?.get(pubkey) ||
-      (() => {
-        fetchUserProfileThrottled(pubkey);
-        return null;
-      })()
-    : null;
+  let metadataUser: any = profiles?.get(metadataEvent?.pubkey || "")
+  if(!metadataUser && metadataEvent) {
+    try {
+        nip19.npubEncode(metadataEvent.pubkey)
+        fetchUserProfileThrottled(metadataEvent?.pubkey)
+        metadataUser = { pubkey: metadataEvent?.pubkey, name: 'Fetching Pubkey...'}
+    }
+    catch{
+        metadataUser = { pubkey: metadataEvent?.pubkey, name: 'Preview User', picture: ''}
+    }
+  }
 
   return (
     <>
