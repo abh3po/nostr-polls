@@ -15,7 +15,6 @@ import {
   Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import Rate from "../../../components/Ratings/Rate";
 import { pool } from "../../../singletons";
 import { Virtuoso } from "react-virtuoso";
 import TopicCard from "./TopicsCard";
@@ -186,7 +185,7 @@ const TopicsFeed: React.FC = () => {
         </IconButton>
       </Box>
 
-      <Typography variant="h6" gutterBottom>
+      <Typography style={{ fontSize: 12}} gutterBottom>
         Recently Rated
       </Typography>
 
