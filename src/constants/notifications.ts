@@ -26,6 +26,7 @@ export const NOTIFICATION_MESSAGES = {
   LOGIN_TO_LIKE: "Login To Like!",
   LOGIN_TO_COMMENT: "Login To Comment",
   LOGIN_TO_ZAP: "Log In to send zaps!",
+  LOGIN_TO_REPOST: "Login to repost!",
 
   // Event creation
   EMPTY_NOTE_CONTENT: "Note content cannot be empty.",

@@ -66,8 +66,10 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
     if (pollExpiration) {
       resultFilter.until = Number(pollExpiration);
     }
+    let pollRelays = pollEvent.tags.filter((t) => t[0] === "relay").map((t) => t[1])
     const useRelays = relays?.length ? relays : userRelays;
-    let newCloser = pool.subscribeMany(useRelays, [resultFilter], {
+    const finalRelays = Array.from(new Set([...pollRelays, ...useRelays]))
+    let newCloser = pool.subscribeMany(finalRelays, [resultFilter], {
       onevent: handleResultEvent,
     });
     setCloser(newCloser);

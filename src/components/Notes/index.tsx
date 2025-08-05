@@ -150,8 +150,6 @@ export const Notes: React.FC<NotesProps> = ({
   useResizeObserver(contentRef, checkOverflow);
 
   const timeAgo = calculateTimeAgo(event.created_at);
-  console.log("Follow DEBUG",user, user?.follows, user?.follows?.includes(event.pubkey) && user.follows && !user.follows.includes(event.pubkey) )
-
   return (
     <>
       {hidden ? (

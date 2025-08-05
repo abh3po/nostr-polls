@@ -1,20 +1,39 @@
 import { useEffect, useMemo } from "react";
 import { Button, CircularProgress } from "@mui/material";
-import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import { useUserContext } from "../../../../hooks/useUserContext";
-import { Notes } from "../../../Notes";
-import { Virtuoso } from "react-virtuoso/dist";
+import { Virtuoso } from "react-virtuoso";
+import RepostsCard from "./RepostedNoteCard"; // your new reposts card component
+import { useFollowingNotes } from "../hooks/useFollowingNotes";
 
 const FollowingFeed = () => {
   const { user, requestLogin } = useUserContext();
-  const { events, fetchNotes, loadingMore, fetchNewerNotes } =
-    useFollowingNotes(user);
+  const { notes, reposts, fetchNotes, loadingMore, fetchNewerNotes } =
+    useFollowingNotes();
 
-  const sorted = useMemo(() => {
-    return Array.from(events.values()).sort(
-      (a, b) => b.created_at - a.created_at
-    );
-  }, [events]);
+  // Merge notes and reposts for sorting by created_at
+  // Each item: { note: Event, reposts: Event[] }
+  const mergedNotes = useMemo(() => {
+    return Array.from(notes.values())
+      .map((note) => {
+        const noteReposts = reposts.get(note.id) || [];
+        if(noteReposts.length !== 0) console.log("THIS POST HAS A REPOST")
+        // Get the latest repost time, if any
+        const latestRepostTime = noteReposts.length
+          ? Math.max(...noteReposts.map(r => r.created_at))
+          : 0;
+  
+        // Use the later of the note's created_at or the latest repost's created_at
+        const latestActivity = Math.max(note.created_at, latestRepostTime);
+  
+        return {
+          note,
+          reposts: noteReposts,
+          latestActivity,
+        };
+      })
+      .sort((a, b) => b.latestActivity - a.latestActivity);
+  }, [notes, reposts]);
+
   useEffect(() => {
     if (user) {
       fetchNotes();
@@ -39,10 +58,12 @@ const FollowingFeed = () => {
       ) : null}
       {loadingMore ? <CircularProgress /> : null}
       <Virtuoso
-        data={sorted}
-        itemContent={(index, event) => <Notes event={event} />}
-        style={{ height: "100vh" }} // Fill screen
-        followOutput={false} // Prevent auto-scroll-to-bottom unless you want it
+        data={mergedNotes}
+        itemContent={(index, item) => {
+          return <RepostsCard note={item.note} reposts={reposts.get(item.note.id) || []} />
+        }}
+        style={{ height: "100vh" }}
+        followOutput={false}
         startReached={() => {
           console.log("Top reached!");
           fetchNewerNotes();
