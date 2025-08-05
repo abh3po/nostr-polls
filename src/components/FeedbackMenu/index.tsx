@@ -6,6 +6,7 @@ import CommentSection from "../Common/Comments/CommentSection";
 import Likes from "../Common/Likes/likes";
 import Zap from "../Common/Zaps/zaps";
 import { Event } from "nostr-tools";
+import RepostButton from "../Common/Repost/reposts";
 
 interface FeedbackMenuProps {
   event: Event;
@@ -47,6 +48,9 @@ export const FeedbackMenu: React.FC<FeedbackMenuProps> = ({ event }) => {
             <div style={{ display: "flex", alignItems: "center" }}>
               <Likes pollEvent={event} />
             </div>
+            <div>
+            <RepostButton event={event} />
+          </div>
             <div>
               <Zap pollEvent={event} />
             </div>

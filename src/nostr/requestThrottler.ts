@@ -1,8 +1,8 @@
 import { SimplePool } from "nostr-tools";
-import { fetchComments, fetchLikes, fetchUserProfiles, fetchZaps } from ".";
+import { fetchComments, fetchLikes, fetchUserProfiles, fetchZaps, fetchReposts } from ".";
 import { Event } from "nostr-tools/lib/types/core";
 
-type QueueType = "profiles" | "comments" | "likes" | "zaps";
+type QueueType = "profiles" | "comments" | "likes" | "zaps" | "reposts";
 
 export class Throttler {
   private queue: string[] = [];

@@ -1,4 +1,4 @@
-import { Event, EventTemplate, finalizeEvent, SimplePool } from "nostr-tools";
+import { Event, EventTemplate, Filter, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { pool } from "../singletons";
 import { signerManager } from "../singletons/Signer/SignerManager";
@@ -44,6 +44,25 @@ export const fetchUserProfiles = async (
     authors: pubkeys,
   });
   return result;
+};
+
+export const fetchReposts = async (
+  ids: string[],
+  pool: SimplePool,
+  relays: string[]
+): Promise<Event[]> => {
+  const filters: Filter = {
+      kinds: [6, 16],
+      "#e": ids,
+    }
+
+  try {
+    const events = await pool.querySync(relays, filters);
+    return events;
+  } catch (err) {
+    console.error("Error fetching reposts", err);
+    return [];
+  }
 };
 
 export const fetchComments = async (
