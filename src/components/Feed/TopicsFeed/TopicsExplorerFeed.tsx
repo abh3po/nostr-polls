@@ -51,7 +51,8 @@ const TopicExplorer: React.FC = () => {
 
   const seenNoteIds = useRef<Set<string>>(new Set());
   const seenPollIds = useRef<Set<string>>(new Set());
-  const hasSubscribed = useRef({ notes: false, polls: false, curated: false });
+  const blockedUsersMap = useRef<Map<string, Set<string>>>(new Map());
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
 
   const topicMetadataEvent = useMemo(() => {
     const events = metadata.get(tag ?? "") ?? [];
@@ -78,32 +79,47 @@ const TopicExplorer: React.FC = () => {
     });
   };
 
-  const handleMarkOffTopic = async (noteEvent: Event) => {
+  const handleModerationEvent = async (
+    noteEvent: Event,
+    type: "off-topic" | "remove-user"
+  ) => {
     if (!user) return requestLogin();
     if (!tag) return;
 
     const tags = [
-      ["e", noteEvent.id],
       ["t", tag],
+      type === "off-topic" ? ["e", noteEvent.id] : ["p", noteEvent.pubkey], // block user's posts from topic
     ];
 
     const unsignedEvent = {
       kind: OFFTOPIC_KIND,
       created_at: Math.floor(Date.now() / 1000),
       tags,
-      content: "Marked as off-topic",
+      content:
+        type === "off-topic"
+          ? "Marked as off-topic"
+          : "Removed user from topic",
       pubkey: user.pubkey,
     };
 
     const signed = await signEvent(unsignedEvent);
     await pool.publish(relays, signed);
 
-    // Manually update the curated map so UI reflects immediately
-    if (!curatedByMap.current.has(noteEvent.id)) {
-      curatedByMap.current.set(noteEvent.id, new Set());
+    // Update curated map
+    if (type === "off-topic") {
+      if (!curatedByMap.current.has(noteEvent.id)) {
+        curatedByMap.current.set(noteEvent.id, new Set());
+      }
+      curatedByMap.current.get(noteEvent.id)!.add(user.pubkey);
+      setCuratedIds(new Set(curatedByMap.current.keys()));
+    } else {
+      const blocked = blockedUsersMap.current;
+      if (!blocked.has(noteEvent.pubkey)) {
+        blocked.set(noteEvent.pubkey, new Set());
+      }
+      blocked.get(noteEvent.pubkey)!.add(user.pubkey);
+      setBlockedUserIds(new Set(blocked.keys()));
     }
-    curatedByMap.current.get(noteEvent.id)!.add(user.pubkey);
-    setCuratedIds(new Set(curatedByMap.current.keys()));
   };
 
   const subRef = useRef<ReturnType<SimplePool["subscribeMany"]> | null>(null);
@@ -129,7 +145,17 @@ const TopicExplorer: React.FC = () => {
             }
             curatedByMap.current.get(e)!.add(event.pubkey);
           }
+
+          const pTags = event.tags.filter((t) => t[0] === "p").map((t) => t[1]);
+          for (const pubkey of pTags) {
+            if (!blockedUsersMap.current.has(pubkey)) {
+              blockedUsersMap.current.set(pubkey, new Set());
+            }
+            blockedUsersMap.current.get(pubkey)!.add(event.pubkey);
+          }
+
           setCuratedIds(new Set(curatedByMap.current.keys()));
+          setBlockedUserIds(new Set(blockedUsersMap.current.keys()));
           return;
         }
 
@@ -174,20 +200,26 @@ const TopicExplorer: React.FC = () => {
           ? Array.from(allCurators).filter((id) => user.follows!.includes(id))
           : Array.from(allCurators);
 
-      const isHidden =
+      const isUserBlocked =
         feedMode !== "unfiltered" &&
-        visibleCurators.length > 0 &&
+        blockedUserIds.has(event.pubkey) &&
         !showAnywaySet.has(event.id);
 
-      const showReason =
-        visibleCurators.length > 0 ? (
+      const isHidden =
+        (feedMode !== "unfiltered" &&
+          visibleCurators.length > 0 &&
+          !showAnywaySet.has(event.id)) ||
+        isUserBlocked;
+
+      let showReason: React.ReactNode;
+
+      if (visibleCurators.length > 0) {
+        showReason = (
           <Box>
             <Typography style={{ margin: 10 }}>
               Marked as off-topic by:
             </Typography>
-            <div style={{ marginTop: 30 }}>
-              <OverlappingAvatars ids={visibleCurators} maxAvatars={3} />
-            </div>
+            <OverlappingAvatars ids={visibleCurators} maxAvatars={3} />
             <Button
               size="small"
               variant="text"
@@ -197,7 +229,33 @@ const TopicExplorer: React.FC = () => {
               <Typography style={{ marginTop: 10 }}>Show Anyway</Typography>
             </Button>
           </Box>
-        ) : undefined;
+        );
+      } else if (isUserBlocked) {
+        const blockers = blockedUsersMap.current.get(event.pubkey) ?? new Set();
+        const visibleBlockers =
+          feedMode === "contacts" && user?.follows
+            ? Array.from(blockers).filter((id) => user.follows!.includes(id))
+            : Array.from(blockers);
+
+        if (visibleBlockers.length > 0) {
+          showReason = (
+            <Box>
+              <Typography style={{ margin: 10 }}>
+                User removed from topic by:
+              </Typography>
+              <OverlappingAvatars ids={visibleBlockers} maxAvatars={3} />
+              <Button
+                size="small"
+                variant="text"
+                sx={{ mt: 1 }}
+                onClick={() => toggleShowAnyway(event.id)}
+              >
+                <Typography style={{ marginTop: 10 }}>Show Anyway</Typography>
+              </Button>
+            </Box>
+          );
+        }
+      }
 
       return (
         <Box sx={{ position: "relative" }}>
@@ -208,37 +266,39 @@ const TopicExplorer: React.FC = () => {
               showReason={showReason}
               extras={
                 <>
-                  {!allCurators.has(user?.pubkey || "") && (
-                    <MenuItem onClick={() => handleMarkOffTopic(event)}>
+                  {!curatedByMap.current
+                    .get(event.id)
+                    ?.has(user?.pubkey || "") && (
+                    <MenuItem
+                      onClick={() => handleModerationEvent(event, "off-topic")}
+                    >
                       Mark Off-Topic
                     </MenuItem>
                   )}
+                  {!blockedUsersMap.current
+                    .get(event.pubkey)
+                    ?.has(user?.pubkey || "") && (
+                    <MenuItem
+                      onClick={() =>
+                        handleModerationEvent(event, "remove-user")
+                      }
+                    >
+                      Remove User From Topic
+                    </MenuItem>
+                  )}
                   {feedMode !== "unfiltered" &&
-                    showAnywaySet.has(event.id) &&
-                    visibleCurators.length > 0 && (
-                      <MenuItem onClick={() => toggleShowAnyway(event.id)}>
-                        Hide Again
-                      </MenuItem>
-                    )}
+                  showAnywaySet.has(event.id) &&
+                  (visibleCurators.length > 0 || isUserBlocked) ? (
+                    <MenuItem onClick={() => toggleShowAnyway(event.id)}>
+                      Hide Again
+                    </MenuItem>
+                  ) : null}
                 </>
               }
             />
           ) : (
             <>
               <PollResponseForm pollEvent={event} />
-              {feedMode !== "unfiltered" &&
-                showAnywaySet.has(event.id) &&
-                visibleCurators.length > 0 && (
-                  <Box sx={{ ml: 2, mt: 1 }}>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => toggleShowAnyway(event.id)}
-                    >
-                      Hide Again
-                    </Button>
-                  </Box>
-                )}
             </>
           )}
         </Box>
