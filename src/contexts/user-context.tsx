@@ -8,6 +8,7 @@ export type User = {
   pubkey: string;
   privateKey?: string;
   follows?: string[];
+  about?: string;
 };
 
 interface UserContextInterface {

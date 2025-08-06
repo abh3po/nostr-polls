@@ -1,8 +1,8 @@
 import { nip07Signer } from "./NIP07Signer";
 import { createNip46Signer } from "./BunkerSigner";
 import { NostrSigner } from "./types";
-import { Event } from "nostr-tools";
-import { fetchUserProfile } from "../../nostr";
+import { Event, EventTemplate } from "nostr-tools";
+import { defaultRelays, fetchUserProfile, signEvent } from "../../nostr";
 import {
   getBunkerUriInLocalStorage,
   getKeysFromLocalStorage,
@@ -17,6 +17,9 @@ import {
 } from "../../utils/localStorage";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { ANONYMOUS_USER_NAME, User } from "../../contexts/user-context";
+import { bytesToHex } from "@noble/hashes/utils";
+import { pool } from "..";
+import { createLocalSigner } from "./LocalSigner";
 
 class SignerManager {
   private signer: NostrSigner | null = null;
@@ -26,6 +29,34 @@ class SignerManager {
 
   constructor() {
     this.restoreFromStorage();
+  }
+
+  async publishKind0(user: User) {
+    if (!this.signer) throw new Error("No signer available");
+
+    const pubkey = await this.signer.getPublicKey();
+
+    const kind0Event: EventTemplate = {
+      kind: 0,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [],
+      content: JSON.stringify({
+        name: user.name,
+        about: user.about || "",
+        picture: user.picture || "",
+      }),
+    };
+    const signedKind0 = await this.signer.signEvent(kind0Event);
+    pool.publish(defaultRelays, signedKind0);
+
+    // Here you should publish the event to Nostr relays
+    // Example: await relayPool.publish(kind0Event);
+    // Or call your existing function to publish events
+
+    // For now, just log it:
+    console.log("Publishing kind-0 event:", kind0Event);
+
+    // TODO: Replace with your actual event publish method
   }
 
   registerLoginModal(callback: () => Promise<void>) {
@@ -44,13 +75,61 @@ class SignerManager {
     try {
       if (bunkerUri?.bunkerUri) {
         await this.loginWithNip46(bunkerUri.bunkerUri);
-      } else if (keys.pubkey) {
-        console.log("Restoring loginWithNip07")
+      } else if (window.nostr) {
+        console.log("Restoring loginWithNip07");
         await this.loginWithNip07();
+      } else if (keys?.pubkey && keys?.secret) {
+        console.log("Restoring guest");
+        await this.loginWithGuestKey(keys.pubkey, keys.secret);
       }
     } catch (e) {
       console.error("Signer restore failed:", e);
     }
+    this.notify();
+  }
+  private async loginWithGuestKey(pubkey: string, privkey: string) {
+    this.signer = createLocalSigner(privkey);
+
+    const kind0: Event | null = await fetchUserProfile(pubkey);
+    const userData: User = kind0
+      ? { ...JSON.parse(kind0.content), pubkey, privateKey: privkey }
+      : {
+          pubkey,
+          name: ANONYMOUS_USER_NAME,
+          picture: DEFAULT_IMAGE_URL,
+          privateKey: privkey,
+        };
+
+    setUserDataInLocalStorage(userData);
+    this.user = userData;
+  }
+
+  async createGuestAccount(
+    privkey: string,
+    userMetadata: { name?: string; picture?: string; about?: string }
+  ) {
+    this.signer = createLocalSigner(privkey);
+
+    const pubkey = await this.signer.getPublicKey();
+
+    // Build user object
+    const userData: User = {
+      pubkey,
+      name: userMetadata.name || "Guest",
+      picture: userMetadata.picture || DEFAULT_IMAGE_URL,
+      about: userMetadata.about || "",
+      privateKey: privkey,
+    };
+
+    // Save keys and user data
+    setKeysInLocalStorage(pubkey, privkey);
+    setUserDataInLocalStorage(userData);
+
+    this.user = userData;
+
+    // Optionally, send kind-0 event to publish metadata on Nostr network
+    await this.publishKind0(userData);
+
     this.notify();
   }
 
@@ -103,7 +182,7 @@ class SignerManager {
   }
 
   async getSigner(): Promise<NostrSigner> {
-    console.log("EXisting signer is", this.signer)
+    console.log("EXisting signer is", this.signer);
     if (this.signer) return this.signer;
 
     if (this.loginModalCallback) {

@@ -43,7 +43,7 @@ export const Notes: React.FC<NotesProps> = ({
 }) => {
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   let { user, requestLogin, setUser } = useUserContext();
-  let { relays} = useRelays();
+  let { relays } = useRelays();
   let { fetchLatestContactList } = useListContext();
   const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
 
@@ -61,12 +61,12 @@ export const Notes: React.FC<NotesProps> = ({
       requestLogin();
       return;
     }
-  
+
     const pubkeyToAdd = event.pubkey;
-  
+
     // Step 2: Fetch the latest contact list
     const contactEvent = await fetchLatestContactList();
-  
+
     // Step 3: Parse existing "p" tags
     const existingTags = contactEvent?.tags || [];
     const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
@@ -74,19 +74,15 @@ export const Notes: React.FC<NotesProps> = ({
     const existingFollows = existingTags
       .filter(([t]) => t === "p")
       .map(([, pk]) => pk);
-  
-    if (existingFollows.includes(pubkeyToAdd)) {
-      return; // Already followed
-    }
-  
+
     if (hasAlready) {
       return; // Already followed
     }
-  
+
     // Step 4: Add new "p" tag, preserve all other tags
     const updatedFollows = [...existingFollows, pubkeyToAdd];
     const updatedTags = [...existingTags, ["p", pubkeyToAdd]];
-  
+
     const newEvent: EventTemplate = {
       kind: 3,
       created_at: Math.floor(Date.now() / 1000),
@@ -94,16 +90,14 @@ export const Notes: React.FC<NotesProps> = ({
       content: contactEvent?.content || "",
     };
     // Step 6: Sign and publish
-    console.log("TRYING TO SIGN", newEvent)
-    const signed = await signEvent(newEvent)
+    console.log("TRYING TO SIGN", newEvent);
+    const signed = await signEvent(newEvent);
     pool.publish(relays, signed);
     setUser({
       ...user,
       follows: updatedFollows,
     });
   };
-  
-  
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -201,7 +195,7 @@ export const Notes: React.FC<NotesProps> = ({
               />
             }
             title={
-              <div style={{display: "flex", justifyContent: "space-between"}}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography>
                   {profiles?.get(event.pubkey)?.name ||
                     profiles?.get(event.pubkey)?.username ||
@@ -211,7 +205,9 @@ export const Notes: React.FC<NotesProps> = ({
                       return npub.slice(0, 6) + "…" + npub.slice(-4);
                     })()}
                 </Typography>
-                {user && user.follows && !user.follows.includes(event.pubkey) ? <Button onClick={addToContacts}>Follow</Button> : null}
+                {user && !user.follows?.includes(event.pubkey) ? (
+                  <Button onClick={addToContacts}>Follow</Button>
+                ) : null}
               </div>
             }
             action={
