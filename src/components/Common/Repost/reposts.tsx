@@ -51,7 +51,7 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
       kind: isKind1 ? 6 : 16,
       created_at: Math.floor(Date.now() / 1000),
       tags: [
-        ["e", event.id, relays[0]],
+        ["q", event.id, relays[0], event.pubkey],
         ["p", event.pubkey],
       ],
       content: isKind1 ? JSON.stringify(event) : "",

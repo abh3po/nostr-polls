@@ -1,9 +1,12 @@
-// PollFeed.tsx
 import { Event } from "nostr-tools/lib/types/core";
 import React, { useEffect, useState } from "react";
 import PollResponseForm from "../PollResponse/PollResponseForm";
 import { makeStyles } from "@mui/styles";
 import { Notes } from "../Notes";
+import { nip19 } from "nostr-tools";
+import ReplayIcon from "@mui/icons-material/Replay";
+import Typography from "@mui/material/Typography";
+import OverlappingAvatars from "../Common/OverlappingAvatars";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -11,53 +14,90 @@ const useStyles = makeStyles((theme) => ({
     width: "100%",
     maxWidth: "600px",
   },
+  repostText: {
+    fontSize: "0.75rem",
+    color: "#4caf50",
+    marginLeft: "10px",
+    marginRight: 10,
+    display: "flex",
+    flexDirection: "row",
+  },
 }));
 
 interface FeedProps {
-  events: Event[];
+  events: Event[]; // original events (polls, notes)
+  reposts?: Map<string, Event[]>; // kind: 16 reposts
   userResponses: Map<string, Event>;
 }
 
-export const Feed: React.FC<FeedProps> = ({ events, userResponses }) => {
+export const Feed: React.FC<FeedProps> = ({
+  events,
+  reposts,
+  userResponses,
+}) => {
   const classes = useStyles();
-  const [eventIdsMap, setEventIdsMap] = useState<{ [key: string]: Event }>({});
+  const [mergedEvents, setMergedEvents] = useState<
+    { event: Event; repostedBy?: Array<string>; timestamp: number }[]
+  >([]);
 
   useEffect(() => {
-    let newEventIdsMap: { [key: string]: Event } = {};
-    events.forEach((event) => {
-      newEventIdsMap[event.id] = event;
+    const eventMap: { [id: string]: Event } = {};
+    events.forEach((e) => {
+      eventMap[e.id] = e;
     });
-    setEventIdsMap(newEventIdsMap);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events]);
+
+    const merged: { event: Event; repostedBy?: string[]; timestamp: number }[] =
+      [];
+
+    // Original events
+    events.forEach((e) => {
+      const repostsForEvent = reposts?.get(e.id);
+      (repostsForEvent || []).sort(
+        (a: Event, b: Event) => b.created_at - a.created_at
+      );
+
+      merged.push({
+        event: e,
+        timestamp: Math.max(
+          repostsForEvent?.[0]?.created_at || 0,
+          e.created_at
+        ),
+        repostedBy: repostsForEvent?.map((e) => e.pubkey) || [],
+      });
+    });
+
+    // Sort newest first
+    merged.sort((a, b) => b.timestamp - a.timestamp);
+    setMergedEvents(merged);
+  }, [events, reposts]);
 
   return (
     <div>
-      {Object.keys(eventIdsMap)
-        .sort((a, b) => {
-          return eventIdsMap[b].created_at - eventIdsMap[a].created_at;
-        })
-        .map((eventId: string) => {
-          if (eventIdsMap[eventId].kind === 1) {
-            return (
-              <div className={classes.root} key={eventId}>
-                <Notes event={eventIdsMap[eventId]} key={eventId} />
+      {mergedEvents.map(({ event, repostedBy }) => {
+        const key = `${event.id}-${repostedBy || "original"}`;
+        return (
+          <div className={classes.root} key={key}>
+            {repostedBy?.length !== 0 ? (
+              <div className={classes.repostText}>
+                <ReplayIcon />
+                <Typography style={{ marginRight: 10 }}>
+                  {" "}
+                  Reposted by
+                </Typography>
+                <OverlappingAvatars ids={repostedBy || []} />
               </div>
-            );
-          } else if (eventIdsMap[eventId].kind === 1068) {
-            return (
-              <div className={classes.root} key={eventId}>
-                <PollResponseForm
-                  pollEvent={eventIdsMap[eventId]}
-                  key={eventId}
-                  userResponse={userResponses.get(eventId)}
-                />
-              </div>
-            );
-          } else {
-            return null;
-          }
-        })}
+            ) : null}
+            {event.kind === 1 ? (
+              <Notes event={event} />
+            ) : event.kind === 1068 ? (
+              <PollResponseForm
+                pollEvent={event}
+                userResponse={userResponses.get(event.id)}
+              />
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 };
