@@ -26,6 +26,11 @@ import { signEvent } from "../../../nostr";
 import { pool } from "../../../singletons";
 import { useMetadata } from "../../../hooks/MetadataProvider";
 import { selectBestMetadataEvent } from "../../../utils/utils";
+import {
+  loadModeratorPrefs,
+  saveModeratorPrefs,
+} from "../../../utils/localStorage";
+import ModeratorSelectorDialog from "../../../components/Moderator/ModeratorSelectorDialog";
 
 const OFFTOPIC_KIND = 1011;
 
@@ -53,6 +58,8 @@ const TopicExplorer: React.FC = () => {
   const seenPollIds = useRef<Set<string>>(new Set());
   const blockedUsersMap = useRef<Map<string, Set<string>>>(new Map());
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [moderatorDialogOpen, setModeratorDialogOpen] = useState(false);
+  const [visibleModerators, setVisibleModerators] = useState<string[]>([]);
 
   const topicMetadataEvent = useMemo(() => {
     const events = metadata.get(tag ?? "") ?? [];
@@ -78,6 +85,22 @@ const TopicExplorer: React.FC = () => {
       return updated;
     });
   };
+
+  const allModerators = useMemo(() => {
+    const modSet = new Set<string>();
+    curatedByMap.current.forEach((curators) => {
+      curators.forEach((id) => modSet.add(id));
+    });
+    blockedUsersMap.current.forEach((blockers) => {
+      blockers.forEach((id) => modSet.add(id));
+    });
+    return Array.from(modSet);
+  }, [curatedIds, blockedUserIds]);
+
+  useEffect(() => {
+    if (!tag) return;
+    setVisibleModerators(loadModeratorPrefs(tag, allModerators));
+  }, [tag, allModerators]);
 
   const handleModerationEvent = async (
     noteEvent: Event,
@@ -187,6 +210,14 @@ const TopicExplorer: React.FC = () => {
     return base.sort((a, b) => b.created_at - a.created_at);
   }, [tabValue, notesEvents, pollsEvents]);
 
+  const visibleCurators =
+    feedMode === "contacts" && user?.follows
+      ? Array.from(allModerators).filter(
+          (id) => user.follows!.includes(id) && visibleModerators.includes(id)
+        )
+      : Array.from(allModerators).filter((id) =>
+          visibleModerators.includes(id)
+        );
   const loading = tabValue === 0 ? loadingNotes : loadingPolls;
 
   const itemContent = useMemo(
@@ -352,6 +383,23 @@ const TopicExplorer: React.FC = () => {
       </Box>
 
       <Rate entityId={tag!} entityType="hashtag" />
+      {allModerators.length > 0 && (
+        <Box
+          onClick={() => setModeratorDialogOpen(true)}
+          sx={{
+            mt: 2,
+            mb: 1,
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          <Typography sx={{ mr: 1 }} variant="subtitle2">
+            Moderated by:
+          </Typography>
+          <OverlappingAvatars ids={visibleModerators} maxAvatars={5} />
+        </Box>
+      )}
 
       <FormControl sx={{ mt: 2, mb: 1 }} size="small">
         <InputLabel>Feed Mode</InputLabel>
@@ -405,6 +453,16 @@ const TopicExplorer: React.FC = () => {
           followOutput={false}
         />
       )}
+      <ModeratorSelectorDialog
+        open={moderatorDialogOpen}
+        moderators={allModerators}
+        selected={visibleModerators}
+        onSubmit={(pubkeys) => {
+          setVisibleModerators(pubkeys);
+          if (tag) saveModeratorPrefs(tag, pubkeys);
+        }}
+        onClose={() => setModeratorDialogOpen(false)}
+      />
     </Box>
   );
 };
