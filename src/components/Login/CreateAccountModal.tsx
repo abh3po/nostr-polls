@@ -168,7 +168,7 @@ export const CreateAccountModal: React.FC<Props> = ({ open, onClose }) => {
   );
 };
 
-const MonospaceDisplay: React.FC<{ value: string }> = ({ value }) => {
+export const MonospaceDisplay: React.FC<{ value: string }> = ({ value }) => {
   let notification = useNotification();
   const handleCopy = async () => {
     await navigator.clipboard.writeText(value);

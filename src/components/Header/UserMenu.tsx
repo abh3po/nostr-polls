@@ -7,6 +7,7 @@ import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
 import { signerManager } from "../../singletons/Signer/SignerManager";
 import { WarningAmber } from "@mui/icons-material";
+import { ViewKeysModal } from "../User/ViewKeysModal";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -16,6 +17,7 @@ export const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
+  const [showKeysModal, setShowKeysModal] = React.useState(false);
   const { user } = useUserContext();
 
   const handleLogOut = () => {
@@ -52,6 +54,18 @@ export const UserMenu: React.FC = () => {
       >
         {user
           ? [
+              user?.privateKey && (
+                <MenuItem
+                  key="view-keys"
+                  onClick={() => {
+                    setShowKeysModal(true);
+                    setAnchorEl(null);
+                  }}
+                >
+                  View Keys
+                </MenuItem>
+              ),
+
               <MenuItem onClick={() => setShowSettings(true)}>
                 Settings
               </MenuItem>,
@@ -94,6 +108,12 @@ export const UserMenu: React.FC = () => {
       <LoginModal
         open={showLoginModal}
         onClose={() => setShowLoginModal(false)}
+      />
+      <ViewKeysModal
+        open={showKeysModal}
+        onClose={() => setShowKeysModal(false)}
+        pubkey={user?.pubkey || ""}
+        privkey={user?.privateKey || ""}
       />
     </div>
   );
