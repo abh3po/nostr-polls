@@ -2,7 +2,7 @@ import { nip07Signer } from "./NIP07Signer";
 import { createNip46Signer } from "./BunkerSigner";
 import { NostrSigner } from "./types";
 import { Event, EventTemplate } from "nostr-tools";
-import { defaultRelays, fetchUserProfile, signEvent } from "../../nostr";
+import { defaultRelays, fetchUserProfile } from "../../nostr";
 import {
   getBunkerUriInLocalStorage,
   getKeysFromLocalStorage,
@@ -17,7 +17,6 @@ import {
 } from "../../utils/localStorage";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { ANONYMOUS_USER_NAME, User } from "../../contexts/user-context";
-import { bytesToHex } from "@noble/hashes/utils";
 import { pool } from "..";
 import { createLocalSigner } from "./LocalSigner";
 
@@ -33,8 +32,6 @@ class SignerManager {
 
   async publishKind0(user: User) {
     if (!this.signer) throw new Error("No signer available");
-
-    const pubkey = await this.signer.getPublicKey();
 
     const kind0Event: EventTemplate = {
       kind: 0,

@@ -59,6 +59,24 @@ export const UserMenu: React.FC = () => {
               <ListItem>
                 <ColorSchemeToggle />
               </ListItem>,
+              user?.privateKey && (
+                <MenuItem
+                  key="delete-keys"
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      "Are you sure you want to delete your keys? This action is irreversible."
+                    );
+                    if (confirmed) {
+                      localStorage.removeItem("pollerama:keys");
+                      signerManager.logout();
+                      window.location.reload();
+                    }
+                  }}
+                  style={{ color: "red" }}
+                >
+                  Delete Keys
+                </MenuItem>
+              ),
             ]
           : [
               <MenuItem onClick={() => setShowLoginModal(true)}>
