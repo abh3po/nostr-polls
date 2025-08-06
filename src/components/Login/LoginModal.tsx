@@ -1,5 +1,5 @@
 // components/LoginModal.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { signerManager } from "../../singletons/Signer/SignerManager";
 import { useUserContext } from "../../hooks/useUserContext";
+import { CreateAccountModal } from "./CreateAccountModal";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ interface Props {
 
 export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   const { setUser } = useUserContext();
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
   const handleLoginWithNip07 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
       setUser(signerManager.getUser());
@@ -60,11 +62,22 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
           <Button onClick={handleLoginWithNip46} variant="contained" fullWidth>
             Log In via Remote Signer (NIP-46)
           </Button>
+          <Button
+            onClick={() => setShowCreateAccount(true)}
+            variant="outlined"
+            fullWidth
+          >
+            Create Guest Account
+          </Button>
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
       </DialogActions>
+      <CreateAccountModal
+        open={showCreateAccount}
+        onClose={() => setShowCreateAccount(false)}
+      />
     </Dialog>
   );
 };
