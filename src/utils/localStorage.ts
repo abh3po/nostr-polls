@@ -96,6 +96,25 @@ export const getUserDataFromLocalStorage = (): { user: User } | null => {
   }
 };
 
+const MODERATOR_PREF_KEY = (tag: string) => `moderatorPrefs:${tag}`;
+
+export const loadModeratorPrefs = (
+  tag: string,
+  allModerators: string[]
+): string[] => {
+  const json = localStorage.getItem(MODERATOR_PREF_KEY(tag));
+  if (!json) return allModerators;
+  try {
+    const saved = JSON.parse(json);
+    if (Array.isArray(saved)) return saved;
+  } catch {}
+  return allModerators;
+};
+
+export const saveModeratorPrefs = (tag: string, selected: string[]) => {
+  localStorage.setItem(MODERATOR_PREF_KEY(tag), JSON.stringify(selected));
+};
+
 export const removeUserDataFromLocalStorage = () => {
   localStorage.removeItem(LOCAL_USER_DATA);
 };
