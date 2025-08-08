@@ -9,13 +9,17 @@ import {
   Snackbar,
   MenuItem,
   IconButton,
+  DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
-import { openProfileTab, parseContacts, signEvent } from "../../nostr";
+import { openProfileTab, signEvent } from "../../nostr";
 import { calculateTimeAgo } from "../../utils/common";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
@@ -55,6 +59,8 @@ export const Notes: React.FC<NotesProps> = ({
 
   const [parentModalOpen, setParentModalOpen] = useState(false);
   const [parentEventId, setParentEventId] = useState<string | null>(null);
+  const [showContactListWarning, setShowContactListWarning] = useState(false);
+  const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
 
   const addToContacts = async () => {
     if (!user) {
@@ -63,24 +69,27 @@ export const Notes: React.FC<NotesProps> = ({
     }
 
     const pubkeyToAdd = event.pubkey;
-
-    // Step 2: Fetch the latest contact list
     const contactEvent = await fetchLatestContactList();
 
-    // Step 3: Parse existing "p" tags
-    const existingTags = contactEvent?.tags || [];
-    const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
-    const hasAlready = pTags.includes(pubkeyToAdd);
-    const existingFollows = existingTags
-      .filter(([t]) => t === "p")
-      .map(([, pk]) => pk);
-
-    if (hasAlready) {
-      return; // Already followed
+    // New safeguard
+    if (!contactEvent) {
+      setPendingFollowKey(pubkeyToAdd);
+      setShowContactListWarning(true);
+      return;
     }
 
-    // Step 4: Add new "p" tag, preserve all other tags
-    const updatedFollows = [...existingFollows, pubkeyToAdd];
+    await updateContactList(contactEvent, pubkeyToAdd);
+  };
+
+  const updateContactList = async (
+    contactEvent: Event | null,
+    pubkeyToAdd: string
+  ) => {
+    const existingTags = contactEvent?.tags || [];
+    const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
+
+    if (pTags.includes(pubkeyToAdd)) return;
+
     const updatedTags = [...existingTags, ["p", pubkeyToAdd]];
 
     const newEvent: EventTemplate = {
@@ -89,13 +98,13 @@ export const Notes: React.FC<NotesProps> = ({
       tags: updatedTags,
       content: contactEvent?.content || "",
     };
-    // Step 6: Sign and publish
-    console.log("TRYING TO SIGN", newEvent);
+
     const signed = await signEvent(newEvent);
     pool.publish(relays, signed);
     setUser({
+      pubkey: signed.pubkey,
       ...user,
-      follows: updatedFollows,
+      follows: [...pTags, pubkeyToAdd],
     });
   };
 
@@ -306,6 +315,36 @@ export const Notes: React.FC<NotesProps> = ({
         }}
         initialEventId={parentEventId}
       />
+      <Dialog
+        open={showContactListWarning}
+        onClose={() => setShowContactListWarning(false)}
+      >
+        <DialogTitle>Warning</DialogTitle>
+        <DialogContent>
+          <Typography>
+            We couldn’t find your existing contact list. If you continue, your
+            follow list will only contain this person.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowContactListWarning(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (pendingFollowKey) {
+                updateContactList(null, pendingFollowKey);
+              }
+              setShowContactListWarning(false);
+              setPendingFollowKey(null);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Continue Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
