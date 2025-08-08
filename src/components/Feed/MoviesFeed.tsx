@@ -6,7 +6,6 @@ import MovieCard from "../Movies/MovieCard";
 import RateMovieModal from "../Ratings/RateMovieModal";
 import { Card, CardContent, Typography, CircularProgress, Box, Button } from "@mui/material";
 import { useUserContext } from "../../hooks/useUserContext";
-import { useNavigate } from "react-router-dom/dist";
 
 const BATCH_SIZE = 10;
 
@@ -18,7 +17,6 @@ const MoviesFeed: React.FC = () => {
   const [cursor, setCursor] = useState<number | undefined>(undefined);
   const { user } = useUserContext();
   const { relays } = useRelays();
-  const navigate = useNavigate();
   const seen = useRef<Set<string>>(new Set());
 
   const fetchBatch = () => {
