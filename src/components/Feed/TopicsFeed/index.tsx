@@ -168,7 +168,6 @@ const TopicsFeed: React.FC = () => {
       sx={{
         px: 2,
         py: 4,
-        height: "100vh",
         display: "flex",
         flexDirection: "column",
       }}
@@ -198,6 +197,7 @@ const TopicsFeed: React.FC = () => {
       ) : (
         <Box sx={{ flexGrow: 1, minHeight: 0 }}>
           <Virtuoso
+            useWindowScroll
             data={tags}
             itemContent={(index, tag) => (
               <TopicCard tag={tag} metadataEvent={metadataMap.get(tag)} />
