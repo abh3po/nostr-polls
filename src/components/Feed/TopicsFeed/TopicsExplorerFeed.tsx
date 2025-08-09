@@ -447,9 +447,9 @@ const TopicExplorer: React.FC = () => {
         <Typography>No content found for this topic.</Typography>
       ) : (
         <Virtuoso
+          useWindowScroll
           data={sortedEvents}
           itemContent={itemContent}
-          style={{ height: "100vh" }}
           followOutput={false}
         />
       )}

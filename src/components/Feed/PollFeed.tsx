@@ -282,35 +282,34 @@ export const PollFeed = () => {
         </Grid>
 
         <Grid size={12}>
-          <div style={{ height: "100vh" }}>
-            {loadingInitial ? (
-              <CenteredBox sx={{ mt: 4 }}>
-                <CircularProgress />
-              </CenteredBox>
-            ) : (
-              <Virtuoso
-                data={combinedEvents}
-                itemContent={(index, event) => (
-                  <div key={event.id}>
-                    <Feed
-                      events={[event]}
-                      userResponses={latestResponses}
-                      reposts={repostsByPollId}
-                    />
-                  </div>
-                )}
-                endReached={loadMore}
-                components={{
-                  Footer: () =>
-                    loadingMore ? (
-                      <CenteredBox sx={{ mt: 2, mb: 2 }}>
-                        <CircularProgress size={24} />
-                      </CenteredBox>
-                    ) : null,
-                }}
-              />
-            )}
-          </div>
+          {loadingInitial ? (
+            <CenteredBox sx={{ mt: 4 }}>
+              <CircularProgress />
+            </CenteredBox>
+          ) : (
+            <Virtuoso
+              useWindowScroll
+              data={combinedEvents}
+              itemContent={(index, event) => (
+                <div key={event.id}>
+                  <Feed
+                    events={[event]}
+                    userResponses={latestResponses}
+                    reposts={repostsByPollId}
+                  />
+                </div>
+              )}
+              endReached={loadMore}
+              components={{
+                Footer: () =>
+                  loadingMore ? (
+                    <CenteredBox sx={{ mt: 2, mb: 2 }}>
+                      <CircularProgress size={24} />
+                    </CenteredBox>
+                  ) : null,
+              }}
+            />
+          )}
         </Grid>
       </Grid>
     </Container>

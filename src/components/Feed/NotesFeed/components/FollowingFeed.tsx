@@ -58,11 +58,11 @@ const FollowingFeed = () => {
       ) : null}
       {loadingMore ? <CircularProgress /> : null}
       <Virtuoso
+        useWindowScroll
         data={mergedNotes}
         itemContent={(index, item) => {
           return <RepostsCard note={item.note} reposts={reposts.get(item.note.id) || []} />
         }}
-        style={{ height: "100vh" }}
         followOutput={false}
         startReached={() => {
           console.log("Top reached!");
