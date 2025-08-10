@@ -99,12 +99,10 @@ export const PollFeed = () => {
   const fetchInitialPolls = () => {
     const filterPolls: Filter = {
       kinds: [KIND_POLL],
-      since: Math.floor(Date.now() / 1000) - 60 * 60 * 24, // last 24h
       limit: 40,
     };
     const filterResposts: Filter = {
       kinds: [KIND_REPOST],
-      since: Math.floor(Date.now() / 1000) - 60 * 60 * 24, // last 24h
       "#k": ["1068"],
     };
 
