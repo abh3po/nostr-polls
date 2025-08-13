@@ -1,103 +1,98 @@
-import { Event } from "nostr-tools/lib/types/core";
-import React, { useEffect, useState } from "react";
-import PollResponseForm from "../PollResponse/PollResponseForm";
-import { makeStyles } from "@mui/styles";
-import { Notes } from "../Notes";
-import { nip19 } from "nostr-tools";
-import ReplayIcon from "@mui/icons-material/Replay";
-import Typography from "@mui/material/Typography";
-import OverlappingAvatars from "../Common/OverlappingAvatars";
+import React, { useMemo } from "react";
+import { Virtuoso } from "react-virtuoso";
+import { usePolls } from "./PollProvider";
+import { FeedItem } from "./FeedItem";
+import { CircularProgress, Box, Select, MenuItem } from "@mui/material";
+import { styled } from "@mui/system";
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    margin: "20px auto",
-    width: "100%",
-    maxWidth: "600px",
-  },
-  repostText: {
-    fontSize: "0.75rem",
-    color: "#4caf50",
-    marginLeft: "10px",
-    marginRight: 10,
-    display: "flex",
-    flexDirection: "row",
-  },
-}));
+const StyledSelect = styled(Select)`
+  &::before,
+  &::after {
+    border-bottom: none !important;
+  }
+`;
 
-interface FeedProps {
-  events: Event[]; // original events (polls, notes)
-  reposts?: Map<string, Event[]>; // kind: 16 reposts
-  userResponses: Map<string, Event>;
-}
+const CenteredBox = styled(Box)`
+  display: flex;
+  justify-content: center;
+`;
 
-export const Feed: React.FC<FeedProps> = ({
-  events,
-  reposts,
-  userResponses,
-}) => {
-  const classes = useStyles();
-  const [mergedEvents, setMergedEvents] = useState<
-    { event: Event; repostedBy?: Array<string>; timestamp: number }[]
-  >([]);
+export const Feed = () => {
+  const {
+    pollEvents,
+    repostEvents,
+    userResponses,
+    eventSource,
+    setEventSource,
+    loadMore,
+  } = usePolls();
 
-  useEffect(() => {
-    const eventMap: { [id: string]: Event } = {};
-    events.forEach((e) => {
-      eventMap[e.id] = e;
+  const repostsByPollId = useMemo(() => {
+    const map = new Map<string, typeof repostEvents>();
+    repostEvents.forEach((repost) => {
+      let originalId =
+        repost.tags.find((t) => t[0] === "q")?.[1] ||
+        repost.tags.find((t) => t[0] === "e")?.[1];
+      if (!originalId) return;
+      const arr = map.get(originalId) || [];
+      arr.push(repost);
+      map.set(originalId, arr);
     });
+    return map;
+  }, [repostEvents]);
 
-    const merged: { event: Event; repostedBy?: string[]; timestamp: number }[] =
-      [];
-
-    // Original events
-    events.forEach((e) => {
-      const repostsForEvent = reposts?.get(e.id);
-      (repostsForEvent || []).sort(
-        (a: Event, b: Event) => b.created_at - a.created_at
+  const combinedEvents = useMemo(() => {
+    return [...pollEvents].sort((a, b) => {
+      const aReposts = repostsByPollId.get(a.id) || [];
+      const bReposts = repostsByPollId.get(b.id) || [];
+      const aLatest = Math.max(
+        a.created_at,
+        ...aReposts.map((e) => e.created_at)
       );
-
-      merged.push({
-        event: e,
-        timestamp: Math.max(
-          repostsForEvent?.[0]?.created_at || 0,
-          e.created_at
-        ),
-        repostedBy: repostsForEvent?.map((e) => e.pubkey) || [],
-      });
+      const bLatest = Math.max(
+        b.created_at,
+        ...bReposts.map((e) => e.created_at)
+      );
+      return bLatest - aLatest;
     });
-
-    // Sort newest first
-    merged.sort((a, b) => b.timestamp - a.timestamp);
-    setMergedEvents(merged);
-  }, [events, reposts]);
+  }, [pollEvents, repostsByPollId]);
 
   return (
-    <div>
-      {mergedEvents.map(({ event, repostedBy }) => {
-        const key = `${event.id}-${repostedBy || "original"}`;
-        return (
-          <div className={classes.root} key={key}>
-            {repostedBy?.length !== 0 ? (
-              <div className={classes.repostText}>
-                <ReplayIcon />
-                <Typography style={{ marginRight: 10 }}>
-                  {" "}
-                  Reposted by
-                </Typography>
-                <OverlappingAvatars ids={repostedBy || []} />
-              </div>
-            ) : null}
-            {event.kind === 1 ? (
-              <Notes event={event} />
-            ) : event.kind === 1068 ? (
-              <PollResponseForm
-                pollEvent={event}
-                userResponse={userResponses.get(event.id)}
-              />
-            ) : null}
-          </div>
-        );
-      })}
+    <div style={{ height: "100vh" }}>
+      <CenteredBox>
+        <StyledSelect
+          variant="standard"
+          onChange={(e) =>
+            setEventSource(e.target.value as "global" | "following")
+          }
+          value={eventSource}
+        >
+          <MenuItem value="global">global polls</MenuItem>
+          <MenuItem value="following">polls from people you follow</MenuItem>
+        </StyledSelect>
+      </CenteredBox>
+      {combinedEvents.length === 0 ? (
+        <CenteredBox sx={{ mt: 4 }}>
+          <CircularProgress />
+        </CenteredBox>
+      ) : (
+        <Virtuoso
+          data={combinedEvents}
+          itemContent={(index, event) => (
+            <FeedItem
+              key={event.id}
+              event={event}
+              repostedBy={
+                repostsByPollId.get(event.id)?.map((e) => e.pubkey) || []
+              }
+              userResponse={userResponses.find(
+                (r) => r.tags.find((t) => t[0] === "e")?.[1] === event.id
+              )}
+            />
+          )}
+          endReached={loadMore}
+        />
+      )}
     </div>
   );
 };

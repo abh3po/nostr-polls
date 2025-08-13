@@ -22,7 +22,7 @@ import { RatingProvider } from "./contexts/RatingProvider";
 import MoviePage from "./components/Movies/MoviePage";
 import NotesFeed from "./components/Feed/NotesFeed/components";
 import ProfilesFeed from "./components/Feed/ProfileFeed";
-import { PollFeed } from "./components/Feed/PollFeed";
+import { PollsProvider } from "./components/Feed/PollProvider";
 import MoviesFeed from "./components/Feed/MoviesFeed";
 import { MetadataProvider } from "./hooks/MetadataProvider";
 import FeedsLayout from "./components/Feed/FeedsLayout";
@@ -30,6 +30,7 @@ import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import TopicsFeed from "./components/Feed/TopicsFeed";
+import { Feed } from "./components/Feed/Feed";
 
 declare global {
   interface Window {
@@ -72,8 +73,11 @@ const App: React.FC = () => {
                           </Route>
                           <Route
                             path="polls"
-                            index={true}
-                            element={<PollFeed />}
+                            element={
+                              <PollsProvider>
+                                <Feed />
+                              </PollsProvider>
+                            }
                           />
 
                           {/* Wrap the movies routes inside MovieMetadataProvider */}
@@ -86,7 +90,7 @@ const App: React.FC = () => {
                           </Route>
 
                           {/* default route inside feeds */}
-                          <Route index element={<PollFeed />} />
+                          <Route index element={<Feed />} />
                         </Route>
                         <Route
                           index
