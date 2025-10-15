@@ -2,8 +2,8 @@ import React from "react";
 import { Tabs, Tab, useTheme, useMediaQuery, Box } from "@mui/material";
 
 interface Props {
-  activeTab: "following" | "reacted";
-  setActiveTab: (tab: "following" | "reacted") => void;
+  activeTab: "following" | "reacted" | "discover"; // 🆕
+  setActiveTab: (tab: "following" | "reacted" | "discover") => void;
 }
 
 const NotesFeedTabs: React.FC<Props> = ({ activeTab, setActiveTab }) => {
@@ -14,7 +14,9 @@ const NotesFeedTabs: React.FC<Props> = ({ activeTab, setActiveTab }) => {
     <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, mb: 2 }}>
       <Tabs
         value={activeTab}
-        onChange={(_, newValue: "following" | "reacted") => setActiveTab(newValue)}
+        onChange={(_, newValue: "following" | "reacted") =>
+          setActiveTab(newValue)
+        }
         variant="scrollable"
         scrollButtons="auto"
         allowScrollButtonsMobile
@@ -28,6 +30,7 @@ const NotesFeedTabs: React.FC<Props> = ({ activeTab, setActiveTab }) => {
       >
         <Tab label="Following" value="following" />
         <Tab label="Reacted by Contacts" value="reacted" />
+        <Tab label="Discover" value="discover" /> {/* 🆕 */}
       </Tabs>
     </Box>
   );

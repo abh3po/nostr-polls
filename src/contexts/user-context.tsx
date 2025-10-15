@@ -8,12 +8,13 @@ export type User = {
   pubkey: string;
   privateKey?: string;
   follows?: string[];
+  webOfTrust?: Set<string>;
   about?: string;
 };
 
 interface UserContextInterface {
   user: User | null;
-  setUser: (user: User | null) => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   requestLogin: () => void;
 }
 
