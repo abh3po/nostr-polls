@@ -8,7 +8,9 @@ const ReactedFeed = lazy(() => import("./ReactedFeed"));
 const DiscoverFeed = lazy(() => import("./DiscoverFeed")); // 🆕
 
 const NotesFeed = () => {
-  const [activeTab, setActiveTab] = useState<"following" | "reacted" | "discover">("following");
+  const [activeTab, setActiveTab] = useState<
+    "following" | "reacted" | "discover"
+  >("discover");
   const [modalOpen, setModalOpen] = useState(false);
 
   return (

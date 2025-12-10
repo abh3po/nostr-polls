@@ -28,9 +28,9 @@ const NotesFeedTabs: React.FC<Props> = ({ activeTab, setActiveTab }) => {
           },
         }}
       >
+        <Tab label="Discover" value="discover" /> {/* 🆕 */}
         <Tab label="Following" value="following" />
         <Tab label="Reacted by Contacts" value="reacted" />
-        <Tab label="Discover" value="discover" /> {/* 🆕 */}
       </Tabs>
     </Box>
   );

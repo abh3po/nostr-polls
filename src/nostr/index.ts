@@ -52,9 +52,9 @@ export const fetchReposts = async (
   relays: string[]
 ): Promise<Event[]> => {
   const filters: Filter = {
-      kinds: [6, 16],
-      "#e": ids,
-    }
+    kinds: [6, 16],
+    "#e": ids,
+  }
 
   try {
     const events = await pool.querySync(relays, filters);
@@ -122,9 +122,7 @@ export const signEvent = async (event: EventTemplate, secret?: string) => {
     signedEvent = finalizeEvent(event, secretKey);
     return signedEvent;
   }
-  console.log("ATTEMPTING TO SIGN");
   const signer = await signerManager.getSigner();
-  console.log("GOT SIGNER", signer);
   if (!signer) {
     throw Error("Login Method Not Provided");
   }

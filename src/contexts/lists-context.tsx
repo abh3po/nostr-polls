@@ -140,15 +140,6 @@ export function ListProvider({ children }: { children: ReactNode }) {
           const prevTrust = prev.webOfTrust ?? new Set<string>();
           const newSet = new Set([...Array.from(prevTrust), ...newPubkeys]);
 
-          console.log(
-            "New pubkeys size:",
-            newPubkeys.length,
-            "Existing WebOfTrust size:",
-            prevTrust.size,
-            "→ Updated size:",
-            newSet.size
-          );
-
           return { ...prev, webOfTrust: newSet };
         });
       },
@@ -165,7 +156,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
     if (!pool) return;
     if (user) {
       if (!lists) fetchLists();
-      fetchContacts();
+      if (!user.follows || user.follows.length === 0) fetchContacts();
       if (!user.webOfTrust || user.webOfTrust.size === 0) subscribeToContacts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

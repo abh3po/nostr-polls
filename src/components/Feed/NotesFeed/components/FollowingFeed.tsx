@@ -69,11 +69,9 @@ const FollowingFeed = () => {
         style={{ height: "100vh" }}
         followOutput={false}
         startReached={() => {
-          console.log("Top reached!");
           fetchNewerNotes();
         }}
         endReached={() => {
-          console.log("Bottom reached!");
           fetchNotes();
         }}
       />
