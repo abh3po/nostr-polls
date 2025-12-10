@@ -83,7 +83,6 @@ export const PollFeed = () => {
       onevent: (event: Event) => {
         if (verifyEvent(event)) {
           if (event.kind === KIND_REPOST) {
-            console.log("GOT REPOST", event);
             setRepostEvents((prev) => mergeEvents(prev, [event]));
           } else {
             setPollEvents((prev) => mergeEvents(prev, [event]));
@@ -253,9 +252,6 @@ export const PollFeed = () => {
     }, 15000);
     return () => clearInterval(interval);
   }, [pollEvents, repostEvents, relays, eventSource]);
-
-  console.log("REPOST FOR EVENT ID IS", repostsByPollId);
-  console.log("COmbine events are", combinedEvents);
   return (
     <Container maxWidth="lg" disableGutters>
       <Grid container spacing={2}>

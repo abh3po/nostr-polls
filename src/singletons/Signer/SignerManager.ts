@@ -50,9 +50,6 @@ class SignerManager {
     // Example: await relayPool.publish(kind0Event);
     // Or call your existing function to publish events
 
-    // For now, just log it:
-    console.log("Publishing kind-0 event:", kind0Event);
-
     // TODO: Replace with your actual event publish method
   }
 
@@ -91,11 +88,11 @@ class SignerManager {
     const userData: User = kind0
       ? { ...JSON.parse(kind0.content), pubkey, privateKey: privkey }
       : {
-          pubkey,
-          name: ANONYMOUS_USER_NAME,
-          picture: DEFAULT_IMAGE_URL,
-          privateKey: privkey,
-        };
+        pubkey,
+        name: ANONYMOUS_USER_NAME,
+        picture: DEFAULT_IMAGE_URL,
+        privateKey: privkey,
+      };
 
     setUserDataInLocalStorage(userData);
     this.user = userData;
@@ -131,7 +128,6 @@ class SignerManager {
   }
 
   async loginWithNip07() {
-    console.log("LOGGIN IN WITH NIP07");
     if (!window.nostr) throw new Error("NIP-07 extension not found");
     this.signer = nip07Signer;
     const pubkey = await window.nostr.getPublicKey();
@@ -145,7 +141,6 @@ class SignerManager {
     this.user = userData;
     setUserDataInLocalStorage(userData);
     this.notify();
-    console.log("LOGGIN IN WITH NIP07 IS NOW COMPLETE");
   }
 
   async loginWithNip46(bunkerUri: string) {
@@ -179,7 +174,6 @@ class SignerManager {
   }
 
   async getSigner(): Promise<NostrSigner> {
-    console.log("EXisting signer is", this.signer);
     if (this.signer) return this.signer;
 
     if (this.loginModalCallback) {

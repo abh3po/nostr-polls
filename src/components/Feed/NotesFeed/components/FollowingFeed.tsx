@@ -16,15 +16,14 @@ const FollowingFeed = () => {
     return Array.from(notes.values())
       .map((note) => {
         const noteReposts = reposts.get(note.id) || [];
-        if(noteReposts.length !== 0) console.log("THIS POST HAS A REPOST")
         // Get the latest repost time, if any
         const latestRepostTime = noteReposts.length
-          ? Math.max(...noteReposts.map(r => r.created_at))
+          ? Math.max(...noteReposts.map((r) => r.created_at))
           : 0;
-  
+
         // Use the later of the note's created_at or the latest repost's created_at
         const latestActivity = Math.max(note.created_at, latestRepostTime);
-  
+
         return {
           note,
           reposts: noteReposts,
@@ -60,16 +59,19 @@ const FollowingFeed = () => {
       <Virtuoso
         data={mergedNotes}
         itemContent={(index, item) => {
-          return <RepostsCard note={item.note} reposts={reposts.get(item.note.id) || []} />
+          return (
+            <RepostsCard
+              note={item.note}
+              reposts={reposts.get(item.note.id) || []}
+            />
+          );
         }}
         style={{ height: "100vh" }}
         followOutput={false}
         startReached={() => {
-          console.log("Top reached!");
           fetchNewerNotes();
         }}
         endReached={() => {
-          console.log("Bottom reached!");
           fetchNotes();
         }}
       />

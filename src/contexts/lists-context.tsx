@@ -1,6 +1,5 @@
-import { ReactNode, createContext, useEffect, useState } from "react";
-import { useAppContext } from "../hooks/useAppContext";
-import { Event } from "nostr-tools";
+import { ReactNode, createContext, useEffect, useRef, useState } from "react";
+import { Event, Filter } from "nostr-tools";
 import { SubCloser } from "nostr-tools/lib/types/pool";
 import { parseContacts, getATagFromEvent } from "../nostr";
 import { useRelays } from "../hooks/useRelays";
@@ -12,7 +11,7 @@ interface ListContextInterface {
   lists: Map<string, Event> | undefined;
   selectedList: string | undefined;
   handleListSelected: (id: string | null) => void;
-  fetchLatestContactList(): Promise<Event | null>
+  fetchLatestContactList(): Promise<Event | null>;
 }
 
 export const ListContext = createContext<ListContextInterface | null>(null);
@@ -24,7 +23,10 @@ export function ListProvider({ children }: { children: ReactNode }) {
   const { relays } = useRelays();
 
   const fetchLatestContactList = (): Promise<Event | null> => {
-    if(!user) { requestLogin(); return Promise.resolve(null);}
+    if (!user) {
+      requestLogin();
+      return Promise.resolve(null);
+    }
 
     return new Promise((resolve) => {
       let filter = {
@@ -117,17 +119,57 @@ export function ListProvider({ children }: { children: ReactNode }) {
     return closer;
   };
 
+  const subscribeToContacts = () => {
+    if (!user || !user.follows?.length) return;
+
+    const filter: Filter = {
+      kinds: [3],
+      authors: user.follows,
+      limit: 500,
+    };
+
+    const sub = pool.subscribeMany(relays, [filter], {
+      onevent: (event: Event) => {
+        const newPubkeys = event.tags
+          .filter((tag) => tag[0] === "p" && tag[1])
+          .map((tag) => tag[1]);
+
+        setUser((prev) => {
+          if (!prev) return prev;
+
+          const prevTrust = prev.webOfTrust ?? new Set<string>();
+          const newSet = new Set([...Array.from(prevTrust), ...newPubkeys]);
+
+          return { ...prev, webOfTrust: newSet };
+        });
+      },
+      oneose() {
+        sub.close();
+      },
+    });
+
+    return sub;
+  };
+
   useEffect(() => {
     if (!user) return;
     if (!pool) return;
     if (user) {
-      if(!lists) fetchLists();
-      fetchContacts();
+      if (!lists) fetchLists();
+      if (!user.follows || user.follows.length === 0) fetchContacts();
+      if (!user.webOfTrust || user.webOfTrust.size === 0) subscribeToContacts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, user]);
   return (
-    <ListContext.Provider value={{ lists, selectedList, handleListSelected, fetchLatestContactList }}>
+    <ListContext.Provider
+      value={{
+        lists,
+        selectedList,
+        handleListSelected,
+        fetchLatestContactList,
+      }}
+    >
       {children}
     </ListContext.Provider>
   );
