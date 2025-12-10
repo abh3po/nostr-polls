@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { Virtuoso } from "react-virtuoso";
+import type { VirtuosoHandle } from "react-virtuoso";
+import useImmersiveScroll from "../../../../hooks/useImmersiveScroll";
 import RepostsCard from "./RepostedNoteCard"; // your new reposts card component
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 
@@ -9,6 +11,10 @@ const FollowingFeed = () => {
   const { user, requestLogin } = useUserContext();
   const { notes, reposts, fetchNotes, loadingMore, fetchNewerNotes } =
     useFollowingNotes();
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   // Merge notes and reposts for sorting by created_at
   // Each item: { note: Event, reposts: Event[] }
@@ -56,25 +62,28 @@ const FollowingFeed = () => {
         </div>
       ) : null}
       {loadingMore ? <CircularProgress /> : null}
-      <Virtuoso
-        data={mergedNotes}
-        itemContent={(index, item) => {
-          return (
-            <RepostsCard
-              note={item.note}
-              reposts={reposts.get(item.note.id) || []}
-            />
-          );
-        }}
-        style={{ height: "100vh" }}
-        followOutput={false}
-        startReached={() => {
-          fetchNewerNotes();
-        }}
-        endReached={() => {
-          fetchNotes();
-        }}
-      />
+      <div ref={containerRef} style={{ height: "100vh" }}>
+        <Virtuoso
+          ref={virtuosoRef}
+          data={mergedNotes}
+          itemContent={(index, item) => {
+            return (
+              <RepostsCard
+                note={item.note}
+                reposts={reposts.get(item.note.id) || []}
+              />
+            );
+          }}
+          style={{ height: "100%" }}
+          followOutput={false}
+          startReached={() => {
+            fetchNewerNotes();
+          }}
+          endReached={() => {
+            fetchNotes();
+          }}
+        />
+      </div>
     </div>
   );
 };
