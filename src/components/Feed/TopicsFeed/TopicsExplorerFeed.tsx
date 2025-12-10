@@ -21,6 +21,8 @@ import { Notes } from "../../Notes";
 import PollResponseForm from "../../PollResponse/PollResponseForm";
 import Rate from "../../../components/Ratings/Rate";
 import { Virtuoso } from "react-virtuoso";
+import type { VirtuosoHandle } from "react-virtuoso";
+import useImmersiveScroll from "../../../hooks/useImmersiveScroll";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
 import { pool } from "../../../singletons";
@@ -146,6 +148,16 @@ const TopicExplorer: React.FC = () => {
   };
 
   const subRef = useRef<ReturnType<SimplePool["subscribeMany"]> | null>(null);
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useImmersiveScroll(
+    containerRef,
+    virtuosoRef,
+    { smooth: true },
+    scrollContainerRef
+  );
 
   useEffect(() => {
     if (!tag || relays.length === 0) return;
@@ -339,7 +351,10 @@ const TopicExplorer: React.FC = () => {
   );
 
   return (
-    <Box sx={{ px: 2, py: 4 }}>
+    <Box
+      ref={scrollContainerRef}
+      sx={{ px: 2, py: 4, height: "100vh", overflowY: "auto" }}
+    >
       <Button
         variant="outlined"
         startIcon={<ArrowBack />}
@@ -439,20 +454,23 @@ const TopicExplorer: React.FC = () => {
         <Tab label="Polls" />
       </Tabs>
 
-      {loading ? (
-        <Box display="flex" justifyContent="center" py={6}>
-          <CircularProgress />
-        </Box>
-      ) : sortedEvents.length === 0 ? (
-        <Typography>No content found for this topic.</Typography>
-      ) : (
-        <Virtuoso
-          data={sortedEvents}
-          itemContent={itemContent}
-          style={{ height: "100vh" }}
-          followOutput={false}
-        />
-      )}
+      <div ref={containerRef} style={{ height: "calc(100vh - 200px)" }}>
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={6}>
+            <CircularProgress />
+          </Box>
+        ) : sortedEvents.length === 0 ? (
+          <Typography>No content found for this topic.</Typography>
+        ) : (
+          <Virtuoso
+            ref={virtuosoRef}
+            data={sortedEvents}
+            itemContent={itemContent}
+            style={{ height: "100%", width: "100%" }}
+            followOutput={false}
+          />
+        )}
+      </div>
       <ModeratorSelectorDialog
         open={moderatorDialogOpen}
         moderators={allModerators}

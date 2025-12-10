@@ -1,8 +1,11 @@
 // src/features/Notes/components/Feeds/DiscoverFeed.tsx
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button, CircularProgress, Fab } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
+// add:
+import type { VirtuosoHandle } from "react-virtuoso";
+import useImmersiveScroll from "../../../../hooks/useImmersiveScroll";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import RepostsCard from "./RepostedNoteCard";
 import { useDiscoverNotes } from "../hooks/useDiscoverNotes";
@@ -12,6 +15,11 @@ const DiscoverFeed = () => {
   const { user, requestLogin } = useUserContext();
   const { notes, newNotes, fetchNotes, loadingMore, mergeNewNotes } =
     useDiscoverNotes();
+  // add:
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   useEffect(() => {
     if (
@@ -58,14 +66,17 @@ const DiscoverFeed = () => {
         </div>
       )}
 
-      <Virtuoso
-        data={mergedNotes}
-        itemContent={(index, item) => (
-          <RepostsCard note={item.note} reposts={[]} />
-        )}
-        style={{ height: "100vh" }}
-        followOutput={false}
-      />
+      <div ref={containerRef} style={{ height: "100vh" }}>
+        <Virtuoso
+          ref={virtuosoRef}
+          data={mergedNotes}
+          itemContent={(index, item) => (
+            <RepostsCard note={item.note} reposts={[]} />
+          )}
+          style={{ height: "100%" }}
+          followOutput={false}
+        />
+      </div>
 
       {/* Floating button for new notes */}
       {newNotes.size > 0 && (

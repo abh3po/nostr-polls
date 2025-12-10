@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Event, Filter } from "nostr-tools";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -15,6 +15,8 @@ import { styled } from "@mui/system";
 import { SubCloser } from "nostr-tools/lib/types/pool";
 import { pool } from "../../singletons";
 import { Virtuoso } from "react-virtuoso";
+import type { VirtuosoHandle } from "react-virtuoso";
+import useImmersiveScroll from "../../hooks/useImmersiveScroll";
 import { Feed } from "./Feed";
 
 const KIND_POLL = 1068;
@@ -58,6 +60,11 @@ export const PollFeed = () => {
 
   const { user } = useUserContext();
   const { relays } = useRelays();
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // enable immersive behavior (smooth)
+  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   const mergeEvents = (existing: Event[], incoming: Event[]): Event[] => {
     const map = new Map(existing.map((e) => [e.id, e]));
@@ -344,13 +351,14 @@ export const PollFeed = () => {
         </Grid>
 
         <Grid size={12}>
-          <div style={{ height: "100vh" }}>
+          <div ref={containerRef} style={{ height: "100vh" }}>
             {loadingInitial ? (
               <CenteredBox sx={{ mt: 4 }}>
                 <CircularProgress />
               </CenteredBox>
             ) : (
               <Virtuoso
+                ref={virtuosoRef}
                 data={combinedEvents}
                 itemContent={(index, event) => (
                   <div key={event.id}>
