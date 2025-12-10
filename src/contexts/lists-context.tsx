@@ -7,6 +7,9 @@ import { useUserContext } from "../hooks/useUserContext";
 import { User } from "./user-context";
 import { pool } from "../singletons";
 
+const WOT_STORAGE_KEY_PREFIX = `pollerama:webOfTrust`;
+const WOT_TTL = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
+
 interface ListContextInterface {
   lists: Map<string, Event> | undefined;
   selectedList: string | undefined;
@@ -21,6 +24,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
   const [selectedList, setSelectedList] = useState<string | undefined>();
   const { user, setUser, requestLogin } = useUserContext();
   const { relays } = useRelays();
+  const [isFetchingWoT, setIsFetchingWoT] = useState(false);
 
   const fetchLatestContactList = (): Promise<Event | null> => {
     if (!user) {
@@ -122,6 +126,27 @@ export function ListProvider({ children }: { children: ReactNode }) {
   const subscribeToContacts = () => {
     if (!user || !user.follows?.length) return;
 
+    const storedWoT = localStorage.getItem(
+      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`
+    );
+    const storedTime = localStorage.getItem(
+      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}_time`
+    );
+    const currentTime = new Date().getTime();
+
+    if (storedWoT && storedTime && currentTime - Number(storedTime) < WOT_TTL) {
+      setUser((prev: User | null) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          webOfTrust: new Set(JSON.parse(storedWoT) || []),
+        };
+      });
+      return;
+    }
+
+    setIsFetchingWoT(true); // Show warning that WoT is being fetched
+
     const filter: Filter = {
       kinds: [3],
       authors: user.follows,
@@ -135,16 +160,30 @@ export function ListProvider({ children }: { children: ReactNode }) {
           .map((tag) => tag[1]);
 
         setUser((prev) => {
-          if (!prev) return prev;
+          if (!prev) return null; // Return null if prev is null
 
           const prevTrust = prev.webOfTrust ?? new Set<string>();
           const newSet = new Set([...Array.from(prevTrust), ...newPubkeys]);
 
-          return { ...prev, webOfTrust: newSet };
+          // Ensure all required properties are included in the returned User object
+          localStorage.setItem(
+            `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`,
+            JSON.stringify(Array.from(newSet))
+          );
+          const currentTime = new Date().getTime();
+          localStorage.setItem(
+            `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}_time`,
+            currentTime.toString()
+          );
+          return {
+            ...prev,
+            webOfTrust: newSet,
+          } as User; // Ensure the returned object is cast to User
         });
       },
       oneose() {
         sub.close();
+        setIsFetchingWoT(false); // Hide warning after fetching
       },
     });
 
@@ -162,15 +201,22 @@ export function ListProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, user]);
   return (
-    <ListContext.Provider
-      value={{
-        lists,
-        selectedList,
-        handleListSelected,
-        fetchLatestContactList,
-      }}
-    >
-      {children}
-    </ListContext.Provider>
+    <>
+      {isFetchingWoT && (
+        <div className="warning">
+          fetching web of trust... may take a few seconds..
+        </div>
+      )}
+      <ListContext.Provider
+        value={{
+          lists,
+          selectedList,
+          handleListSelected,
+          fetchLatestContactList,
+        }}
+      >
+        {children}
+      </ListContext.Provider>
+    </>
   );
 }
