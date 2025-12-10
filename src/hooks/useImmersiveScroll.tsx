@@ -12,7 +12,7 @@ export default function useImmersiveScroll(
   containerRef: React.RefObject<HTMLElement | null>,
   virtuosoRef: React.RefObject<VirtuosoHandle | null>,
   options: Options = {},
-  scrollContainerRef?: React.RefObject<HTMLElement | null> // add optional param
+  scrollContainerRef?: React.RefObject<HTMLElement | null>
 ) {
   const {
     outsideDownThreshold = 10,
@@ -92,40 +92,39 @@ export default function useImmersiveScroll(
     if (!container) return;
 
     const now = () => Date.now();
-
-    const bringContainerToTop = () => {
-      const rect = container.getBoundingClientRect();
-      const scroller = scrollContainerRef?.current || window;
-      const currentScroll = scrollContainerRef?.current
-        ? scrollContainerRef.current.scrollTop
-        : window.scrollY || 0;
-      const target = currentScroll + rect.top;
-      if (target > (window.scrollY || 0)) {
-        window.scrollTo({
-          top: target,
-          behavior: smooth ? "smooth" : "auto",
-        });
-      }
-    };
+    const scroller = scrollContainerRef?.current || window;
 
     const onContainerWheel = (e: WheelEvent) => {
-      // scroll down inside list -> if window at top, bring the virtuoso container to the top of viewport
+      // scroll down inside list -> scroll outer container down
       if (e.deltaY > outsideDownThreshold) {
-        const atTop = (window.scrollY || window.pageYOffset) < 1;
-        if (atTop) {
-          // bring container's top to viewport top (smooth)
-          bringContainerToTop();
+        if (scrollContainerRef?.current) {
+          scrollContainerRef.current.scrollBy({
+            top: e.deltaY,
+            behavior: smooth ? "smooth" : "auto",
+          });
+        } else {
+          window.scrollBy({
+            top: e.deltaY,
+            behavior: smooth ? "smooth" : "auto",
+          });
         }
       }
 
-      // scroll up inside list -> scroll window to top (reveal header)
+      // scroll up inside list -> scroll outer container to top
       if (e.deltaY < -insideUpThreshold) {
-        if (now() - lastActionRef.current > (options.debounceMs ?? 400)) {
+        if (now() - lastActionRef.current > debounceMs) {
           lastActionRef.current = now();
-          (scrollContainerRef?.current || window).scrollTo?.({
-            top: 0,
-            behavior: options.smooth ? "smooth" : "auto",
-          });
+          if (scrollContainerRef?.current) {
+            scrollContainerRef.current.scrollTo({
+              top: 0,
+              behavior: smooth ? "smooth" : "auto",
+            });
+          } else {
+            window.scrollTo({
+              top: 0,
+              behavior: smooth ? "smooth" : "auto",
+            });
+          }
         }
       }
     };
@@ -138,25 +137,39 @@ export default function useImmersiveScroll(
       const t = e.touches?.[0];
       if (!t) return;
 
-      const delta = touchStartYInside - t.clientY; // positive when user swiped up => list scrolls down
+      const delta = touchStartYInside - t.clientY; // positive when user swiped up
 
-      // user swiped up inside list (scrolling list down) -> bring container to top if window at top
+      // user swiped up (scrolling down) -> scroll outer container down
       if (delta > outsideDownThreshold) {
-        const atTop = (window.scrollY || window.pageYOffset) < 1;
-        if (atTop) {
-          bringContainerToTop();
+        if (scrollContainerRef?.current) {
+          scrollContainerRef.current.scrollBy({
+            top: delta,
+            behavior: smooth ? "smooth" : "auto",
+          });
+        } else {
+          window.scrollBy({
+            top: delta,
+            behavior: smooth ? "smooth" : "auto",
+          });
         }
       }
 
-      // user swiped down inside list (scrolling list up) -> reveal header
-      const pullDown = t.clientY - touchStartYInside; // positive when swiping down
+      // user swiped down (scrolling up) -> scroll outer container to top
+      const pullDown = t.clientY - touchStartYInside;
       if (pullDown > insideUpThreshold) {
-        if (now() - lastActionRef.current > (options.debounceMs ?? 400)) {
+        if (now() - lastActionRef.current > debounceMs) {
           lastActionRef.current = now();
-          (scrollContainerRef?.current || window).scrollTo?.({
-            top: 0,
-            behavior: options.smooth ? "smooth" : "auto",
-          });
+          if (scrollContainerRef?.current) {
+            scrollContainerRef.current.scrollTo({
+              top: 0,
+              behavior: smooth ? "smooth" : "auto",
+            });
+          } else {
+            window.scrollTo({
+              top: 0,
+              behavior: smooth ? "smooth" : "auto",
+            });
+          }
         }
       }
     };
@@ -174,11 +187,5 @@ export default function useImmersiveScroll(
       container.removeEventListener("touchstart", onContainerTouchStart);
       container.removeEventListener("touchmove", onContainerTouchMove);
     };
-  }, [
-    containerRef,
-    options.insideUpThreshold,
-    options.smooth,
-    options.debounceMs,
-    outsideDownThreshold,
-  ]);
+  }, [containerRef, options.insideUpThreshold, options.smooth, options.debounceMs, outsideDownThreshold, scrollContainerRef]);
 }

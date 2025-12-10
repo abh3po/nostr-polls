@@ -22,7 +22,7 @@ import PollResponseForm from "../../PollResponse/PollResponseForm";
 import Rate from "../../../components/Ratings/Rate";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
-import useImmersiveScroll from "../../../hooks/useImmersiveScroll";
+import useTopicExplorerScroll from "../../../hooks/useTopicExplorerScroll";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
 import { pool } from "../../../singletons";
@@ -152,12 +152,9 @@ const TopicExplorer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  useImmersiveScroll(
-    containerRef,
-    virtuosoRef,
-    { smooth: true },
-    scrollContainerRef
-  );
+  useTopicExplorerScroll(containerRef, virtuosoRef, scrollContainerRef, {
+    smooth: true,
+  });
 
   useEffect(() => {
     if (!tag || relays.length === 0) return;
@@ -454,7 +451,7 @@ const TopicExplorer: React.FC = () => {
         <Tab label="Polls" />
       </Tabs>
 
-      <div ref={containerRef} style={{ height: "calc(100vh - 200px)" }}>
+      <div ref={containerRef} style={{ height: "100vh" }}>
         {loading ? (
           <Box display="flex" justifyContent="center" py={6}>
             <CircularProgress />
