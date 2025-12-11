@@ -22,7 +22,7 @@ import { RatingProvider } from "./contexts/RatingProvider";
 import MoviePage from "./components/Movies/MoviePage";
 import NotesFeed from "./components/Feed/NotesFeed/components";
 import ProfilesFeed from "./components/Feed/ProfileFeed";
-import { PollsProvider } from "./components/Feed/PollProvider";
+import { PollsProvider } from "./components/Feed/PollFeed/PollProvider";
 import MoviesFeed from "./components/Feed/MoviesFeed";
 import { MetadataProvider } from "./hooks/MetadataProvider";
 import FeedsLayout from "./components/Feed/FeedsLayout";

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Virtuoso } from "react-virtuoso";
-import { usePolls } from "./PollProvider";
+import { usePolls } from "./PollFeed/PollProvider";
 import { FeedItem } from "./FeedItem";
 import { CircularProgress, Box, Select, MenuItem } from "@mui/material";
 import { styled } from "@mui/system";
