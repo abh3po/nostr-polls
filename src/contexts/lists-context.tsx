@@ -1,11 +1,13 @@
 import { ReactNode, createContext, useEffect, useRef, useState } from "react";
-import { Event, Filter } from "nostr-tools";
+import { Event, EventTemplate, Filter } from "nostr-tools";
 import { SubCloser } from "nostr-tools/lib/types/pool";
 import { parseContacts, getATagFromEvent } from "../nostr";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
 import { User } from "./user-context";
 import { pool } from "../singletons";
+import { signerManager } from "../singletons/Signer/SignerManager";
+import { sign } from "crypto";
 
 const WOT_STORAGE_KEY_PREFIX = `pollerama:webOfTrust`;
 const WOT_TTL = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
@@ -15,6 +17,9 @@ interface ListContextInterface {
   selectedList: string | undefined;
   handleListSelected: (id: string | null) => void;
   fetchLatestContactList(): Promise<Event | null>;
+  myTopics: Set<string> | undefined;
+  addTopicToMyTopics: (topic: string) => Promise<void>;
+  removeTopicFromMyTopics: (topic: string) => Promise<void>;
 }
 
 export const ListContext = createContext<ListContextInterface | null>(null);
@@ -22,6 +27,10 @@ export const ListContext = createContext<ListContextInterface | null>(null);
 export function ListProvider({ children }: { children: ReactNode }) {
   const [lists, setLists] = useState<Map<string, Event> | undefined>();
   const [selectedList, setSelectedList] = useState<string | undefined>();
+  const [myTopics, setMyTopics] = useState<Set<string> | undefined>();
+  const [myTopicsEvent, setMyTopicsEvent] = useState<
+    Event | null | undefined
+  >();
   const { user, setUser, requestLogin } = useUserContext();
   const { relays } = useRelays();
   const [isFetchingWoT, setIsFetchingWoT] = useState(false);
@@ -190,6 +199,79 @@ export function ListProvider({ children }: { children: ReactNode }) {
     return sub;
   };
 
+  const fetchMyTopics = async () => {
+    if (!user) return;
+
+    const signer = signerManager.getSigner().catch(() => null);
+    if (!signer) return;
+
+    const filter: Filter = {
+      kinds: [10015],
+      authors: [user.pubkey],
+      limit: 1,
+    };
+
+    return new Promise<void>((resolve) => {
+      const sub = pool.subscribeMany(relays, [filter], {
+        onevent: async (event: Event) => {
+          if (myTopicsEvent && event.created_at <= myTopicsEvent.created_at)
+            return;
+          setMyTopicsEvent(event);
+          processMyTopicsFromEvent(event);
+          sub.close();
+          resolve();
+        },
+        oneose: () => {
+          sub.close();
+          resolve();
+        },
+      });
+
+      // Timeout after 3 seconds
+      setTimeout(() => {
+        sub.close();
+        if (!myTopicsEvent) {
+          setMyTopicsEvent(null);
+        }
+        resolve();
+      }, 10000);
+    });
+  };
+
+  const processMyTopicsFromEvent = async (event: Event) => {
+    const topics = new Set<string>();
+
+    // Parse "t" tags from the event
+    event.tags.forEach((tag) => {
+      if (tag[0] === "t" && tag[1]) {
+        topics.add(tag[1]);
+      }
+    });
+    // Decrypt and parse content if available
+    if (event.content) {
+      try {
+        const signer = await signerManager.getSigner();
+        if (!signer) return;
+        const decrypted = await signer.nip44Decrypt!(
+          user!.pubkey,
+          event.content
+        );
+        const contentTags = JSON.parse(decrypted);
+        if (Array.isArray(contentTags)) {
+          contentTags.forEach((tag: any) => {
+            if (Array.isArray(tag) && tag[0] === "t" && tag[1]) {
+              topics.add(tag[1]);
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to decrypt topics content:", e);
+      }
+    }
+
+    setMyTopics(topics);
+  };
+
   useEffect(() => {
     if (!user) return;
     if (!pool) return;
@@ -197,9 +279,158 @@ export function ListProvider({ children }: { children: ReactNode }) {
       if (!lists) fetchLists();
       if (!user.follows || user.follows.length === 0) fetchContacts();
       if (!user.webOfTrust || user.webOfTrust.size === 0) subscribeToContacts();
+      if (!myTopics) fetchMyTopics();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lists, user]);
+  }, [lists, myTopics, user]);
+
+  const addTopicToMyTopics = async (topic: string): Promise<void> => {
+    const signer = await signerManager.getSigner();
+    if (!signer) throw Error("No signer available");
+
+    const pubkey = await signer.getPublicKey();
+
+    // Fetch existing kind 10015 event
+    const filter = {
+      kinds: [10015],
+      authors: [pubkey],
+      limit: 1,
+    };
+
+    let existingEvent: Event | null = null;
+
+    return new Promise((resolve, reject) => {
+      const sub = pool.subscribeMany(relays, [filter], {
+        onevent: (event) => {
+          existingEvent = event;
+          sub.close();
+        },
+        oneose: async () => {
+          try {
+            const tags = existingEvent?.tags ?? [];
+
+            // Check if topic already exists
+            const topicExists = tags.some(
+              (tag) => tag[0] === "t" && tag[1] === topic
+            );
+            if (topicExists) {
+              resolve();
+              return;
+            }
+
+            // Add the new topic tag
+            const newTags = [...tags, ["t", topic]];
+
+            const eventTemplate: EventTemplate = {
+              kind: 10015,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: newTags,
+              content: existingEvent?.content ?? "",
+            };
+
+            const signed = await signer.signEvent(eventTemplate);
+            await Promise.allSettled(pool.publish(relays, signed));
+            processMyTopicsFromEvent(signed);
+            fetchMyTopics();
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+
+      // Timeout after 2 seconds
+      setTimeout(() => {
+        sub.close();
+        if (!existingEvent) {
+          // Create new event if none exists
+          handleNewEvent();
+        }
+      }, 5000);
+
+      async function handleNewEvent() {
+        try {
+          const eventTemplate: EventTemplate = {
+            kind: 10015,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [["t", topic]],
+            content: "",
+          };
+
+          const signed = await signer.signEvent(eventTemplate);
+          await Promise.allSettled(pool.publish(relays, signed));
+          processMyTopicsFromEvent(signed);
+          fetchMyTopics();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  };
+  const removeTopicFromMyTopics = async (topic: string): Promise<void> => {
+    const signer = await signerManager.getSigner();
+    if (!signer) throw Error("No signer available");
+
+    const pubkey = await signer.getPublicKey();
+
+    const filter: Filter = {
+      kinds: [10015],
+      authors: [pubkey],
+      limit: 1,
+    };
+
+    let existingEvent: Event | null = null;
+
+    return new Promise((resolve, reject) => {
+      const sub = pool.subscribeMany(relays, [filter], {
+        onevent: (event) => {
+          existingEvent = event;
+          sub.close();
+        },
+        oneose: async () => {
+          try {
+            const oldTags = existingEvent?.tags ?? [];
+
+            // Filter out the topic tag
+            const newTags = oldTags.filter(
+              (tag) => !(tag[0] === "t" && tag[1] === topic)
+            );
+
+            // If nothing changed, exit
+            if (newTags.length === oldTags.length) {
+              resolve();
+              return;
+            }
+
+            const eventTemplate: EventTemplate = {
+              kind: 10015,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: newTags,
+              content: existingEvent?.content ?? "",
+            };
+
+            const signed = await signer.signEvent(eventTemplate);
+            await Promise.allSettled(pool.publish(relays, signed));
+
+            // Update local state immediately
+            processMyTopicsFromEvent(signed);
+            fetchMyTopics();
+
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+
+      setTimeout(() => {
+        sub.close();
+        resolve(); // No existing event → nothing to remove
+      }, 5000);
+    });
+  };
+
   return (
     <>
       {isFetchingWoT && (
@@ -213,6 +444,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
           selectedList,
           handleListSelected,
           fetchLatestContactList,
+          myTopics,
+          addTopicToMyTopics,
+          removeTopicFromMyTopics,
         }}
       >
         {children}

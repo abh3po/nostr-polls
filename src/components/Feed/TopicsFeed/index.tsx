@@ -13,13 +13,19 @@ import {
   TextField,
   DialogActions,
   Button,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { pool } from "../../../singletons";
 import { Virtuoso } from "react-virtuoso";
 import TopicCard from "./TopicsCard";
+import { useListContext } from "../../../hooks/useListContext";
 
 const TopicsFeed: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"discover" | "myTopics">(
+    "discover"
+  );
   const [tagsMap, setTagsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -27,6 +33,7 @@ const TopicsFeed: React.FC = () => {
   const [metadataMap, setMetadataMap] = useState<Map<string, Event>>(new Map());
 
   const { relays } = useRelays();
+  const { myTopics } = useListContext();
   const navigate = useNavigate();
   const { tag } = useParams();
 
@@ -61,31 +68,25 @@ const TopicsFeed: React.FC = () => {
   useEffect(() => {
     if (tagsMap.size === 0 || relays.length === 0) return;
     const filter: Filter = {
-        kinds: [30300],
-        "#d": Array.from(tagsMap.keys()).map((tag) => `hashtag:${tag}`)
-      };
-    
-    
-  
-    const sub = pool.subscribeMany(
-      relays,
-      [filter],
-      {
-        onevent: (event) => {
-          const dTag = event.tags.find((t) => t[0] === "d");
-          if (!dTag || !dTag[1].startsWith("hashtag:")) return;
-  
-          const topicName = dTag[1].split(":")[1];
-          setMetadataMap((prev) => {
-            if (prev.has(topicName)) return prev;
-            const updated = new Map(prev);
-            updated.set(topicName, event);
-            return updated;
-          });
-        },
-      }
-    );
-  
+      kinds: [30300],
+      "#d": Array.from(tagsMap.keys()).map((tag) => `hashtag:${tag}`),
+    };
+
+    const sub = pool.subscribeMany(relays, [filter], {
+      onevent: (event) => {
+        const dTag = event.tags.find((t) => t[0] === "d");
+        if (!dTag || !dTag[1].startsWith("hashtag:")) return;
+
+        const topicName = dTag[1].split(":")[1];
+        setMetadataMap((prev) => {
+          if (prev.has(topicName)) return prev;
+          const updated = new Map(prev);
+          updated.set(topicName, event);
+          return updated;
+        });
+      },
+    });
+
     return () => sub.close();
   }, [relays, tagsMap]);
 
@@ -157,48 +158,68 @@ const TopicsFeed: React.FC = () => {
     }
   };
 
+  const myTopicsList = Array.from(myTopics || []);
+
   if (tag) return <Outlet />;
 
   const tags = Array.from(tagsMap.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([tag]) => tag);
 
+  const displayTags = activeTab === "discover" ? tags : myTopicsList;
+
   return (
     <Box
       sx={{
         px: 2,
-        py: 4,
         height: "100vh",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h5" gutterBottom>
-          Discover Topics
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="flex-start"
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+        >
+          <Tab
+            label="My Topics"
+            value="myTopics"
+            sx={{ py: 0, textTransform: "none" }}
+          />
+          <Tab
+            label="Recently Rated"
+            value="discover"
+            sx={{ py: 0, textTransform: "none" }}
+          />
+        </Tabs>
         <IconButton
           onClick={() => setSearchOpen(true)}
           aria-label="Search topics"
+          sx={{ mt: -1 }}
         >
           <SearchIcon />
         </IconButton>
       </Box>
 
-      <Typography style={{ fontSize: 12}} gutterBottom>
-        Recently Rated
-      </Typography>
-
-      {loading ? (
+      {loading && activeTab === "discover" ? (
         <Box display="flex" justifyContent="center" py={6}>
           <CircularProgress />
         </Box>
-      ) : tags.length === 0 ? (
-        <Typography>No topics found yet.</Typography>
+      ) : displayTags.length === 0 ? (
+        <Typography>
+          {activeTab === "discover"
+            ? "No topics found yet."
+            : "No topics added yet."}
+        </Typography>
       ) : (
         <Box sx={{ flexGrow: 1, minHeight: 0 }}>
           <Virtuoso
-            data={tags}
+            data={displayTags}
             itemContent={(index, tag) => (
               <TopicCard tag={tag} metadataEvent={metadataMap.get(tag)} />
             )}
