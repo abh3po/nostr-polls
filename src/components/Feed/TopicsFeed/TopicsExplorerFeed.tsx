@@ -46,7 +46,8 @@ const TopicExplorer: React.FC = () => {
   const { relays } = useRelays();
   const { user, requestLogin } = useUserContext();
   const { metadata } = useMetadata();
-  const { myTopics, addTopicToMyTopics } = useListContext();
+  const { myTopics, addTopicToMyTopics, removeTopicFromMyTopics } =
+    useListContext();
   const navigate = useNavigate();
 
   const [tabValue, setTabValue] = useState<0 | 1>(0);
@@ -113,6 +114,22 @@ const TopicExplorer: React.FC = () => {
       console.error("Failed to add topic to my topics:", error);
     } finally {
       setIsAddingToMyTopics(false);
+    }
+  };
+
+  const handleRemoveFromMyTopics = async () => {
+    if (!user) {
+      requestLogin();
+      return;
+    }
+
+    if (!tag) return;
+
+    try {
+      const signer = await signerManager.getSigner();
+      await removeTopicFromMyTopics(tag);
+    } catch (error) {
+      console.error("Failed to remove topic:", error);
     }
   };
 
@@ -430,12 +447,14 @@ const TopicExplorer: React.FC = () => {
         </Box>
         <IconButton
           size="small"
-          onClick={isInMyTopics ? undefined : handleAddToMyTopics}
+          onClick={
+            isInMyTopics ? handleRemoveFromMyTopics : handleAddToMyTopics
+          }
           disabled={isAddingToMyTopics}
-          title={isInMyTopics ? "In my topics" : "Add to my topics"}
+          title={isInMyTopics ? "Remove from my topics" : "Add to my topics"}
         >
           {isInMyTopics ? (
-            <FavoriteIcon color="error" fontSize="small" />
+            <FavoriteIcon color="primary" fontSize="small" />
           ) : (
             <FavoriteBorderIcon fontSize="small" />
           )}

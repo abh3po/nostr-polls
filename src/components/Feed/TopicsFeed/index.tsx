@@ -186,8 +186,16 @@ const TopicsFeed: React.FC = () => {
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
         >
-          <Tab label="My Topics" value="myTopics" sx={{ py: 0 }} />
-          <Tab label="Recently Rated" value="discover" sx={{ py: 0 }} />
+          <Tab
+            label="My Topics"
+            value="myTopics"
+            sx={{ py: 0, textTransform: "none" }}
+          />
+          <Tab
+            label="Recently Rated"
+            value="discover"
+            sx={{ py: 0, textTransform: "none" }}
+          />
         </Tabs>
         <IconButton
           onClick={() => setSearchOpen(true)}

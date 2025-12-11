@@ -31,12 +31,12 @@ interface TopicCardProps {
 
 const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [isAddingToMyTopics, setIsAddingToMyTopics] = useState(false);
+  const [isUpdatingMyTopics, setIsUpdatingTopics] = useState(false);
   const { user, requestLogin } = useUserContext();
   const { fetchUserProfileThrottled, profiles } = useAppContext();
   const { registerEntity, metadata } = useMetadata();
-  const { myTopics, addTopicToMyTopics } = useListContext();
-  const { relays } = useRelays();
+  const { myTopics, addTopicToMyTopics, removeTopicFromMyTopics } =
+    useListContext();
   const navigate = useNavigate();
 
   const isInMyTopics = myTopics?.has(tag) ?? false;
@@ -86,14 +86,28 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
       return;
     }
 
-    setIsAddingToMyTopics(true);
+    setIsUpdatingTopics(true);
     try {
       const signer = await signerManager.getSigner();
       await addTopicToMyTopics(tag);
     } catch (error) {
       console.error("Failed to add topic to my topics:", error);
     } finally {
-      setIsAddingToMyTopics(false);
+      setIsUpdatingTopics(false);
+    }
+  };
+
+  const handleRemoveFromMyTopics = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+
+    setIsUpdatingTopics(true);
+    try {
+      await removeTopicFromMyTopics(tag);
+    } catch (err) {
+      console.error("Failed to remove topic:", err);
+    } finally {
+      setIsUpdatingTopics(false);
     }
   };
 
@@ -161,6 +175,27 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
             </Button>
           </Box>
         )}
+        <Box>
+          <IconButton
+            size="small"
+            disabled={isUpdatingMyTopics}
+            onClick={
+              isInMyTopics
+                ? handleRemoveFromMyTopics // ← REMOVE
+                : handleAddToMyTopics // ← ADD
+            }
+            title={isInMyTopics ? "Remove from my topics" : "Add to my topics"}
+          >
+            {isInMyTopics ? (
+              <FavoriteTwoTone
+                color={isUpdatingMyTopics ? "disabled" : "primary"}
+                fontSize="small"
+              />
+            ) : (
+              <FavoriteBorderIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Box>
 
         {/* Clickable Card Content */}
         <CardActionArea
@@ -199,19 +234,6 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
                 {title}
               </Typography>
               <Box display="flex" alignItems="center" gap={1}>
-                <IconButton
-                  size="small"
-                  onClick={isInMyTopics ? undefined : handleAddToMyTopics}
-                  disabled={isAddingToMyTopics}
-                  title={isInMyTopics ? "In my topics" : "Add to my topics"}
-                >
-                  {isInMyTopics ? (
-                    <FavoriteTwoTone color="primary" fontSize="small" />
-                  ) : (
-                    <FavoriteBorderIcon fontSize="small" />
-                  )}
-                </IconButton>
-
                 <ChevronRightIcon color="action" />
               </Box>
             </Box>

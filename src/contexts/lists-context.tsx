@@ -19,6 +19,7 @@ interface ListContextInterface {
   fetchLatestContactList(): Promise<Event | null>;
   myTopics: Set<string> | undefined;
   addTopicToMyTopics: (topic: string) => Promise<void>;
+  removeTopicFromMyTopics: (topic: string) => Promise<void>;
 }
 
 export const ListContext = createContext<ListContextInterface | null>(null);
@@ -216,37 +217,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
           if (myTopicsEvent && event.created_at <= myTopicsEvent.created_at)
             return;
           setMyTopicsEvent(event);
-          const topics = new Set<string>();
-
-          // Parse "t" tags from the event
-          event.tags.forEach((tag) => {
-            if (tag[0] === "t" && tag[1]) {
-              topics.add(tag[1]);
-            }
-          });
-          // Decrypt and parse content if available
-          if (event.content) {
-            try {
-              const signer = await signerManager.getSigner();
-              if (!signer) return;
-              const decrypted = await signer.nip44Decrypt!(
-                user.pubkey,
-                event.content
-              );
-              const contentTags = JSON.parse(decrypted);
-              if (Array.isArray(contentTags)) {
-                contentTags.forEach((tag: any) => {
-                  if (Array.isArray(tag) && tag[0] === "t" && tag[1]) {
-                    topics.add(tag[1]);
-                  }
-                });
-              }
-            } catch (e) {
-              console.error("Failed to decrypt topics content:", e);
-            }
-          }
-
-          setMyTopics(topics);
+          processMyTopicsFromEvent(event);
           sub.close();
           resolve();
         },
@@ -265,6 +236,40 @@ export function ListProvider({ children }: { children: ReactNode }) {
         resolve();
       }, 10000);
     });
+  };
+
+  const processMyTopicsFromEvent = async (event: Event) => {
+    const topics = new Set<string>();
+
+    // Parse "t" tags from the event
+    event.tags.forEach((tag) => {
+      if (tag[0] === "t" && tag[1]) {
+        topics.add(tag[1]);
+      }
+    });
+    // Decrypt and parse content if available
+    if (event.content) {
+      try {
+        const signer = await signerManager.getSigner();
+        if (!signer) return;
+        const decrypted = await signer.nip44Decrypt!(
+          user!.pubkey,
+          event.content
+        );
+        const contentTags = JSON.parse(decrypted);
+        if (Array.isArray(contentTags)) {
+          contentTags.forEach((tag: any) => {
+            if (Array.isArray(tag) && tag[0] === "t" && tag[1]) {
+              topics.add(tag[1]);
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to decrypt topics content:", e);
+      }
+    }
+
+    setMyTopics(topics);
   };
 
   useEffect(() => {
@@ -325,6 +330,8 @@ export function ListProvider({ children }: { children: ReactNode }) {
 
             const signed = await signer.signEvent(eventTemplate);
             await Promise.allSettled(pool.publish(relays, signed));
+            processMyTopicsFromEvent(signed);
+            fetchMyTopics();
             resolve();
           } catch (error) {
             reject(error);
@@ -352,12 +359,75 @@ export function ListProvider({ children }: { children: ReactNode }) {
 
           const signed = await signer.signEvent(eventTemplate);
           await Promise.allSettled(pool.publish(relays, signed));
+          processMyTopicsFromEvent(signed);
+          fetchMyTopics();
           resolve();
         } catch (error) {
           reject(error);
         }
       }
-      fetchMyTopics();
+    });
+  };
+  const removeTopicFromMyTopics = async (topic: string): Promise<void> => {
+    const signer = await signerManager.getSigner();
+    if (!signer) throw Error("No signer available");
+
+    const pubkey = await signer.getPublicKey();
+
+    const filter: Filter = {
+      kinds: [10015],
+      authors: [pubkey],
+      limit: 1,
+    };
+
+    let existingEvent: Event | null = null;
+
+    return new Promise((resolve, reject) => {
+      const sub = pool.subscribeMany(relays, [filter], {
+        onevent: (event) => {
+          existingEvent = event;
+          sub.close();
+        },
+        oneose: async () => {
+          try {
+            const oldTags = existingEvent?.tags ?? [];
+
+            // Filter out the topic tag
+            const newTags = oldTags.filter(
+              (tag) => !(tag[0] === "t" && tag[1] === topic)
+            );
+
+            // If nothing changed, exit
+            if (newTags.length === oldTags.length) {
+              resolve();
+              return;
+            }
+
+            const eventTemplate: EventTemplate = {
+              kind: 10015,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: newTags,
+              content: existingEvent?.content ?? "",
+            };
+
+            const signed = await signer.signEvent(eventTemplate);
+            await Promise.allSettled(pool.publish(relays, signed));
+
+            // Update local state immediately
+            processMyTopicsFromEvent(signed);
+            fetchMyTopics();
+
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+
+      setTimeout(() => {
+        sub.close();
+        resolve(); // No existing event → nothing to remove
+      }, 5000);
     });
   };
 
@@ -376,6 +446,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
           fetchLatestContactList,
           myTopics,
           addTopicToMyTopics,
+          removeTopicFromMyTopics,
         }}
       >
         {children}
