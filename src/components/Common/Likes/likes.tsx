@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
-import { Tooltip, Typography } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Tooltip, Box, IconButton, useTheme, Modal } from "@mui/material";
 import FavoriteBorder from "@mui/icons-material/FavoriteBorder";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { Event, EventTemplate } from "nostr-tools/lib/types/core";
 import { signEvent } from "../../../nostr";
 import { useRelays } from "../../../hooks/useRelays";
-import { Favorite } from "@mui/icons-material";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
@@ -18,88 +18,121 @@ interface LikesProps {
 const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const { likesMap, fetchLikesThrottled, addEventToMap } = useAppContext();
   const { showNotification } = useNotification();
-
   const { user } = useUserContext();
   const { relays } = useRelays();
+  const [showPicker, setShowPicker] = useState(false);
+  const theme = useTheme();
 
-  const addLike = async () => {
+  const userReaction = () => {
+    if (!user) return null;
+    return likesMap?.get(pollEvent.id)?.find((r) => r.pubkey === user.pubkey)
+      ?.content;
+  };
+
+  const addReaction = async (emoji: string) => {
     if (!user) {
       showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_LIKE, "warning");
       return;
     }
-    let event: EventTemplate = {
-      content: "+",
+
+    const event: EventTemplate = {
+      content: emoji,
       kind: 7,
       tags: [["e", pollEvent.id, relays[0]]],
       created_at: Math.floor(Date.now() / 1000),
     };
-    let finalEvent = await signEvent(event, user.privateKey);
+
+    const finalEvent = await signEvent(event, user.privateKey);
     pool.publish(relays, finalEvent!);
     addEventToMap(finalEvent!);
-  };
-
-  const hasLiked = () => {
-    if (!user) return false;
-    return !!likesMap
-      ?.get(pollEvent.id)
-      ?.map((e) => e.pubkey)
-      ?.includes(user.pubkey);
+    setShowPicker(false);
   };
 
   useEffect(() => {
-    const fetchAndSetLikes = async () => {
-      if (!likesMap?.get(pollEvent.id)) fetchLikesThrottled(pollEvent.id);
-    };
-
-    fetchAndSetLikes();
+    if (!likesMap?.get(pollEvent.id)) {
+      fetchLikesThrottled(pollEvent.id);
+    }
   }, [pollEvent.id, likesMap, fetchLikesThrottled, user]);
 
-  const handleLike = async () => {
-    if (hasLiked()) {
-      //await removeLike(pollEvent.id, userPublicKey);
-      //setLikes((prevLikes) => prevLikes.filter((like) => like !== userPublicKey));
-    } else {
-      await addLike();
-    }
+  // Compute top 2 emojis + count
+  const getTopEmojis = () => {
+    const reactions = likesMap?.get(pollEvent.id) || [];
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => {
+      counts[r.content] = (counts[r.content] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([emoji, count]) => ({ emoji, count }));
+    return sorted;
   };
 
+  const topEmojis = getTopEmojis();
+  const remainingCount = Math.max(0, topEmojis.length - 2);
+
   return (
-    <div style={{ marginLeft: 20 }}>
+    <Box display="flex" alignItems="center" ml={2} position="relative">
+      {/* Heart / User emoji */}
       <Tooltip
-        onClick={handleLike}
-        style={{ color: "black" }}
-        title={hasLiked() ? "Unlike" : "Like"}
+        title={userReaction() ? "Change reaction" : "React"}
+        onClick={() => setShowPicker(true)}
       >
-        <span
-          style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}
-          onClick={handleLike}
-        >
-          {hasLiked() ? (
-            <Favorite
-              sx={(theme) => {
-                return {
-                  color: "#FAD13F",
-                  "& path": {
-                    stroke:
-                      theme.palette.mode === "light" ? "#000000" : "#ffffff",
-                    strokeWidth: 3,
-                  },
-                };
-              }}
-              style={{ display: "block" }}
-            />
-          ) : (
-            <FavoriteBorder />
-          )}
-          <Typography>
-            {likesMap?.get(pollEvent.id)?.length
-              ? new Set(likesMap?.get(pollEvent.id)?.map((like) => like.pubkey))
-                  .size
-              : null}
-          </Typography>
-        </span>
+        <IconButton size="small">
+          {userReaction() || <FavoriteBorder />}
+        </IconButton>
       </Tooltip>
-    </div>
+
+      {/* Top 2 emojis next to button */}
+      <Box display="flex" alignItems="center" ml={1} gap={0.5}>
+        {topEmojis.slice(0, 2).map((r) => (
+          <span key={r.emoji} style={{ fontSize: 18 }}>
+            {r.emoji}
+          </span>
+        ))}
+        {topEmojis.length > 2 && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 20,
+              height: 20,
+              borderRadius: "50%",
+              backgroundColor: "#FAD13F",
+              color: "#000",
+              fontSize: 12,
+            }}
+          >
+            +{topEmojis.length - 2}
+          </span>
+        )}
+      </Box>
+
+      {/* Emoji picker modal */}
+      <Modal open={showPicker} onClose={() => setShowPicker(false)}>
+        <Box
+          sx={{
+            position: "absolute" as const,
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 2,
+            borderRadius: 2,
+          }}
+        >
+          <EmojiPicker
+            theme={
+              theme.palette.mode === "light"
+                ? ("light" as Theme)
+                : ("dark" as Theme)
+            }
+            onEmojiClick={(emojiData) => addReaction(emojiData.emoji)}
+          />
+        </Box>
+      </Modal>
+    </Box>
   );
 };
 

@@ -4,6 +4,9 @@ declare global {
   interface Window {
     YT: any;
     onYouTubeIframeAPIReady: () => void;
+    _YTLoading?: boolean;
+    _YTLoaded?: boolean;
+    _YTCallbacks?: Array<() => void>;
   }
 }
 
@@ -21,6 +24,39 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
     return match && match[1] ? match[1] : null;
   }
 
+  function loadYouTubeAPI(): Promise<void> {
+    return new Promise((resolve) => {
+      // Already loaded
+      if (window.YT && window.YT.Player) {
+        resolve();
+        return;
+      }
+
+      // Already loading — queue callback
+      if (window._YTLoading) {
+        window._YTCallbacks!.push(resolve);
+        return;
+      }
+
+      // First load
+      window._YTLoading = true;
+      window._YTCallbacks = [resolve];
+
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+
+      window.onYouTubeIframeAPIReady = () => {
+        window._YTLoaded = true;
+        window._YTLoading = false;
+
+        // run all queued callbacks
+        window._YTCallbacks!.forEach((cb) => cb());
+        window._YTCallbacks = [];
+      };
+    });
+  }
+
   useEffect(() => {
     const videoId = extractVideoId(url);
     if (!videoId) {
@@ -28,31 +64,22 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
       return;
     }
 
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
+    let cancelled = false;
 
-      window.onYouTubeIframeAPIReady = () => {
-        createPlayer(videoId);
-      };
-    } else {
-      createPlayer(videoId);
-    }
+    loadYouTubeAPI().then(() => {
+      if (cancelled || !playerRef.current) return;
 
-    function createPlayer(videoId: string) {
-      if (playerRef.current) {
-        ytPlayer.current = new window.YT.Player(playerRef.current, {
-          width: "100%",
-          height: "100%",
-          videoId,
-          events: {
-            onReady: onPlayerReady,
-            onStateChange: onPlayerStateChange,
-          },
-        });
-      }
-    }
+      // Safe now — Player constructor exists
+      ytPlayer.current = new window.YT.Player(playerRef.current, {
+        width: "100%",
+        height: "100%",
+        videoId,
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    });
 
     function onPlayerReady(event: any) {
       console.log("Player ready");
@@ -63,6 +90,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
     }
 
     return () => {
+      cancelled = true;
       if (ytPlayer.current) {
         ytPlayer.current.destroy();
       }
