@@ -11,8 +11,11 @@ import {
   InputLabel,
   Select,
   SelectChangeEvent,
+  IconButton,
 } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import { useNavigate, useParams } from "react-router-dom";
 import { Event, SimplePool } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
@@ -33,6 +36,8 @@ import {
   saveModeratorPrefs,
 } from "../../../utils/localStorage";
 import ModeratorSelectorDialog from "../../../components/Moderator/ModeratorSelectorDialog";
+import { useListContext } from "../../../hooks/useListContext";
+import { signerManager } from "../../../singletons/Signer/SignerManager";
 
 const OFFTOPIC_KIND = 1011;
 
@@ -41,6 +46,7 @@ const TopicExplorer: React.FC = () => {
   const { relays } = useRelays();
   const { user, requestLogin } = useUserContext();
   const { metadata } = useMetadata();
+  const { myTopics, addTopicToMyTopics } = useListContext();
   const navigate = useNavigate();
 
   const [tabValue, setTabValue] = useState<0 | 1>(0);
@@ -51,6 +57,7 @@ const TopicExplorer: React.FC = () => {
   const [pollsEvents, setPollsEvents] = useState<Event[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingPolls, setLoadingPolls] = useState(false);
+  const [isAddingToMyTopics, setIsAddingToMyTopics] = useState(false);
 
   const curatedByMap = useRef<Map<string, Set<string>>>(new Map());
   const [curatedIds, setCuratedIds] = useState<Set<string>>(new Set());
@@ -67,6 +74,8 @@ const TopicExplorer: React.FC = () => {
     const events = metadata.get(tag ?? "") ?? [];
     return selectBestMetadataEvent(events, user?.follows);
   }, [metadata, tag, user?.follows]);
+
+  const isInMyTopics = myTopics?.has(tag ?? "") ?? false;
 
   const tagMap: Record<string, string> = {};
   topicMetadataEvent?.tags.forEach(([key, val]) => {
@@ -86,6 +95,25 @@ const TopicExplorer: React.FC = () => {
       }
       return updated;
     });
+  };
+
+  const handleAddToMyTopics = async () => {
+    if (!user) {
+      requestLogin();
+      return;
+    }
+
+    if (!tag) return;
+
+    setIsAddingToMyTopics(true);
+    try {
+      const signer = await signerManager.getSigner();
+      await addTopicToMyTopics(tag);
+    } catch (error) {
+      console.error("Failed to add topic to my topics:", error);
+    } finally {
+      setIsAddingToMyTopics(false);
+    }
   };
 
   const allModerators = useMemo(() => {
@@ -113,7 +141,7 @@ const TopicExplorer: React.FC = () => {
 
     const tags = [
       ["t", tag],
-      type === "off-topic" ? ["e", noteEvent.id] : ["p", noteEvent.pubkey], // block user's posts from topic
+      type === "off-topic" ? ["e", noteEvent.id] : ["p", noteEvent.pubkey],
     ];
 
     const unsignedEvent = {
@@ -130,7 +158,6 @@ const TopicExplorer: React.FC = () => {
     const signed = await signEvent(unsignedEvent);
     await pool.publish(relays, signed);
 
-    // Update curated map
     if (type === "off-topic") {
       if (!curatedByMap.current.has(noteEvent.id)) {
         curatedByMap.current.set(noteEvent.id, new Set());
@@ -361,37 +388,58 @@ const TopicExplorer: React.FC = () => {
         Back to Topics
       </Button>
 
-      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-        {topicImage && (
-          <Box
-            sx={{
-              width: 64,
-              height: 64,
-              borderRadius: 1,
-              overflow: "hidden",
-              mr: 2,
-              flexShrink: 0,
-            }}
-          >
-            <img
-              src={topicImage}
-              alt={tag}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </Box>
-        )}
-        <Box>
-          <Typography variant="h5">#{tag}</Typography>
-          {topicDescription && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5, fontStyle: "italic" }}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: 1,
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {topicImage && (
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 1,
+                overflow: "hidden",
+                mr: 2,
+                flexShrink: 0,
+              }}
             >
-              {topicDescription}
-            </Typography>
+              <img
+                src={topicImage}
+                alt={tag}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
           )}
+          <Box>
+            <Typography variant="h5">#{tag}</Typography>
+            {topicDescription && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5, fontStyle: "italic" }}
+              >
+                {topicDescription}
+              </Typography>
+            )}
+          </Box>
         </Box>
+        <IconButton
+          size="small"
+          onClick={isInMyTopics ? undefined : handleAddToMyTopics}
+          disabled={isAddingToMyTopics}
+          title={isInMyTopics ? "In my topics" : "Add to my topics"}
+        >
+          {isInMyTopics ? (
+            <FavoriteIcon color="error" fontSize="small" />
+          ) : (
+            <FavoriteBorderIcon fontSize="small" />
+          )}
+        </IconButton>
       </Box>
 
       <Rate entityId={tag!} entityType="hashtag" />

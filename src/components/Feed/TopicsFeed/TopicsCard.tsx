@@ -7,6 +7,7 @@ import {
   Typography,
   Button,
   CardActionArea,
+  IconButton,
 } from "@mui/material";
 import { Event, nip19 } from "nostr-tools";
 import Rate from "../../Ratings/Rate";
@@ -16,8 +17,12 @@ import { selectBestMetadataEvent } from "../../../utils/utils";
 import TopicMetadataModal from "./TopicMetadataModal";
 import { useMetadata } from "../../../hooks/MetadataProvider";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { useNavigate } from "react-router-dom";
-import { Profile } from "../../../nostr/types";
+import { useListContext } from "../../../hooks/useListContext";
+import { useRelays } from "../../../hooks/useRelays";
+import { signerManager } from "../../../singletons/Signer/SignerManager";
+import { FavoriteTwoTone } from "@mui/icons-material";
 
 interface TopicCardProps {
   tag: string;
@@ -26,10 +31,15 @@ interface TopicCardProps {
 
 const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
   const [modalOpen, setModalOpen] = useState(false);
-  const { user } = useUserContext();
+  const [isAddingToMyTopics, setIsAddingToMyTopics] = useState(false);
+  const { user, requestLogin } = useUserContext();
   const { fetchUserProfileThrottled, profiles } = useAppContext();
   const { registerEntity, metadata } = useMetadata();
+  const { myTopics, addTopicToMyTopics } = useListContext();
+  const { relays } = useRelays();
   const navigate = useNavigate();
+
+  const isInMyTopics = myTopics?.has(tag) ?? false;
 
   useEffect(() => {
     registerEntity("hashtag", tag);
@@ -45,20 +55,47 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
 
   const title = `${tag}`;
   const thumb = activeEvent?.tags.find((t) => t[0] === "image")?.[1];
-  const description = activeEvent?.tags.find((t) => t[0] === "description")?.[1];
+  const description = activeEvent?.tags.find(
+    (t) => t[0] === "description"
+  )?.[1];
   const pubkey = activeEvent?.pubkey;
 
-  let metadataUser: any = profiles?.get(metadataEvent?.pubkey || "")
-  if(!metadataUser && metadataEvent) {
+  let metadataUser: any = profiles?.get(metadataEvent?.pubkey || "");
+  if (!metadataUser && metadataEvent) {
     try {
-        nip19.npubEncode(metadataEvent.pubkey)
-        fetchUserProfileThrottled(metadataEvent?.pubkey)
-        metadataUser = { pubkey: metadataEvent?.pubkey, name: 'Fetching Pubkey...'}
-    }
-    catch{
-        metadataUser = { pubkey: metadataEvent?.pubkey, name: 'Preview User', picture: ''}
+      nip19.npubEncode(metadataEvent.pubkey);
+      fetchUserProfileThrottled(metadataEvent?.pubkey);
+      metadataUser = {
+        pubkey: metadataEvent?.pubkey,
+        name: "Fetching Pubkey...",
+      };
+    } catch {
+      metadataUser = {
+        pubkey: metadataEvent?.pubkey,
+        name: "Preview User",
+        picture: "",
+      };
     }
   }
+
+  const handleAddToMyTopics = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!user) {
+      requestLogin();
+      return;
+    }
+
+    setIsAddingToMyTopics(true);
+    try {
+      const signer = await signerManager.getSigner();
+      await addTopicToMyTopics(tag);
+    } catch (error) {
+      console.error("Failed to add topic to my topics:", error);
+    } finally {
+      setIsAddingToMyTopics(false);
+    }
+  };
 
   return (
     <>
@@ -161,7 +198,22 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
               >
                 {title}
               </Typography>
-              <ChevronRightIcon color="action" />
+              <Box display="flex" alignItems="center" gap={1}>
+                <IconButton
+                  size="small"
+                  onClick={isInMyTopics ? undefined : handleAddToMyTopics}
+                  disabled={isAddingToMyTopics}
+                  title={isInMyTopics ? "In my topics" : "Add to my topics"}
+                >
+                  {isInMyTopics ? (
+                    <FavoriteTwoTone color="primary" fontSize="small" />
+                  ) : (
+                    <FavoriteBorderIcon fontSize="small" />
+                  )}
+                </IconButton>
+
+                <ChevronRightIcon color="action" />
+              </Box>
             </Box>
 
             <Typography
