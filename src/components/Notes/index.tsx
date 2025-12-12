@@ -260,8 +260,8 @@ export const Notes: React.FC<NotesProps> = ({
             open={Boolean(menuAnchor)}
             onClose={handleCloseMenu}
           >
-            <MenuItem onClick={handleCopyNevent}>Copy event Id</MenuItem>
-            <MenuItem onClick={copyNoteUrl}>Copy event url</MenuItem>
+            <MenuItem onClick={handleCopyNevent}>Copy Event Id</MenuItem>
+            <MenuItem onClick={copyNoteUrl}>Copy Link</MenuItem>
             {extras}
           </Menu>
 

@@ -13,7 +13,7 @@ import { nip19 } from "nostr-tools";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
 
 export const PollResponse = () => {
-  const { neventId } = useParams();
+  const { eventId: neventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
