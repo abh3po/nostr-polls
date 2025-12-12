@@ -5,6 +5,7 @@ import logo from "../../Images/logo.svg";
 import { UserMenu } from "./UserMenu";
 import { useNavigate } from "react-router-dom";
 import { getColorsWithTheme } from "../../styles/theme";
+import { NotificationBell } from "./NotificationBell";
 
 const StyledAppBar = styled(AppBar)(({ theme }) => {
   return {
@@ -50,6 +51,7 @@ const Header: React.FC = () => {
           </LogoAndTitle>
         </HeaderCenterSection>
         <HeaderRightSection>
+          <NotificationBell />  
           <Button variant="contained" onClick={() => navigate("/create")}>
             <Typography>Create</Typography>
           </Button>
