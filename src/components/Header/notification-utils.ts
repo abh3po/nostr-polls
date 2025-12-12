@@ -48,20 +48,37 @@ export function parseNotification(ev: Event): ParsedNotification {
 
     // ZAP
     if (ev.kind === 9735) {
-        const bolt11 = ev.tags.find((t) => t[0] === "bolt11")?.[1];
+        // console.log("Parsing zap event", ev);
         let sats: number | null = null;
+        const requestEvent = ev.tags.find((t) => t[0] === "description")?.[1];
+        let reqObj: Event | null = null;
+        if (requestEvent) {
+            try {
+                reqObj = JSON.parse(requestEvent) as Event;
+                sats = reqObj.tags.find((t) => t[0] === "amount")
+                    ? parseInt(reqObj?.tags.find((t) => t[0] === "amount")![1], 10) / 1000
+                    : null;
+                return {
+                    type: "zap",
+                    sats,
+                    fromPubkey: reqObj!.pubkey,
+                }
 
-        if (bolt11 && bolt11.includes("1p")) {
-            // best-effort parse, no invoice lib needed
-            const num = bolt11.match(/(\d+)p/)?.[1];
-            sats = num ? parseInt(num, 10) : null;
+            } catch (e) {
+                console.log("Failed to parse zap request event", e, ev);
+                return {
+                    type: "unknown",
+                    fromPubkey,
+                }// ignore
+            }
         }
-
-        return {
-            type: "zap",
-            fromPubkey,
-            sats,
-        };
+        else {
+            console.log("Failed to parse zap request event", ev);
+            return {
+                type: "unknown",
+                fromPubkey,
+            }//
+        }
     }
 
     return {
