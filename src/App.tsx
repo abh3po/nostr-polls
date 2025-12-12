@@ -32,7 +32,6 @@ import { RelayProvider } from "./contexts/relay-context";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import TopicsFeed from "./components/Feed/TopicsFeed";
 import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
-import { Notes } from "./components/Notes";
 import { PrepareNote } from "./components/Notes/PrepareNote";
 
 declare global {
@@ -119,7 +118,7 @@ const App: React.FC = () => {
 function PrepareNoteWrapper() {
   const { eventId } = useParams();
   if (!eventId) return null;
-  return <PrepareNote eventId={eventId} />;
+  return <PrepareNote neventId={eventId} />;
 }
 
 export default App;

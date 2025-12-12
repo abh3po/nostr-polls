@@ -172,9 +172,14 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   };
 
   const copyPollUrl = async () => {
+    const nevent = nip19.neventEncode({
+      id: pollEvent.id,
+      relays: pollEvent.tags.filter((t) => t[0] === "relay").map((t) => t[1]),
+      kind: pollEvent.kind,
+    });
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/respond/${pollEvent.id}`
+        `${window.location.origin}/respond/${nevent}`
       );
       showNotification(NOTIFICATION_MESSAGES.POLL_URL_COPIED, "success");
     } catch (error) {

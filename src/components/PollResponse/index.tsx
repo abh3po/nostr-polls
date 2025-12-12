@@ -9,26 +9,34 @@ import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { pool } from "../../singletons";
+import { nip19 } from "nostr-tools";
+import { EventPointer } from "nostr-tools/lib/types/nip19";
 
 export const PollResponse = () => {
-  const { eventId } = useParams();
+  const { eventId: neventId } = useParams();
   const [pollEvent, setPollEvent] = useState<Event | undefined>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-
   const { relays } = useRelays();
+  useEffect(() => {
+    if (!neventId) return;
+    fetchPollEvent(neventId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [neventId]);
 
-  const fetchPollEvent = async () => {
-    if (!eventId) {
-      showNotification(NOTIFICATION_MESSAGES.INVALID_URL, "error");
-      navigate("/");
-      return;
-    }
+  if (!neventId) return;
+
+  const fetchPollEvent = async (neventId: string) => {
+    const decoded = nip19.decode(neventId).data as EventPointer;
     const filter: Filter = {
-      ids: [eventId],
+      ids: [decoded.id],
     };
+    const neventRelays = decoded.relays;
+    const relaysToUse = Array.from(
+      new Set([...relays, ...(neventRelays || [])])
+    );
     try {
-      const event = await pool.get(relays, filter);
+      const event = await pool.get(relaysToUse, filter);
       if (event === null) {
         showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");
@@ -41,11 +49,6 @@ export const PollResponse = () => {
       navigate("/");
     }
   };
-
-  useEffect(() => {
-    fetchPollEvent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", sm: 600 }, mx: "auto", p: 2 }}>

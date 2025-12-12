@@ -39,13 +39,19 @@ export const NotificationBell: React.FC = () => {
   const handleNotificationClick = (parsed: any) => {
     // Poll responses → go to poll response page
     if (parsed.type === "poll-response" && parsed.pollId) {
-      navigate(`/respond/${parsed.pollId}`);
+      const nevent = nip19.neventEncode({
+        id: parsed.pollId,
+      });
+      navigate(`/respond/${nevent}`);
       return;
     }
 
     // Comments, reactions, likes, zaps → note thread
     if (parsed.postId) {
-      navigate(`/note/${parsed.postId}`);
+      const nevent = nip19.neventEncode({
+        id: parsed.postId,
+      });
+      navigate(`/note/${nevent}`);
       return;
     }
 
