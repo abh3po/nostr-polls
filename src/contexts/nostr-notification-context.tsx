@@ -22,6 +22,7 @@ interface NotificationsContextInterface {
   markAsRead: (id: string) => void;
 
   lastSeen: number | null;
+  pollMap: Map<string, Event>;
 }
 
 export const NostrNotificationsContext =
@@ -42,7 +43,7 @@ export function NostrNotificationsProvider({
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastSeen, setLastSeen] = useState<number | null>(null);
 
-  const pollIds = useRef<Set<string>>(new Set());
+  const pollMap = useRef<Map<string, Event>>(new Map());
 
   //
   // ────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export function NostrNotificationsProvider({
 
       const sub = pool.subscribeMany(relays, [filter], {
         onevent: (event: Event) => {
-          pollIds.current.add(event.id);
+          pollMap.current.set(event.id, event);
         },
         oneose: () => {
           sub.close();
@@ -122,7 +123,7 @@ export function NostrNotificationsProvider({
   // ────────────────────────────────────────────────────────────
   //
   const buildFilters = (pubkey: string, since: number): Filter[] => {
-    const pollIdArray = Array.from(pollIds.current);
+    const pollIdArray = Array.from(pollMap.current.keys());
 
     return [
       // poll responses
@@ -232,6 +233,7 @@ export function NostrNotificationsProvider({
         markAllAsRead,
         markAsRead,
         lastSeen,
+        pollMap: pollMap.current,
       }}
     >
       {children}

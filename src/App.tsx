@@ -5,6 +5,7 @@ import {
   Routes,
   Outlet,
   Navigate,
+  useParams,
 } from "react-router-dom";
 import { EventCreator } from "./components/EventCreator";
 import { PollResponse } from "./components/PollResponse";
@@ -31,6 +32,8 @@ import { RelayProvider } from "./contexts/relay-context";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import TopicsFeed from "./components/Feed/TopicsFeed";
 import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
+import { Notes } from "./components/Notes";
+import { PrepareNote } from "./components/Notes/PrepareNote";
 
 declare global {
   interface Window {
@@ -60,6 +63,10 @@ const App: React.FC = () => {
                           <Route
                             path="/respond/:eventId"
                             element={<PollResponse />}
+                          />
+                          <Route
+                            path="note/:eventId"
+                            element={<PrepareNoteWrapper />}
                           />
                           <Route
                             path="/result/:eventId"
@@ -108,5 +115,11 @@ const App: React.FC = () => {
     </NotificationProvider>
   );
 };
+
+function PrepareNoteWrapper() {
+  const { eventId } = useParams();
+  if (!eventId) return null;
+  return <PrepareNote eventId={eventId} />;
+}
 
 export default App;
