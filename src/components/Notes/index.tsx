@@ -31,6 +31,8 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { useListContext } from "../../hooks/useListContext";
 import { pool } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
+import { useNotification } from "../../contexts/notification-context";
+import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
 interface NotesProps {
   event: Event;
@@ -49,7 +51,14 @@ export const Notes: React.FC<NotesProps> = ({
   let { user, requestLogin, setUser } = useUserContext();
   let { relays } = useRelays();
   let { fetchLatestContactList } = useListContext();
-  const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1];
+  const replyingTo = event.tags.findLast((t) => t[0] === "e")?.[1] || null;
+  const replyingToNevent = replyingTo
+    ? nip19.neventEncode({ id: replyingTo })
+    : null;
+  const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1] || null;
+  const referencedEventNevent = referencedEventId
+    ? nip19.neventEncode({ id: referencedEventId })
+    : null;
 
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -61,6 +70,7 @@ export const Notes: React.FC<NotesProps> = ({
   const [parentEventId, setParentEventId] = useState<string | null>(null);
   const [showContactListWarning, setShowContactListWarning] = useState(false);
   const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
+  const { showNotification } = useNotification();
 
   const addToContacts = async () => {
     if (!user) {
@@ -79,6 +89,23 @@ export const Notes: React.FC<NotesProps> = ({
     }
 
     await updateContactList(contactEvent, pubkeyToAdd);
+  };
+
+  const copyNoteUrl = async () => {
+    const nevent = nip19.neventEncode({
+      id: event.id,
+      relays,
+      kind: event.kind,
+    });
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/note/${nevent}`
+      );
+      showNotification(NOTIFICATION_MESSAGES.EVENT_COPIED, "success");
+    } catch (error) {
+      console.error("Failed to copy event:", error);
+      showNotification(NOTIFICATION_MESSAGES.EVENT_COPY_FAILED, "error");
+    }
   };
 
   const updateContactList = async (
@@ -187,7 +214,7 @@ export const Notes: React.FC<NotesProps> = ({
               size="small"
               sx={{ ml: 2, mt: 1 }}
               onClick={() => {
-                setParentEventId(referencedEventId);
+                setParentEventId(referencedEventNevent);
                 setParentModalOpen(true);
               }}
             >
@@ -234,6 +261,7 @@ export const Notes: React.FC<NotesProps> = ({
             onClose={handleCloseMenu}
           >
             <MenuItem onClick={handleCopyNevent}>Copy event Id</MenuItem>
+            <MenuItem onClick={copyNoteUrl}>Copy event url</MenuItem>
             {extras}
           </Menu>
 
@@ -257,16 +285,11 @@ export const Notes: React.FC<NotesProps> = ({
             >
               <TextWithImages content={event.content} />
 
-              {referencedEventId && (
-                <>
-                  <Typography sx={{ fontSize: 10, mt: 1 }}>
-                    replying to:
-                  </Typography>
-                  <div style={{ borderRadius: "2px", borderColor: "grey" }}>
-                    <PrepareNote eventId={referencedEventId} />
-                  </div>
-                </>
-              )}
+              {replyingToNevent ? (
+                <div style={{ borderRadius: "2px", borderColor: "grey" }}>
+                  <PrepareNote neventId={replyingToNevent} />
+                </div>
+              ) : null}
 
               {!isExpanded && isOverflowing && (
                 <div

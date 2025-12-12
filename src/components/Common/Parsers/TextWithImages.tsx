@@ -99,11 +99,21 @@ const NostrParser = ({
   try {
     const encoded = part.replace("nostr:", "");
     const { type, data } = nip19.decode(encoded);
-
-    if (type === "nevent" || type === "note") {
+    if (type === "nevent") {
       return (
         <div key={index} style={{ marginTop: "0.5rem" }}>
-          <PrepareNote eventId={(data as EventPointer).id} />
+          <PrepareNote neventId={encoded} />
+        </div>
+      );
+    }
+    if (type === "note") {
+      const neventId = nip19.neventEncode({
+        id: data,
+        kind: 1,
+      });
+      return (
+        <div key={index} style={{ marginTop: "0.5rem" }}>
+          <PrepareNote neventId={neventId} />
         </div>
       );
     }
@@ -146,15 +156,15 @@ const NostrParser = ({
         </a>
       );
     }
-  } catch {
+  } catch (err) {
+    console.warn("Nostr URI parsing failed:", err);
     return null;
   }
-
   return null;
 };
 
-const PlainTextRenderer = ({ part, key }: { part: string; key: string }) => {
-  return <React.Fragment key={key}>{part}</React.Fragment>;
+const PlainTextRenderer = ({ part }: { part: string; key?: string }) => {
+  return <React.Fragment>{part}</React.Fragment>;
 };
 
 // ---- Main Component ----
