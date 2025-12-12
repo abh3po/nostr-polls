@@ -5,6 +5,7 @@ import {
   Routes,
   Outlet,
   Navigate,
+  useParams,
 } from "react-router-dom";
 import { EventCreator } from "./components/EventCreator";
 import { PollResponse } from "./components/PollResponse";
@@ -30,6 +31,9 @@ import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import TopicsFeed from "./components/Feed/TopicsFeed";
+import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
+import { Notes } from "./components/Notes";
+import { PrepareNote } from "./components/Notes/PrepareNote";
 
 declare global {
   interface Window {
@@ -47,57 +51,63 @@ const App: React.FC = () => {
         <AppContextProvider>
           <UserProvider>
             <RelayProvider>
-              <ListProvider>
-                <RatingProvider>
-                  <CssBaseline />
-                  <MetadataProvider>
-                    <Router>
-                      <Header />
-                      <Routes>
-                        <Route path="/create" element={<EventCreator />} />
-                        <Route
-                          path="/respond/:eventId"
-                          element={<PollResponse />}
-                        />
-                        <Route
-                          path="/result/:eventId"
-                          element={<PollResults />}
-                        />
-                        <Route path="/ratings" element={<EventList />} />
-                        <Route path="/feeds" element={<FeedsLayout />}>
-                          <Route path="notes" element={<NotesFeed />} />
-                          <Route path="profiles" element={<ProfilesFeed />} />
-                          <Route path="topics" element={<TopicsFeed />}>
-                            <Route path=":tag" element={<TopicExplorer />} />
+              <NostrNotificationsProvider>
+                <ListProvider>
+                  <RatingProvider>
+                    <CssBaseline />
+                    <MetadataProvider>
+                      <Router>
+                        <Header />
+                        <Routes>
+                          <Route path="/create" element={<EventCreator />} />
+                          <Route
+                            path="/respond/:eventId"
+                            element={<PollResponse />}
+                          />
+                          <Route
+                            path="note/:eventId"
+                            element={<PrepareNoteWrapper />}
+                          />
+                          <Route
+                            path="/result/:eventId"
+                            element={<PollResults />}
+                          />
+                          <Route path="/ratings" element={<EventList />} />
+                          <Route path="/feeds" element={<FeedsLayout />}>
+                            <Route path="notes" element={<NotesFeed />} />
+                            <Route path="profiles" element={<ProfilesFeed />} />
+                            <Route path="topics" element={<TopicsFeed />}>
+                              <Route path=":tag" element={<TopicExplorer />} />
+                            </Route>
+                            <Route
+                              path="polls"
+                              index={true}
+                              element={<PollFeed />}
+                            />
+
+                            {/* Wrap the movies routes inside MovieMetadataProvider */}
+                            <Route element={<Outlet />}>
+                              <Route path="movies" element={<MoviesFeed />} />
+                              <Route
+                                path="movies/:imdbId"
+                                element={<MoviePage />}
+                              />
+                            </Route>
+
+                            {/* default route inside feeds */}
+                            <Route index element={<PollFeed />} />
                           </Route>
                           <Route
-                            path="polls"
-                            index={true}
-                            element={<PollFeed />}
+                            index
+                            path="/"
+                            element={<Navigate to="/feeds/polls" replace />}
                           />
-
-                          {/* Wrap the movies routes inside MovieMetadataProvider */}
-                          <Route element={<Outlet />}>
-                            <Route path="movies" element={<MoviesFeed />} />
-                            <Route
-                              path="movies/:imdbId"
-                              element={<MoviePage />}
-                            />
-                          </Route>
-
-                          {/* default route inside feeds */}
-                          <Route index element={<PollFeed />} />
-                        </Route>
-                        <Route
-                          index
-                          path="/"
-                          element={<Navigate to="/feeds/polls" replace />}
-                        />
-                      </Routes>
-                    </Router>
-                  </MetadataProvider>
-                </RatingProvider>
-              </ListProvider>
+                        </Routes>
+                      </Router>
+                    </MetadataProvider>
+                  </RatingProvider>
+                </ListProvider>
+              </NostrNotificationsProvider>
             </RelayProvider>
           </UserProvider>
         </AppContextProvider>
@@ -105,5 +115,11 @@ const App: React.FC = () => {
     </NotificationProvider>
   );
 };
+
+function PrepareNoteWrapper() {
+  const { eventId } = useParams();
+  if (!eventId) return null;
+  return <PrepareNote eventId={eventId} />;
+}
 
 export default App;

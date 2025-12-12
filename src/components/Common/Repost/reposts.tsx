@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { IconButton, Tooltip } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import RepeatIcon from "@mui/icons-material/Repeat";
 import { Event, EventTemplate } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
@@ -84,6 +84,7 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
             cursor: reposted ? "default" : "pointer",
             display: "flex",
             flexDirection: "row",
+            padding: 2,
           }}
         >
           <RepeatIcon

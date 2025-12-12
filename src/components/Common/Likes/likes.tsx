@@ -71,14 +71,20 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const remainingCount = Math.max(0, topEmojis.length - 2);
 
   return (
-    <Box display="flex" alignItems="center" ml={2} position="relative">
+    <Box
+      display="flex"
+      alignItems="center"
+      ml={2}
+      position="relative"
+      sx={{ p: 0, my: -5 }}
+    >
       {/* Heart / User emoji */}
       <Tooltip
         title={userReaction() ? "Change reaction" : "React"}
         onClick={() => setShowPicker(true)}
       >
-        <IconButton size="small">
-          {userReaction() || <FavoriteBorder />}
+        <IconButton size="small" sx={{ p: 0 }}>
+          {userReaction() || <FavoriteBorder sx={{ p: 0 }} />}
         </IconButton>
       </Tooltip>
 
