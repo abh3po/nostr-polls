@@ -15,6 +15,8 @@ import {
   Button,
   Tabs,
   Tab,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { pool } from "../../../singletons";
@@ -34,6 +36,8 @@ const TopicsFeed: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [metadataMap, setMetadataMap] = useState<Map<string, Event>>(new Map());
 
+  const theme = useTheme();
+
   const { relays } = useRelays();
   const { myTopics } = useListContext();
   const navigate = useNavigate();
@@ -41,6 +45,7 @@ const TopicsFeed: React.FC = () => {
   const { user, requestLogin } = useUserContext();
   const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
   const isMounted = useRef(true);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   function parseRatingDTag(dTagValue: string): { type: string; id: string } {
     const parts = dTagValue.split(":");
@@ -159,7 +164,6 @@ const TopicsFeed: React.FC = () => {
       navigate(`/feeds/topics/${searchTerm.trim()}`);
     }
   };
-
   const myTopicsList = Array.from(myTopics || []);
 
   if (tag) return <Outlet />;
@@ -187,6 +191,18 @@ const TopicsFeed: React.FC = () => {
         <Tabs
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            mb: 2,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            "& .MuiTab-root": {
+              textTransform: "none",
+              minWidth: isMobile ? 80 : 120,
+              fontWeight: 500,
+            },
+          }}
         >
           <Tab
             label="Notes from Interests"
@@ -230,7 +246,11 @@ const TopicsFeed: React.FC = () => {
               : (() => {
                   if (!user)
                     return (
-                      <Button onClick={requestLogin}>
+                      <Button
+                        variant="contained"
+                        onClick={requestLogin}
+                        style={{ padding: 10, margin: 20 }}
+                      >
                         Login to see your topics
                       </Button>
                     );
