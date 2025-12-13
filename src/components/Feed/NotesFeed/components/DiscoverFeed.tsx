@@ -30,7 +30,7 @@ const DiscoverFeed = () => {
     ) {
       fetchNotes(user.webOfTrust);
     }
-  }, [user?.pubkey]);
+  }, [user]);
 
   const mergedNotes = useMemo(() => {
     return Array.from(notes.values())

@@ -42,9 +42,7 @@ export const useDiscoverNotes = () => {
         subscriptionsRef.current = [];
 
         const followsSet = new Set(user?.follows);
-        const filteredAuthors = Array.from(webOfTrust).filter(
-            (pk) => !followsSet.has(pk)
-        );
+        const filteredAuthors = Array.from(webOfTrust)
 
         setLoadingMore(true);
         const chunks = chunkArray(filteredAuthors, CHUNK_SIZE);

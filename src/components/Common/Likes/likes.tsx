@@ -115,7 +115,11 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       </Box>
 
       {/* Emoji picker modal */}
-      <Modal open={showPicker} onClose={() => setShowPicker(false)}>
+      <Modal
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        disableScrollLock
+      >
         <Box
           sx={{
             position: "absolute" as const,
