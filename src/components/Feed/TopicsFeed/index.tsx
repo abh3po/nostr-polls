@@ -21,11 +21,13 @@ import { pool } from "../../../singletons";
 import { Virtuoso } from "react-virtuoso";
 import TopicCard from "./TopicsCard";
 import { useListContext } from "../../../hooks/useListContext";
+import MyTopicsFeed from "./MyTopicsFeed";
+import { useUserContext } from "../../../hooks/useUserContext";
 
 const TopicsFeed: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"discover" | "myTopics">(
-    "discover"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "discover" | "myTopics" | "interests"
+  >("interests");
   const [tagsMap, setTagsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -36,7 +38,7 @@ const TopicsFeed: React.FC = () => {
   const { myTopics } = useListContext();
   const navigate = useNavigate();
   const { tag } = useParams();
-
+  const { user, requestLogin } = useUserContext();
   const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
   const isMounted = useRef(true);
 
@@ -187,7 +189,12 @@ const TopicsFeed: React.FC = () => {
           onChange={(_, newValue) => setActiveTab(newValue)}
         >
           <Tab
-            label="My Topics"
+            label="Notes from Interests"
+            value="interests"
+            sx={{ py: 0, textTransform: "none" }}
+          />
+          <Tab
+            label="My Interests"
             value="myTopics"
             sx={{ py: 0, textTransform: "none" }}
           />
@@ -206,26 +213,41 @@ const TopicsFeed: React.FC = () => {
         </IconButton>
       </Box>
 
-      {loading && activeTab === "discover" ? (
-        <Box display="flex" justifyContent="center" py={6}>
-          <CircularProgress />
-        </Box>
-      ) : displayTags.length === 0 ? (
-        <Typography>
-          {activeTab === "discover"
-            ? "No topics found yet."
-            : "No topics added yet."}
-        </Typography>
-      ) : (
-        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+      <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+        {activeTab === "interests" ? (
+          // MyTopicsFeed handles its own loading & empty states internally
+          <MyTopicsFeed />
+        ) : loading && activeTab === "discover" ? (
+          // Loading state for discover tab
+          <Box display="flex" justifyContent="center" py={6}>
+            <CircularProgress />
+          </Box>
+        ) : displayTags.length === 0 ? (
+          // Empty state for discover / myTopics
+          <Typography>
+            {activeTab === "discover"
+              ? "No topics found yet."
+              : (() => {
+                  if (!user)
+                    return (
+                      <Button onClick={requestLogin}>
+                        Login to see your topics
+                      </Button>
+                    );
+                  return <div>"No topics added yet."</div>;
+                })()}
+          </Typography>
+        ) : (
+          // Show list of topic cards for discover / myTopics
           <Virtuoso
             data={displayTags}
             itemContent={(index, tag) => (
               <TopicCard tag={tag} metadataEvent={metadataMap.get(tag)} />
             )}
+            style={{ height: "100%", width: "100%" }}
           />
-        </Box>
-      )}
+        )}
+      </Box>
 
       <Dialog open={searchOpen} onClose={() => setSearchOpen(false)} fullWidth>
         <DialogTitle>Search Topic</DialogTitle>
