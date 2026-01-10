@@ -1,5 +1,5 @@
 // components/LoginModal.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -13,6 +13,8 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { CreateAccountModal } from "./CreateAccountModal";
 import { isAndroidNative, isNative } from "../../utils/platform";
 import { NsecLoginModal } from "./NsecLoginModal";
+import { NostrSignerPlugin } from "nostr-signer-capacitor-plugin";
+import { SignerAppInfo } from "nostr-signer-capacitor-plugin/dist/esm/definitions";
 
 interface Props {
   open: boolean;
@@ -23,6 +25,17 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   const { setUser } = useUserContext();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showNsecLogin, setShowNsecLogin] = useState(false);
+  const [installedSigners, setInstalledSigners] = useState<{
+    apps: SignerAppInfo[];
+  }>();
+
+  useEffect(() => {
+    const initialize = async () => {
+      const installedSigners = await NostrSignerPlugin.getInstalledSignerApps();
+      setInstalledSigners(installedSigners);
+    };
+    initialize();
+  }, []);
   const handleLoginWithNip07 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
       setUser(signerManager.getUser());
@@ -60,21 +73,22 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
       <DialogContent>
         <Stack spacing={2} mt={1}>
           {isAndroidNative() && (
-            <Button
-              onClick={async () => {
-                try {
-                  await signerManager.loginWithAmber();
-                  onClose();
-                } catch (err) {
-                  alert("Amber login failed");
-                  console.error(err);
-                }
-              }}
-              variant="contained"
-              fullWidth
-            >
-              Login with Amber
-            </Button>
+            <>
+              {installedSigners?.apps.map((app) => {
+                return (
+                  <Button
+                    onClick={() => {
+                      signerManager.loginWithNip55(app.packageName);
+                    }}
+                    startIcon={<img src={app.iconUrl} height={18} width={18} />}
+                    variant="contained"
+                    fullWidth
+                  >
+                    Log In with {app.name}
+                  </Button>
+                );
+              })}
+            </>
           )}
           {!isNative && (
             <Button

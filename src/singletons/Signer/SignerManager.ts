@@ -22,7 +22,7 @@ import { createLocalSigner } from "./LocalSigner";
 import { isNative } from "../../utils/platform";
 import { getNsec, removeNsec, saveNsec } from "../../utils/secureKeyStorage";
 import { bytesToHex } from "@noble/hashes/utils";
-import { createAmberSigner } from "./AmberSigner";
+import { createNIP55Signer } from "./NIP55Signer";
 
 class SignerManager {
   private signer: NostrSigner | null = null;
@@ -58,11 +58,11 @@ class SignerManager {
     // TODO: Replace with your actual event publish method
   }
 
-  async loginWithAmber() {
-    const amberSigner = createAmberSigner();
+  async loginWithNip55(packageName: string) {
+    const signer = createNIP55Signer(packageName);
 
     // Step 1: ask Amber for pubkey
-    const pubkey = await amberSigner.getPublicKey();
+    const pubkey = await signer.getPublicKey();
 
     // Step 2: fetch kind0 profile
     const kind0 = await fetchUserProfile(pubkey);
@@ -71,7 +71,7 @@ class SignerManager {
       : { pubkey, name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL };
 
     // Step 3: save signer and user
-    this.signer = amberSigner;
+    this.signer = signer;
     this.user = userData;
 
     setUserDataInLocalStorage(userData);
