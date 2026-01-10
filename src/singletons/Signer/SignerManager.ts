@@ -1,7 +1,7 @@
 import { nip07Signer } from "./NIP07Signer";
 import { createNip46Signer } from "./BunkerSigner";
 import { NostrSigner } from "./types";
-import { Event, EventTemplate } from "nostr-tools";
+import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { defaultRelays, fetchUserProfile } from "../../nostr";
 import {
   getBunkerUriInLocalStorage,
@@ -19,12 +19,17 @@ import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { ANONYMOUS_USER_NAME, User } from "../../contexts/user-context";
 import { pool } from "..";
 import { createLocalSigner } from "./LocalSigner";
+import { isNative } from "../../utils/platform";
+import { getNsec, removeNsec, saveNsec } from "../../utils/secureKeyStorage";
+import { bytesToHex } from "@noble/hashes/utils";
+import { createAmberSigner } from "./AmberSigner";
 
 class SignerManager {
   private signer: NostrSigner | null = null;
   private user: User | null = null;
   private onChangeCallbacks: Set<() => void> = new Set();
   private loginModalCallback: (() => Promise<void>) | null = null;
+  private pendingSignPromises: Map<string, (event: Event) => void> = new Map();
 
   constructor() {
     this.restoreFromStorage();
@@ -53,34 +58,80 @@ class SignerManager {
     // TODO: Replace with your actual event publish method
   }
 
+  async loginWithAmber() {
+    const amberSigner = createAmberSigner();
+
+    // Step 1: ask Amber for pubkey
+    const pubkey = await amberSigner.getPublicKey();
+
+    // Step 2: fetch kind0 profile
+    const kind0 = await fetchUserProfile(pubkey);
+    const userData = kind0
+      ? { ...JSON.parse(kind0.content), pubkey }
+      : { pubkey, name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL };
+
+    // Step 3: save signer and user
+    this.signer = amberSigner;
+    this.user = userData;
+
+    setUserDataInLocalStorage(userData);
+    this.notify();
+  }
+
+  resolvePendingSign(event: Event) {
+    const resolver = this.pendingSignPromises.get(event.id);
+    if (!resolver) {
+      console.warn("No pending sign promise for event", event.id);
+      return;
+    }
+
+    resolver(event);
+    this.pendingSignPromises.delete(event.id);
+  }
+
+  async handleSignerCallback(payload: string) {
+    // sign_event returns full event JSON
+    try {
+      const event = JSON.parse(payload);
+      this.resolvePendingSign(event);
+    } catch {
+      console.warn("Unknown signer payload", payload);
+    }
+  }
+
   registerLoginModal(callback: () => Promise<void>) {
     this.loginModalCallback = callback;
   }
-
   async restoreFromStorage() {
-    const keys = getKeysFromLocalStorage();
-    const bunkerUri = getBunkerUriInLocalStorage();
     const cachedUser = getUserDataFromLocalStorage();
-
-    if (cachedUser) {
-      this.user = cachedUser.user;
-    }
+    if (cachedUser) this.user = cachedUser.user;
 
     try {
+      if (isNative) {
+        const nsec = await getNsec();
+        if (nsec) {
+          await this.loginWithNsec(nsec);
+          return;
+        }
+      }
+
+      const bunkerUri = getBunkerUriInLocalStorage();
+      const keys = getKeysFromLocalStorage();
+
       if (bunkerUri?.bunkerUri) {
         await this.loginWithNip46(bunkerUri.bunkerUri);
-      } else if (window.nostr) {
-        console.log("Restoring loginWithNip07");
+      } else if (!isNative && window.nostr) {
         await this.loginWithNip07();
       } else if (keys?.pubkey && keys?.secret) {
-        console.log("Restoring guest");
         await this.loginWithGuestKey(keys.pubkey, keys.secret);
       }
     } catch (e) {
       console.error("Signer restore failed:", e);
     }
+
     this.notify();
   }
+
   private async loginWithGuestKey(pubkey: string, privkey: string) {
     this.signer = createLocalSigner(privkey);
 
@@ -88,14 +139,36 @@ class SignerManager {
     const userData: User = kind0
       ? { ...JSON.parse(kind0.content), pubkey, privateKey: privkey }
       : {
-        pubkey,
-        name: ANONYMOUS_USER_NAME,
-        picture: DEFAULT_IMAGE_URL,
-        privateKey: privkey,
-      };
+          pubkey,
+          name: ANONYMOUS_USER_NAME,
+          picture: DEFAULT_IMAGE_URL,
+          privateKey: privkey,
+        };
 
     setUserDataInLocalStorage(userData);
     this.user = userData;
+  }
+
+  async loginWithNsec(nsec: string) {
+    if (!isNative) throw new Error("NSEC login only allowed on native");
+
+    const privkey = nip19.decode(nsec).data as Uint8Array;
+    if (!privkey) throw new Error("Invalid nsec");
+
+    this.signer = createLocalSigner(bytesToHex(privkey));
+
+    const pubkey = await this.signer.getPublicKey();
+
+    const kind0 = await fetchUserProfile(pubkey);
+    const userData: User = kind0
+      ? { ...JSON.parse(kind0.content), pubkey }
+      : { pubkey, name: ANONYMOUS_USER_NAME, picture: DEFAULT_IMAGE_URL };
+
+    await saveNsec(nsec);
+    setUserDataInLocalStorage(userData);
+
+    this.user = userData;
+    this.notify();
   }
 
   async createGuestAccount(
@@ -160,16 +233,16 @@ class SignerManager {
     this.user = userData;
     this.notify();
   }
-
   logout() {
     this.signer = null;
     this.user = null;
 
+    removeNsec();
     removeKeysFromLocalStorage();
     removeBunkerUriFromLocalStorage();
     removeAppSecretFromLocalStorage();
     removeUserDataFromLocalStorage();
-    console.log("Logged out from everywhere");
+
     this.notify();
   }
 

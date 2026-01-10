@@ -11,6 +11,8 @@ import {
 import { signerManager } from "../../singletons/Signer/SignerManager";
 import { useUserContext } from "../../hooks/useUserContext";
 import { CreateAccountModal } from "./CreateAccountModal";
+import { isAndroidNative, isNative } from "../../utils/platform";
+import { NsecLoginModal } from "./NsecLoginModal";
 
 interface Props {
   open: boolean;
@@ -20,6 +22,7 @@ interface Props {
 export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   const { setUser } = useUserContext();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showNsecLogin, setShowNsecLogin] = useState(false);
   const handleLoginWithNip07 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
       setUser(signerManager.getUser());
@@ -56,9 +59,43 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
       <DialogTitle>Log In</DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          <Button onClick={handleLoginWithNip07} variant="contained" fullWidth>
-            Log In via Extension (NIP-07)
-          </Button>
+          {isAndroidNative() && (
+            <Button
+              onClick={async () => {
+                try {
+                  await signerManager.loginWithAmber();
+                  onClose();
+                } catch (err) {
+                  alert("Amber login failed");
+                  console.error(err);
+                }
+              }}
+              variant="contained"
+              fullWidth
+            >
+              Login with Amber
+            </Button>
+          )}
+          {!isNative && (
+            <Button
+              onClick={handleLoginWithNip07}
+              variant="contained"
+              fullWidth
+            >
+              Log In via Extension (NIP-07)
+            </Button>
+          )}
+
+          {isNative && (
+            <Button
+              onClick={() => setShowNsecLogin(true)}
+              variant="contained"
+              fullWidth
+            >
+              Log In with nsec (Device)
+            </Button>
+          )}
+
           <Button onClick={handleLoginWithNip46} variant="contained" fullWidth>
             Log In via Remote Signer (NIP-46)
           </Button>
@@ -77,6 +114,10 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
       <CreateAccountModal
         open={showCreateAccount}
         onClose={() => setShowCreateAccount(false)}
+      />
+      <NsecLoginModal
+        open={showNsecLogin}
+        onClose={() => setShowNsecLogin(false)}
       />
     </Dialog>
   );

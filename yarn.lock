@@ -1099,6 +1099,11 @@
   resolved "https://registry.yarnpkg.com/@capacitor/android/-/android-8.0.0.tgz#8cd63ed432460c70db0770dccd9234700152f31a"
   integrity sha512-FrBSvVAC5JuLaYHNyDnwQny0/SYnP+xDQbc/KA4wInmRkMXLDv22fkx9aBJIDrxjuUVd+jsRih4SAt8FgMEzCw==
 
+"@capacitor/app@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@capacitor/app/-/app-8.0.0.tgz#47c2a90302919d71cef8a7297fb1d6ee439d1250"
+  integrity sha512-OwzIkUs4w433Bu9WWAEbEYngXEfJXZ9Wmdb8eoaqzYBgB0W9/3Ed/mh6sAYPNBAZlpyarmewgP7Nb+d3Vrh+xA==
+
 "@capacitor/assets@^3.0.5":
   version "3.0.5"
   resolved "https://registry.yarnpkg.com/@capacitor/assets/-/assets-3.0.5.tgz#55c66458e703ce95e2e3188caad8b987b94b66f0"
@@ -1169,6 +1174,16 @@
   integrity sha512-250HTVd/W/KdMygoqaedisvNbHbpbQTN2Hy/8ZYGm1nAqE0Fx7sGss4l0nDg33STxEdDhtVRoL2fIaaiukKseA==
   dependencies:
     tslib "^2.1.0"
+
+"@capacitor/device@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@capacitor/device/-/device-8.0.0.tgz#4b0ca1a35c896e32dd125dba5fa9b681badd9c8d"
+  integrity sha512-qFmlTDnAvUwIg93YUF3u3ovqpDFqUl2RFkf2dVIF8Py7vTA+GjQIHQWITcBKfeUENoVXPNn04t5nxg5mAkjNEA==
+
+"@capacitor/preferences@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@capacitor/preferences/-/preferences-8.0.0.tgz#43fa0b7c538bc0ad9b8625b457cba2a8835bb14e"
+  integrity sha512-NsE7Srk9Zr0SxiVelHGiAJR7M238eyCD6dI/sDhu3ckKwFrXn8/GRyGr+SZcnGLlQKy948li8Pfcfr0dqxNf1g==
 
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
