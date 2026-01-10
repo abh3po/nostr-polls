@@ -73,6 +73,11 @@ class SignerManager {
     // Step 3: save signer and user
     this.signer = signer;
     this.user = userData;
+    localStorage.setItem("nip55PackageName", packageName);
+    console.log(
+      "Saved local storage package name",
+      localStorage.getItem("nip55PackageName")
+    );
 
     setUserDataInLocalStorage(userData);
     this.notify();
@@ -89,21 +94,12 @@ class SignerManager {
     this.pendingSignPromises.delete(event.id);
   }
 
-  async handleSignerCallback(payload: string) {
-    // sign_event returns full event JSON
-    try {
-      const event = JSON.parse(payload);
-      this.resolvePendingSign(event);
-    } catch {
-      console.warn("Unknown signer payload", payload);
-    }
-  }
-
   registerLoginModal(callback: () => Promise<void>) {
     this.loginModalCallback = callback;
   }
   async restoreFromStorage() {
     const cachedUser = getUserDataFromLocalStorage();
+    console.log("Got a cached user", cachedUser);
     if (cachedUser) this.user = cachedUser.user;
 
     try {
@@ -117,8 +113,11 @@ class SignerManager {
 
       const bunkerUri = getBunkerUriInLocalStorage();
       const keys = getKeysFromLocalStorage();
-
-      if (bunkerUri?.bunkerUri) {
+      const nip55PackageName = localStorage.getItem("nip55PackageName");
+      console.log("Got nip55Package name", nip55PackageName);
+      if (nip55PackageName) {
+        await this.loginWithNip55(nip55PackageName);
+      } else if (bunkerUri?.bunkerUri) {
         await this.loginWithNip46(bunkerUri.bunkerUri);
       } else if (!isNative && window.nostr) {
         await this.loginWithNip07();
@@ -242,6 +241,7 @@ class SignerManager {
     removeBunkerUriFromLocalStorage();
     removeAppSecretFromLocalStorage();
     removeUserDataFromLocalStorage();
+    localStorage.removeItem("nip55PackageName");
 
     this.notify();
   }

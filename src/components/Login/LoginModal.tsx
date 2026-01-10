@@ -77,10 +77,11 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
               {installedSigners?.apps.map((app) => {
                 return (
                   <Button
-                    onClick={() => {
-                      signerManager.loginWithNip55(app.packageName);
+                    onClick={async () => {
+                      await signerManager.loginWithNip55(app.packageName);
+                      onClose();
                     }}
-                    endIcon={<img src={app.iconUrl} height={18} width={18} />}
+                    endIcon={<img src={app.iconUrl} height={24} width={24} />}
                     variant="contained"
                     fullWidth
                   >
