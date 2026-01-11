@@ -1,5 +1,5 @@
 // components/LoginModal.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -11,6 +11,10 @@ import {
 import { signerManager } from "../../singletons/Signer/SignerManager";
 import { useUserContext } from "../../hooks/useUserContext";
 import { CreateAccountModal } from "./CreateAccountModal";
+import { isAndroidNative, isNative } from "../../utils/platform";
+import { NsecLoginModal } from "./NsecLoginModal";
+import { NostrSignerPlugin } from "nostr-signer-capacitor-plugin";
+import { SignerAppInfo } from "nostr-signer-capacitor-plugin/dist/esm/definitions";
 
 interface Props {
   open: boolean;
@@ -20,6 +24,18 @@ interface Props {
 export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
   const { setUser } = useUserContext();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showNsecLogin, setShowNsecLogin] = useState(false);
+  const [installedSigners, setInstalledSigners] = useState<{
+    apps: SignerAppInfo[];
+  }>();
+
+  useEffect(() => {
+    const initialize = async () => {
+      const installedSigners = await NostrSignerPlugin.getInstalledSignerApps();
+      setInstalledSigners(installedSigners);
+    };
+    initialize();
+  }, []);
   const handleLoginWithNip07 = async () => {
     const unsubscribe = signerManager.onChange(async () => {
       setUser(signerManager.getUser());
@@ -56,9 +72,45 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
       <DialogTitle>Log In</DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          <Button onClick={handleLoginWithNip07} variant="contained" fullWidth>
-            Log In via Extension (NIP-07)
-          </Button>
+          {isAndroidNative() && (
+            <>
+              {installedSigners?.apps.map((app) => {
+                return (
+                  <Button
+                    onClick={async () => {
+                      await signerManager.loginWithNip55(app.packageName);
+                      onClose();
+                    }}
+                    endIcon={<img src={app.iconUrl} height={24} width={24} />}
+                    variant="contained"
+                    fullWidth
+                  >
+                    Log In with {app.name}
+                  </Button>
+                );
+              })}
+            </>
+          )}
+          {!isNative && (
+            <Button
+              onClick={handleLoginWithNip07}
+              variant="contained"
+              fullWidth
+            >
+              Log In via Extension (NIP-07)
+            </Button>
+          )}
+
+          {isNative && (
+            <Button
+              onClick={() => setShowNsecLogin(true)}
+              variant="contained"
+              fullWidth
+            >
+              Log In with nsec (Device)
+            </Button>
+          )}
+
           <Button onClick={handleLoginWithNip46} variant="contained" fullWidth>
             Log In via Remote Signer (NIP-46)
           </Button>
@@ -77,6 +129,10 @@ export const LoginModal: React.FC<Props> = ({ open, onClose }) => {
       <CreateAccountModal
         open={showCreateAccount}
         onClose={() => setShowCreateAccount(false)}
+      />
+      <NsecLoginModal
+        open={showNsecLogin}
+        onClose={() => setShowNsecLogin(false)}
       />
     </Dialog>
   );
