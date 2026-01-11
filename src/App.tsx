@@ -1,4 +1,5 @@
-import React from "react";
+// App.tsx
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -7,40 +8,60 @@ import {
   Navigate,
   useParams,
 } from "react-router-dom";
+
+import { StatusBar, Style } from "@capacitor/status-bar";
+
 import { EventCreator } from "./components/EventCreator";
 import { PollResponse } from "./components/PollResponse";
 import { PollResults } from "./components/PollResults";
-import type { WindowNostr } from "nostr-tools/lib/types/nip07";
-import { AppContextProvider } from "./contexts/app-context";
 import Header from "./components/Header";
+import { PrepareNote } from "./components/Notes/PrepareNote";
+
+import { AppContextProvider } from "./contexts/app-context";
 import { ListProvider } from "./contexts/lists-context";
 import { UserProvider } from "./contexts/user-context";
-import CssBaseline from "@mui/material/CssBaseline";
-import { baseTheme } from "./styles/theme";
-import { ThemeProvider } from "@mui/material";
-import EventList from "./components/Feed/FeedsLayout";
 import { RatingProvider } from "./contexts/RatingProvider";
-import MoviePage from "./components/Movies/MoviePage";
+import { MetadataProvider } from "./hooks/MetadataProvider";
+import { NotificationProvider } from "./contexts/notification-context";
+import { RelayProvider } from "./contexts/relay-context";
+import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
+
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material";
+import { baseTheme } from "./styles/theme";
+
+import EventList from "./components/Feed/FeedsLayout";
 import NotesFeed from "./components/Feed/NotesFeed/components";
 import ProfilesFeed from "./components/Feed/ProfileFeed";
 import { PollFeed } from "./components/Feed/PollFeed";
 import MoviesFeed from "./components/Feed/MoviesFeed";
-import { MetadataProvider } from "./hooks/MetadataProvider";
-import FeedsLayout from "./components/Feed/FeedsLayout";
-import { NotificationProvider } from "./contexts/notification-context";
-import { RelayProvider } from "./contexts/relay-context";
-import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
+import MoviePage from "./components/Movies/MoviePage";
 import TopicsFeed from "./components/Feed/TopicsFeed";
-import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
-import { PrepareNote } from "./components/Notes/PrepareNote";
+import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
+import FeedsLayout from "./components/Feed/FeedsLayout";
 
 declare global {
   interface Window {
-    nostr?: WindowNostr;
+    nostr?: any;
   }
 }
 
 const App: React.FC = () => {
+  // ⚡ Capacitor status bar setup
+  useEffect(() => {
+    const setupStatusBar = async () => {
+      try {
+        // Make sure the content starts below the status bar
+        await StatusBar.setOverlaysWebView({ overlay: false });
+        await StatusBar.setStyle({ style: Style.Dark });
+      } catch (e) {
+        console.warn("StatusBar plugin error:", e);
+      }
+    };
+
+    setupStatusBar();
+  }, []);
+
   return (
     <NotificationProvider>
       <ThemeProvider
@@ -56,7 +77,11 @@ const App: React.FC = () => {
                     <CssBaseline />
                     <MetadataProvider>
                       <Router>
-                        <Header />
+                        {/* ✅ Safe-area header wrapper */}
+                        <div className="header-safe-area">
+                          <Header />
+                        </div>
+
                         <Routes>
                           <Route path="/create" element={<EventCreator />} />
                           <Route
@@ -72,19 +97,15 @@ const App: React.FC = () => {
                             element={<PollResults />}
                           />
                           <Route path="/ratings" element={<EventList />} />
+
                           <Route path="/feeds" element={<FeedsLayout />}>
                             <Route path="notes" element={<NotesFeed />} />
                             <Route path="profiles" element={<ProfilesFeed />} />
                             <Route path="topics" element={<TopicsFeed />}>
                               <Route path=":tag" element={<TopicExplorer />} />
                             </Route>
-                            <Route
-                              path="polls"
-                              index={true}
-                              element={<PollFeed />}
-                            />
+                            <Route path="polls" index element={<PollFeed />} />
 
-                            {/* Wrap the movies routes inside MovieMetadataProvider */}
                             <Route element={<Outlet />}>
                               <Route path="movies" element={<MoviesFeed />} />
                               <Route
@@ -93,9 +114,9 @@ const App: React.FC = () => {
                               />
                             </Route>
 
-                            {/* default route inside feeds */}
                             <Route index element={<PollFeed />} />
                           </Route>
+
                           <Route
                             index
                             path="/"
@@ -115,6 +136,7 @@ const App: React.FC = () => {
   );
 };
 
+// Wrapper to pass eventId to PrepareNote
 function PrepareNoteWrapper() {
   const { eventId } = useParams();
   if (!eventId) return null;

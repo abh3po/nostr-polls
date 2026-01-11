@@ -1,0 +1,26 @@
+identifier: com.formstr.pollerama
+name: Pollerama
+summary: Pollerama is a next-generation decentralized social platform built on the Nostr protocol, empowering users to create, share, and interact with content in real-time—without relying on centralized intermediaries.
+
+description: Create Notes, Polls, Rate Movies, Moderate Topics, Have fun!
+repository: https://github.com/abh3po/nostr-polls
+release_repository: https://github.com/abh3po/nostr-polls/releases
+homepage: https://pollerama.fun
+images:
+  - assets/polls.png
+  - assets/topics.png
+  - assets/movies.png
+icon: assets/icon.png
+changelog: CHANGELOG.md
+tags: polls nostr
+license: MIT
+remote_metadata:
+  - playstore
+  - github
+blossom_servers:
+  - https://cdn.zapstore.dev
+  - https://blossom.band
+assets: # for local
+  - android/app/build/outputs/apk/release/.*\.apk
+executables:
+  - ^sample-.*
