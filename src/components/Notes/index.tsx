@@ -17,10 +17,12 @@ import {
 import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { openProfileTab, signEvent } from "../../nostr";
 import { calculateTimeAgo } from "../../utils/common";
+import { getAppBaseUrl } from "../../utils/platform";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
 import { alpha, useTheme } from "@mui/material/styles";
@@ -47,6 +49,7 @@ export const Notes: React.FC<NotesProps> = ({
   hidden = false,
   showReason,
 }) => {
+  const navigate = useNavigate();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   let { user, requestLogin, setUser } = useUserContext();
   let { relays } = useRelays();
@@ -99,7 +102,7 @@ export const Notes: React.FC<NotesProps> = ({
     });
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/note/${nevent}`
+        `${getAppBaseUrl()}/note/${nevent}`
       );
       showNotification(NOTIFICATION_MESSAGES.EVENT_COPIED, "success");
     } catch (error) {
@@ -226,7 +229,7 @@ export const Notes: React.FC<NotesProps> = ({
             avatar={
               <Avatar
                 src={profiles?.get(event.pubkey)?.picture || DEFAULT_IMAGE_URL}
-                onClick={() => openProfileTab(nip19.npubEncode(event.pubkey))}
+                onClick={() => openProfileTab(nip19.npubEncode(event.pubkey), navigate)}
                 sx={{ cursor: "pointer" }}
               />
             }

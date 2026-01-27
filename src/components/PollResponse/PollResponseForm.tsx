@@ -1,5 +1,6 @@
 // PollResponseForm.tsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
@@ -28,6 +29,7 @@ import { TextWithImages } from "../Common/Parsers/TextWithImages";
 import { Filters } from "./Filter";
 import { useUserContext } from "../../hooks/useUserContext";
 import { ProofofWorkModal } from "./ProofofWorkModal";
+import { getAppBaseUrl } from "../../utils/platform";
 import { bytesToHex } from "@noble/hashes/utils";
 import dayjs from "dayjs";
 import { useMiningWorker } from "../../hooks/useMiningWorker";
@@ -57,6 +59,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [filterPubkeys, setFilterPubkeys] = useState<string[]>([]);
   const [showPoWModal, setShowPoWModal] = useState<boolean>(false);
+  const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user, setUser } = useUserContext();
@@ -179,7 +182,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     });
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/respond/${nevent}`
+        `${getAppBaseUrl()}/respond/${nevent}`
       );
       showNotification(NOTIFICATION_MESSAGES.POLL_URL_COPIED, "success");
     } catch (error) {
@@ -213,8 +216,9 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                     DEFAULT_IMAGE_URL
                   }
                   onClick={() => {
-                    openProfileTab(nip19.npubEncode(pollEvent.pubkey));
+                    openProfileTab(nip19.npubEncode(pollEvent.pubkey), navigate);
                   }}
+                  sx={{ cursor: "pointer" }}
                 />
               }
               action={

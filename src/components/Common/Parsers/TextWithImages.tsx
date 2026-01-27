@@ -10,6 +10,7 @@ import { TranslationPopover } from "./../TranslationPopover";
 import TranslateIcon from "@mui/icons-material/Translate";
 import { isEmbeddableYouTubeUrl } from "../Utils";
 import { YouTubePlayer } from "../Youtube";
+import { Link } from "react-router-dom";
 
 interface TextWithImagesProps {
   content: string;
@@ -132,11 +133,9 @@ const NostrParser = ({
         pubkey.slice(0, 8) + "...";
 
       return (
-        <a
+        <Link
           key={index}
-          href={`https://njump.me/${encoded}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          to={`/profile/${encoded}`}
           style={{
             color: "#FAD13F",
             textDecoration: "underline",
@@ -153,7 +152,7 @@ const NostrParser = ({
             style={{ borderRadius: "50%" }}
           />
           {name}
-        </a>
+        </Link>
       );
     }
   } catch (err) {

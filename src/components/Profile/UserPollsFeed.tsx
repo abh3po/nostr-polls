@@ -1,0 +1,94 @@
+import React, { useEffect, useState, useCallback } from "react";
+import { Event, Filter } from "nostr-tools";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import { Virtuoso } from "react-virtuoso";
+import { pool } from "../../singletons";
+import { useRelays } from "../../hooks/useRelays";
+import PollResponseForm from "../PollResponse/PollResponseForm";
+
+interface UserPollsFeedProps {
+  pubkey: string;
+}
+
+const KIND_POLL = 1068;
+
+const UserPollsFeed: React.FC<UserPollsFeedProps> = ({ pubkey }) => {
+  const [polls, setPolls] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { relays } = useRelays();
+
+  const fetchPolls = useCallback(() => {
+    if (!pubkey) return;
+
+    setLoading(true);
+    const filters: Filter[] = [
+      {
+        kinds: [KIND_POLL],
+        authors: [pubkey],
+        limit: 50,
+      },
+    ];
+
+    const sub = pool.subscribeMany(relays, filters, {
+      onevent(event) {
+        setPolls((prev) => {
+          const exists = prev.find((e) => e.id === event.id);
+          if (exists) return prev;
+          return [...prev, event].sort((a, b) => b.created_at - a.created_at);
+        });
+      },
+      oneose() {
+        setLoading(false);
+      },
+    });
+
+    return () => sub.close();
+  }, [pubkey, relays]);
+
+  useEffect(() => {
+    const cleanup = fetchPolls();
+    return cleanup;
+  }, [fetchPolls]);
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "200px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (polls.length === 0) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Typography variant="body1" color="text.secondary">
+          No polls yet
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ height: "600px" }}>
+      <Virtuoso
+        data={polls}
+        itemContent={(index, poll) => (
+          <Box key={poll.id} sx={{ mb: 2 }}>
+            <PollResponseForm
+              pollEvent={poll}
+            />
+          </Box>
+        )}
+      />
+    </Box>
+  );
+};
+
+export default UserPollsFeed;

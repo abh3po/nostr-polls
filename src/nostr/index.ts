@@ -101,9 +101,18 @@ export const fetchZaps = async (
   return result;
 };
 
-export function openProfileTab(npub: `npub1${string}`) {
-  let url = `https://njump.me/${npub}`;
-  window?.open(url, "_blank")?.focus();
+export function openProfileTab(
+  npub: `npub1${string}`,
+  navigate?: (path: string) => void
+) {
+  if (navigate) {
+    // Use internal routing
+    navigate(`/profile/${npub}`);
+  } else {
+    // Fallback to external njump.me
+    let url = `https://njump.me/${npub}`;
+    window?.open(url, "_blank")?.focus();
+  }
 }
 
 export const getATagFromEvent = (event: Event) => {
