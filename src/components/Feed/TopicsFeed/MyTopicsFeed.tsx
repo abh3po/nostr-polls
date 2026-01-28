@@ -19,6 +19,7 @@ import { useMyTopicsFeed } from "../../../hooks/useMyTopicsFeed";
 import { Notes } from "../../../components/Notes";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { useUserContext } from "../../../hooks/useUserContext";
+import useImmersiveScroll from "../../../hooks/useImmersiveScroll";
 
 const MyTopicsFeed = () => {
   const { myTopics } = useListContext();
@@ -27,6 +28,9 @@ const MyTopicsFeed = () => {
   const { user, requestLogin } = useUserContext();
 
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   const [dialog, setDialog] = useState<{
     note: any;
@@ -72,9 +76,11 @@ const MyTopicsFeed = () => {
 
   return (
     <>
+      <div ref={containerRef} style={{ height: "100vh" }}>
       <Virtuoso
         ref={virtuosoRef}
         data={notes}
+        style={{ height: "100%" }}
         itemContent={(_, item) => {
           const { event, topics, hidden, moderators, moderatedTopics } = item;
 
@@ -143,8 +149,8 @@ const MyTopicsFeed = () => {
             </Box>
           );
         }}
-        style={{ height: "100vh" }}
       />
+      </div>
 
       {dialog && (
         <ModerationDialog

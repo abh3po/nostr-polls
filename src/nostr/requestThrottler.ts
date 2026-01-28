@@ -1,5 +1,5 @@
 import { SimplePool } from "nostr-tools";
-import { fetchComments, fetchLikes, fetchUserProfiles, fetchZaps, fetchReposts } from ".";
+import { fetchComments, fetchLikes, fetchUserProfiles, fetchZaps } from ".";
 import { Event } from "nostr-tools/lib/types/core";
 
 type QueueType = "profiles" | "comments" | "likes" | "zaps" | "reposts";

@@ -122,7 +122,10 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
     );
     const timeout = setTimeout(() => setLoading(false), 10000);
 
-    return () => sub.unsubscribe();
+    return () => {
+      sub.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [relays, myTopics]);
 
   /* ------------------ moderation resolution ------------------ */

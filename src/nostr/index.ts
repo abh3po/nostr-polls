@@ -1,6 +1,6 @@
 import { Event, EventTemplate, Filter, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
-import { pool, nostrRuntime } from "../singletons";
+import { nostrRuntime } from "../singletons";
 import { signerManager } from "../singletons/Signer/SignerManager";
 
 export const defaultRelays = [

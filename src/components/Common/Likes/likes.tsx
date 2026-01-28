@@ -118,7 +118,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       <Modal
         open={showPicker}
         onClose={() => setShowPicker(false)}
-        disableScrollLock
       >
         <Box
           sx={{
