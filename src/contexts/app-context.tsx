@@ -32,7 +32,7 @@ export const AppContext = createContext<AppContextInterface | null>(null);
 
 export function AppContextProvider({ children }: { children: ReactNode }) {
   const [aiSettings, setAISettings] = useState(
-    JSON.parse(localStorage.getItem("ai-settings") || "{}")
+    JSON.parse(localStorage.getItem("ai-settings") || "{}"),
   );
 
   // Version counter to track runtime updates
@@ -82,6 +82,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
 
     return profileMap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   // Query runtime for comments map (kind 1 with e tags)
@@ -100,6 +101,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
 
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   // Query runtime for likes map (kind 7 with e tags)
@@ -118,6 +120,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
 
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   // Query runtime for zaps map (kind 9735 with e tags)
@@ -136,6 +139,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
 
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   // Query runtime for reposts map (kind 6 or 16 with e tags)
@@ -154,6 +158,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
 
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   // Getter methods for individual queries
@@ -178,19 +183,19 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   const ProfileThrottler = useRef(
-    new Throttler(50, pool, addEventsToProfiles, "profiles", 500)
+    new Throttler(50, pool, addEventsToProfiles, "profiles", 500),
   );
   const CommentsThrottler = useRef(
-    new Throttler(50, pool, addEventsToMap, "comments", 1000)
+    new Throttler(50, pool, addEventsToMap, "comments", 1000),
   );
   const LikesThrottler = useRef(
-    new Throttler(50, pool, addEventsToMap, "likes", 1500)
+    new Throttler(50, pool, addEventsToMap, "likes", 1500),
   );
   const ZapsThrottler = useRef(
-    new Throttler(50, pool, addEventsToMap, "zaps", 2000)
+    new Throttler(50, pool, addEventsToMap, "zaps", 2000),
   );
   const RepostsThrottler = useRef(
-    new Throttler(50, pool, addEventsToMap, "reposts", 2500)
+    new Throttler(50, pool, addEventsToMap, "reposts", 2500),
   );
 
   const fetchUserProfileThrottled = (pubkey: string) => {
