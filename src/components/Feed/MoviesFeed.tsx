@@ -1,7 +1,8 @@
 // components/Feed/MoviesFeed.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { Filter, SimplePool } from "nostr-tools";
+import { Filter } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
+import { nostrRuntime } from "../../singletons";
 import MovieCard from "../Movies/MovieCard";
 import RateMovieModal from "../Ratings/RateMovieModal";
 import { Card, CardContent, Typography, CircularProgress, Box, Button } from "@mui/material";
@@ -23,7 +24,6 @@ const MoviesFeed: React.FC = () => {
     if (loading) return;
     setLoading(true);
 
-    const pool = new SimplePool();
     const currentCursor = cursor; // Capture cursor at start
     const now = Math.floor(Date.now() / 1000);
     const newIds: Set<string> = new Set();
@@ -40,8 +40,8 @@ const MoviesFeed: React.FC = () => {
       filter.authors = user.follows;
     }
 
-    const sub = pool.subscribeMany(relays, [filter], {
-      onevent: (event) => {
+    const handle = nostrRuntime.subscribe(relays, [filter], {
+      onEvent: (event) => {
         const dTag = event.tags.find((t) => t[0] === "d");
         if (dTag && dTag[1].startsWith("movie:")) {
           const imdbId = dTag[1].split(":")[1];
@@ -56,19 +56,19 @@ const MoviesFeed: React.FC = () => {
           oldestTimestamp = event.created_at;
         }
       },
-      oneose: () => {
+      onEose: () => {
         setMovieIds(
           (prev) => new Set([...Array.from(prev), ...Array.from(newIds)])
         );
-        
+
         // Only update cursor if we got results
         if (oldestTimestamp) {
           setCursor(oldestTimestamp - 1);
         }
-        
+
         setInitialLoadComplete(true);
         setLoading(false);
-        sub.close();
+        handle.unsubscribe();
       },
     });
 
@@ -76,15 +76,15 @@ const MoviesFeed: React.FC = () => {
       setMovieIds(
         (prev) => new Set([...Array.from(prev), ...Array.from(newIds)])
       );
-      
+
       // Only update cursor if we got results
       if (oldestTimestamp) {
         setCursor(oldestTimestamp - 1);
       }
-      
+
       setInitialLoadComplete(true);
       setLoading(false);
-      sub.close();
+      handle.unsubscribe();
     }, 3000);
   };
 

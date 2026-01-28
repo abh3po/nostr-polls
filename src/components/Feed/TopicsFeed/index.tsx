@@ -19,7 +19,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import { pool } from "../../../singletons";
+import { nostrRuntime } from "../../../singletons";
 import { Virtuoso } from "react-virtuoso";
 import TopicCard from "./TopicsCard";
 import { useListContext } from "../../../hooks/useListContext";
@@ -43,7 +43,7 @@ const TopicsFeed: React.FC = () => {
   const navigate = useNavigate();
   const { tag } = useParams();
   const { user, requestLogin } = useUserContext();
-  const subRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
+  const subRef = useRef<ReturnType<typeof nostrRuntime.subscribe> | null>(null);
   const isMounted = useRef(true);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -67,7 +67,7 @@ const TopicsFeed: React.FC = () => {
     return () => {
       isMounted.current = false;
       if (subRef.current) {
-        subRef.current.close();
+        subRef.current.unsubscribe();
         subRef.current = null;
       }
     };
@@ -79,8 +79,8 @@ const TopicsFeed: React.FC = () => {
       "#d": Array.from(tagsMap.keys()).map((tag) => `hashtag:${tag}`),
     };
 
-    const sub = pool.subscribeMany(relays, [filter], {
-      onevent: (event) => {
+    const sub = nostrRuntime.subscribe(relays, [filter], {
+      onEvent: (event) => {
         const dTag = event.tags.find((t) => t[0] === "d");
         if (!dTag || !dTag[1].startsWith("hashtag:")) return;
 
@@ -94,7 +94,7 @@ const TopicsFeed: React.FC = () => {
       },
     });
 
-    return () => sub.close();
+    return () => sub.unsubscribe();
   }, [relays, tagsMap]);
 
   useEffect(() => {
@@ -104,16 +104,16 @@ const TopicsFeed: React.FC = () => {
     setLoading(true);
 
     if (subRef.current) {
-      subRef.current.close();
+      subRef.current.unsubscribe();
       subRef.current = null;
     }
 
     // Subscribe once
-    const sub = pool.subscribeMany(
+    const sub = nostrRuntime.subscribe(
       relays,
       [{ kinds: [34259], "#m": ["hashtag"], limit: 100 }],
       {
-        onevent: (event: Event) => {
+        onEvent: (event: Event) => {
           setLoading(false);
           const dTag = event.tags.find((t) => t[0] === "d");
           const parsedDTag = dTag ? parseRatingDTag(dTag[1]) : null;
@@ -132,7 +132,7 @@ const TopicsFeed: React.FC = () => {
             });
           }
         },
-        oneose: () => {
+        onEose: () => {
           if (isMounted.current) setLoading(false);
         },
       }
@@ -140,11 +140,11 @@ const TopicsFeed: React.FC = () => {
 
     subRef.current = sub;
 
-    // Timeout to stop loading even if no oneose event
+    // Timeout to stop loading even if no onEose event
     const timeout = setTimeout(() => {
       if (isMounted.current) setLoading(false);
       if (subRef.current) {
-        subRef.current.close();
+        subRef.current.unsubscribe();
         subRef.current = null;
       }
     }, 5000);
@@ -152,7 +152,7 @@ const TopicsFeed: React.FC = () => {
     return () => {
       clearTimeout(timeout);
       if (subRef.current) {
-        subRef.current.close();
+        subRef.current.unsubscribe();
         subRef.current = null;
       }
     };

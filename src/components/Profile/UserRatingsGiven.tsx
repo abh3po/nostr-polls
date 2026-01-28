@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Event, Filter } from "nostr-tools";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
-import { pool } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
 import ReviewCard from "../Ratings/ReviewCard";
 
@@ -29,20 +29,20 @@ const UserRatingsGiven: React.FC<UserRatingsGivenProps> = ({ pubkey }) => {
       },
     ];
 
-    const sub = pool.subscribeMany(relays, filters, {
-      onevent(event) {
+    const handle = nostrRuntime.subscribe(relays, filters, {
+      onEvent(event) {
         setRatings((prev) => {
           const exists = prev.find((e) => e.id === event.id);
           if (exists) return prev;
           return [...prev, event].sort((a, b) => b.created_at - a.created_at);
         });
       },
-      oneose() {
+      onEose() {
         setLoading(false);
       },
     });
 
-    return () => sub.close();
+    return () => handle.unsubscribe();
   }, [pubkey, relays]);
 
   useEffect(() => {

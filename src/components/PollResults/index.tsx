@@ -1,12 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Filter } from "nostr-tools/lib/types/filter";
 import { Event } from "nostr-tools/lib/types/core";
-import { SimplePool } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
 import { useEffect, useState } from "react";
 import { Typography } from "@mui/material";
 import { Analytics } from "./Analytics";
-import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
+import { nostrRuntime } from "../../singletons";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 
@@ -55,20 +54,21 @@ export const PollResults = () => {
     let pollFilter: Filter = {
       ids: [eventId!],
     };
-    let pool = new SimplePool();
-    let closer = pool.subscribeMany(relays, [resultFilter, pollFilter], {
-      onevent: handleResultEvent,
+    let closer = nostrRuntime.subscribe(relays, [resultFilter, pollFilter], {
+      onEvent: handleResultEvent,
     });
     return closer;
   };
 
   useEffect(() => {
-    let closer: SubCloser | undefined;
+    let closer: Awaited<ReturnType<typeof fetchPollEvents>> | undefined;
     if (!pollEvent && !closer) {
-      fetchPollEvents();
+      fetchPollEvents().then((c) => {
+        closer = c;
+      });
     }
     return () => {
-      if (closer) closer.close();
+      if (closer) closer.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollEvent]);

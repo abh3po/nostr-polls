@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Event } from "nostr-tools";
-import { pool } from "../singletons";
+import { pool, nostrRuntime } from "../singletons";
 import { useRelays } from "./useRelays";
 import { useUserContext } from "./useUserContext";
 import { signEvent } from "../nostr";
@@ -44,14 +44,14 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
 
     const topics = Array.from(myTopics);
 
-    const sub = pool.subscribeMany(
+    const sub = nostrRuntime.subscribe(
       relays,
       [
         { kinds: [1], "#t": topics, limit: 200 },
         { kinds: [OFFTOPIC_KIND], "#t": topics, limit: 500 },
       ],
       {
-        onevent: (event) => {
+        onEvent: (event) => {
           /* ---- moderation events ---- */
           if (event.kind === OFFTOPIC_KIND) {
             if (seenModeration.current.has(event.id)) return;
@@ -122,7 +122,7 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
     );
     const timeout = setTimeout(() => setLoading(false), 10000);
 
-    return () => sub.close();
+    return () => sub.unsubscribe();
   }, [relays, myTopics]);
 
   /* ------------------ moderation resolution ------------------ */

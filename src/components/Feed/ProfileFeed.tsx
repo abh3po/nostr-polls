@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Event, Filter, SimplePool } from "nostr-tools";
+import { Event, Filter } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
+import { nostrRuntime } from "../../singletons";
 import ProfileCard from "../Profile/ProfileCard";
 import { useUserContext } from "../../hooks/useUserContext";
 import {
@@ -28,7 +29,6 @@ const ProfilesFeed: React.FC = () => {
   const fetchRatedProfiles = async () => {
     setLoading(true);
 
-    const pool = new SimplePool();
     const now = Math.floor(Date.now() / 1000);
     const currentCursor = cursor;
     const ratedNpubs: Set<string> = new Set();
@@ -41,8 +41,8 @@ const ProfilesFeed: React.FC = () => {
       until: currentCursor || now,
     };
 
-    const sub = pool.subscribeMany(relays, [ratingFilter], {
-      onevent: (event) => {
+    const handle = nostrRuntime.subscribe(relays, [ratingFilter], {
+      onEvent: (event) => {
         const dTag = event.tags.find((t) => t[0] === "d");
         if (dTag && dTag[1].startsWith("profile:")) {
           const npub = dTag[1].split(":")[1];
@@ -56,8 +56,8 @@ const ProfilesFeed: React.FC = () => {
           oldestTimestamp = event.created_at;
         }
       },
-      oneose: async () => {
-        sub.close();
+      onEose: async () => {
+        handle.unsubscribe();
 
         // Fetch kind:0 metadata for those pubkeys
         if (ratedNpubs.size > 0) {
@@ -67,8 +67,8 @@ const ProfilesFeed: React.FC = () => {
             limit: ratedNpubs.size,
           };
 
-          const metadataSub = pool.subscribeMany(relays, [metadataFilter], {
-            onevent: (event) => {
+          const metadataHandle = nostrRuntime.subscribe(relays, [metadataFilter], {
+            onEvent: (event) => {
               setProfileEvents((prev) => {
                 if (prev.has(event.pubkey)) return prev;
                 const updated = new Map(prev);
@@ -76,8 +76,8 @@ const ProfilesFeed: React.FC = () => {
                 return updated;
               });
             },
-            oneose: () => {
-              metadataSub.close();
+            onEose: () => {
+              metadataHandle.unsubscribe();
               if (oldestTimestamp) {
                 setCursor(oldestTimestamp - 1);
               }
@@ -87,7 +87,7 @@ const ProfilesFeed: React.FC = () => {
           });
 
           setTimeout(() => {
-            metadataSub.close();
+            metadataHandle.unsubscribe();
             if (oldestTimestamp) {
               setCursor(oldestTimestamp - 1);
             }
@@ -105,7 +105,7 @@ const ProfilesFeed: React.FC = () => {
     });
 
     setTimeout(() => {
-      sub.close();
+      handle.unsubscribe();
       setInitialLoadComplete(true);
       setLoading(false);
     }, 3000);
