@@ -97,11 +97,10 @@ export function ListProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchContacts = () => {
-    if (!user) return;
+    if (!user || !user.pubkey) return;
     let contactListFilter = {
       kinds: [3],
-      limit: 5,
-      authors: [user!.pubkey],
+      authors: [user.pubkey],
     };
     nostrRuntime.subscribe(relays, [contactListFilter], {
       onEvent: (event: Event) => {
@@ -125,10 +124,10 @@ export function ListProvider({ children }: { children: ReactNode }) {
     if (!user || !user.follows?.length) return;
 
     const storedWoT = localStorage.getItem(
-      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`
+      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`,
     );
     const storedTime = localStorage.getItem(
-      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}_time`
+      `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}_time`,
     );
     const currentTime = new Date().getTime();
 
@@ -167,12 +166,12 @@ export function ListProvider({ children }: { children: ReactNode }) {
           // Store in localStorage with 5-day TTL
           localStorage.setItem(
             `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`,
-            JSON.stringify(Array.from(newSet))
+            JSON.stringify(Array.from(newSet)),
           );
           const currentTime = new Date().getTime();
           localStorage.setItem(
             `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}_time`,
-            currentTime.toString()
+            currentTime.toString(),
           );
           return {
             ...prev,
@@ -242,7 +241,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
         if (!signer) return;
         const decrypted = await signer.nip44Decrypt!(
           user!.pubkey,
-          event.content
+          event.content,
         );
         const contentTags = JSON.parse(decrypted);
         if (Array.isArray(contentTags)) {
@@ -299,7 +298,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
 
             // Check if topic already exists
             const topicExists = tags.some(
-              (tag) => tag[0] === "t" && tag[1] === topic
+              (tag) => tag[0] === "t" && tag[1] === topic,
             );
             if (topicExists) {
               resolve();
@@ -382,7 +381,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
 
             // Filter out the topic tag
             const newTags = oldTags.filter(
-              (tag) => !(tag[0] === "t" && tag[1] === topic)
+              (tag) => !(tag[0] === "t" && tag[1] === topic),
             );
 
             // If nothing changed, exit
