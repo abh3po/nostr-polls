@@ -22,12 +22,7 @@ const DiscoverFeed = () => {
   useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   useEffect(() => {
-    if (
-      (!notes || notes.size === 0) &&
-      user &&
-      user.webOfTrust &&
-      user.webOfTrust.size > 0
-    ) {
+    if (user && user.webOfTrust && user.webOfTrust.size > 0) {
       fetchNotes(user.webOfTrust);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
