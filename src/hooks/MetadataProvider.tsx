@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useRef, useState, useEffect } from "react";
 import { Event, Filter } from "nostr-tools";
 import { useRelays } from "./useRelays";
-import { pool } from "../singletons";
+import { nostrRuntime } from "../singletons";
 
 type EntityType = "movie" | "hashtag";
 
@@ -32,7 +32,7 @@ export const MetadataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         "#d": tags,
       };
 
-      pool.querySync(relays, filter).then((events: Event[]) => {
+      nostrRuntime.querySync(relays, filter).then((events: Event[]) => {
         const grouped = new Map<string, Event[]>();
         for (const event of events) {
           const dTag = event.tags.find(([k, v]) => k === "d")?.[1];

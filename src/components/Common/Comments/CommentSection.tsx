@@ -19,10 +19,10 @@ import { TextWithImages } from "../Parsers/TextWithImages";
 import { calculateTimeAgo } from "../../../utils/common";
 import CommentInput from "./CommentInput";
 import { getColorsWithTheme } from "../../../styles/theme";
-import { SubCloser } from "nostr-tools/lib/types/pool";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
-import { pool } from "../../../singletons";
+import { pool, nostrRuntime } from "../../../singletons";
+import { SubscriptionHandle } from "../../../nostrRuntime/types";
 
 interface CommentSectionProps {
   eventId: string;
@@ -52,18 +52,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }
       kinds: [1],
       "#e": [eventId],
     };
-    let closer = pool.subscribeMany(relays, [filter], {
-      onevent: addEventToMap,
+    let handle = nostrRuntime.subscribe(relays, [filter], {
+      onEvent: addEventToMap,
     });
-    return closer;
+    return handle;
   };
 
   useEffect(() => {
-    let closer: SubCloser | undefined;
-    if (!closer && showComments) {
-      closer = fetchComments();
+    let handle: SubscriptionHandle | undefined;
+    if (!handle && showComments) {
+      handle = fetchComments();
       return () => {
-        if (closer) closer.close();
+        if (handle) handle.unsubscribe();
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

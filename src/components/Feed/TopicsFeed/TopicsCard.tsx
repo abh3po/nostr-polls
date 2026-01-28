@@ -20,7 +20,6 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { useNavigate } from "react-router-dom";
 import { useListContext } from "../../../hooks/useListContext";
-import { useRelays } from "../../../hooks/useRelays";
 import { signerManager } from "../../../singletons/Signer/SignerManager";
 import { FavoriteTwoTone } from "@mui/icons-material";
 
@@ -43,6 +42,7 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
 
   useEffect(() => {
     registerEntity("hashtag", tag);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tag]);
 
   let activeEvent: Event | null;
@@ -88,7 +88,7 @@ const TopicCard: React.FC<TopicCardProps> = ({ tag, metadataEvent }) => {
 
     setIsUpdatingTopics(true);
     try {
-      const signer = await signerManager.getSigner();
+      await signerManager.getSigner();
       await addTopicToMyTopics(tag);
     } catch (error) {
       console.error("Failed to add topic to my topics:", error);

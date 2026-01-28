@@ -29,6 +29,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ imdbId, metadataEvent }) => {
 
   useEffect(() => {
     registerEntity('movie', imdbId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imdbId]);
 
   let activeEvent;

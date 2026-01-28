@@ -68,7 +68,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   };
 
   const topEmojis = getTopEmojis();
-  const remainingCount = Math.max(0, topEmojis.length - 2);
 
   return (
     <Box
@@ -118,7 +117,6 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       <Modal
         open={showPicker}
         onClose={() => setShowPicker(false)}
-        disableScrollLock
       >
         <Box
           sx={{

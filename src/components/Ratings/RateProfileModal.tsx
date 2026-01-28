@@ -7,8 +7,9 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { nip19, Event, SimplePool } from "nostr-tools";
+import { nip19, Event } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
+import { nostrRuntime } from "../../singletons";
 import ProfileCard from "../Profile/ProfileCard";
 
 interface RateProfileModalProps {
@@ -29,9 +30,8 @@ const RateProfileModal: React.FC<RateProfileModalProps> = ({
     setLoading(true);
     try {
       const { data: pubkey } = nip19.decode(npubInput);
-      const pool = new SimplePool();
 
-      const sub = pool.subscribeMany(
+      const handle = nostrRuntime.subscribe(
         relays,
         [
           {
@@ -41,14 +41,14 @@ const RateProfileModal: React.FC<RateProfileModalProps> = ({
           },
         ],
         {
-          onevent: (event) => {
+          onEvent: (event) => {
             setProfile(event);
             setLoading(false);
-            sub.close();
+            handle.unsubscribe();
           },
-          oneose: () => {
+          onEose: () => {
             setLoading(false);
-            sub.close();
+            handle.unsubscribe();
           },
         }
       );

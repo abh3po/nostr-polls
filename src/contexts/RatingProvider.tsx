@@ -1,8 +1,8 @@
-import React, { createContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { Event } from "nostr-tools";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
-import { pool } from "../singletons";
+import { nostrRuntime } from "../singletons";
 
 type RatingMap = Map<string, Map<string, number>>; // entityId -> pubkey -> rating
 type UserRatingMap = Map<string, Event>; // entityId -> Event
@@ -28,7 +28,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [userRatingEvents, setUserRatingEvents] = useState<UserRatingMap>(new Map());
   const trackedIdsRef = useRef<Set<string>>(new Set());
   const lastTrackedIds = useRef<string[]>([]);
-  const subscriptionRef = useRef<ReturnType<typeof pool.subscribeMany> | null>(null);
+  const subscriptionRef = useRef<ReturnType<typeof nostrRuntime.subscribe> | null>(null);
 
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -53,7 +53,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return !isNaN(value) ? value : null;
   };
 
-  const handleEvent = (ev: Event) => {
+  const handleEvent = useCallback((ev: Event) => {
     const dTag = ev.tags.find((t) => t[0] === "d")?.[1];
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
@@ -84,7 +84,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return prev;
       });
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -97,7 +97,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       lastTrackedIds.current = ids;
 
       if (subscriptionRef.current) {
-        subscriptionRef.current.close();
+        subscriptionRef.current.unsubscribe();
       }
 
       if (ids.length === 0) return;
@@ -109,16 +109,16 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         },
       ];
 
-      subscriptionRef.current = pool.subscribeMany(relays, filters, {
-        onevent: handleEvent,
+      subscriptionRef.current = nostrRuntime.subscribe(relays, filters, {
+        onEvent: handleEvent,
       });
     }, 3000);
 
     return () => {
       clearInterval(interval);
-      if (subscriptionRef.current) subscriptionRef.current.close();
+      if (subscriptionRef.current) subscriptionRef.current.unsubscribe();
     };
-  }, [user]);
+  }, [user, handleEvent, relays]);
 
   return (
     <RatingContext.Provider

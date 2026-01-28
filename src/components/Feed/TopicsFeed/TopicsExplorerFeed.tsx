@@ -28,7 +28,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import useTopicExplorerScroll from "../../../hooks/useTopicExplorerScroll";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
-import { pool } from "../../../singletons";
+import { pool, nostrRuntime } from "../../../singletons";
 import { useMetadata } from "../../../hooks/MetadataProvider";
 import { selectBestMetadataEvent } from "../../../utils/utils";
 import {
@@ -108,7 +108,7 @@ const TopicExplorer: React.FC = () => {
 
     setIsAddingToMyTopics(true);
     try {
-      const signer = await signerManager.getSigner();
+      await signerManager.getSigner();
       await addTopicToMyTopics(tag);
     } catch (error) {
       console.error("Failed to add topic to my topics:", error);
@@ -126,7 +126,7 @@ const TopicExplorer: React.FC = () => {
     if (!tag) return;
 
     try {
-      const signer = await signerManager.getSigner();
+      await signerManager.getSigner();
       await removeTopicFromMyTopics(tag);
     } catch (error) {
       console.error("Failed to remove topic:", error);
@@ -142,6 +142,7 @@ const TopicExplorer: React.FC = () => {
       blockers.forEach((id) => modSet.add(id));
     });
     return Array.from(modSet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curatedIds, blockedUserIds]);
 
   useEffect(() => {
@@ -211,8 +212,9 @@ const TopicExplorer: React.FC = () => {
       { kinds: [1068], "#t": [tag], limit: 50 },
     ];
 
-    const sub = pool.subscribeMany(relays, filters, {
-      onevent: (event) => {
+
+    const handle = nostrRuntime.subscribe(relays, filters, {
+      onEvent: (event: Event) => {
         if (event.kind === OFFTOPIC_KIND) {
           const eTags = event.tags.filter((t) => t[0] === "e").map((t) => t[1]);
           for (const e of eTags) {
@@ -245,16 +247,23 @@ const TopicExplorer: React.FC = () => {
           setPollsEvents((prev) => [...prev, event]);
         }
       },
-      onclose: () => {
-        setLoadingNotes(false);
-        setLoadingPolls(false);
-      },
     });
 
-    subRef.current = sub;
+    // Store reference for cleanup
+    subRef.current = {
+      close: () => handle.unsubscribe(),
+    };
+
+    // Handle loading state after timeout
+    setTimeout(() => {
+      setLoadingNotes(false);
+      setLoadingPolls(false);
+    }, 3000);
 
     return () => {
-      sub.close();
+      if (subRef.current) {
+        subRef.current.close();
+      }
     };
   }, [tag, relays]);
 
@@ -263,14 +272,6 @@ const TopicExplorer: React.FC = () => {
     return base.sort((a, b) => b.created_at - a.created_at);
   }, [tabValue, notesEvents, pollsEvents]);
 
-  const visibleCurators =
-    feedMode === "contacts" && user?.follows
-      ? Array.from(allModerators).filter(
-          (id) => user.follows!.includes(id) && visibleModerators.includes(id)
-        )
-      : Array.from(allModerators).filter((id) =>
-          visibleModerators.includes(id)
-        );
   const loading = tabValue === 0 ? loadingNotes : loadingPolls;
 
   const itemContent = useMemo(
@@ -388,6 +389,7 @@ const TopicExplorer: React.FC = () => {
         </Box>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey]
   );
 

@@ -39,6 +39,7 @@ import MoviePage from "./components/Movies/MoviePage";
 import TopicsFeed from "./components/Feed/TopicsFeed";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import FeedsLayout from "./components/Feed/FeedsLayout";
+import ProfilePage from "./components/Profile/ProfilePage";
 
 declare global {
   interface Window {
@@ -91,6 +92,10 @@ const App: React.FC = () => {
                           <Route
                             path="note/:eventId"
                             element={<PrepareNoteWrapper />}
+                          />
+                          <Route
+                            path="/profile/:npubOrNprofile"
+                            element={<ProfilePage />}
                           />
                           <Route
                             path="/result/:eventId"

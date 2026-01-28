@@ -23,11 +23,8 @@ export default function useTopicExplorerScroll(
     const now = () => Date.now();
 
     const bringContainerToTop = () => {
-      // calculate distance from scroller top to container top
       const containerOffsetTop = container.offsetTop;
-      const scrollerScrollTop = scroller.scrollTop;
 
-      // scroll to position where container aligns with scroller top
       scroller.scrollTo({
         top: containerOffsetTop,
         behavior: smooth ? "smooth" : "auto",

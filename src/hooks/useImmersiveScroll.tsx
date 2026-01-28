@@ -92,7 +92,6 @@ export default function useImmersiveScroll(
     if (!container) return;
 
     const now = () => Date.now();
-    const scroller = scrollContainerRef?.current || window;
 
     const onContainerWheel = (e: WheelEvent) => {
       // scroll down inside list -> scroll outer container down
@@ -187,5 +186,5 @@ export default function useImmersiveScroll(
       container.removeEventListener("touchstart", onContainerTouchStart);
       container.removeEventListener("touchmove", onContainerTouchMove);
     };
-  }, [containerRef, options.insideUpThreshold, options.smooth, options.debounceMs, outsideDownThreshold, scrollContainerRef]);
+  }, [containerRef, insideUpThreshold, smooth, debounceMs, outsideDownThreshold, scrollContainerRef]);
 }

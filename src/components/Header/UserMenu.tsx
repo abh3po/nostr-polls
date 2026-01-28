@@ -5,9 +5,12 @@ import { ColorSchemeToggle } from "../ColorScheme";
 import { styled } from "@mui/system";
 import { LoginModal } from "../Login/LoginModal";
 import { SettingsModal } from "./SettingsModal";
+import { ContactsModal } from "./ContactsModal";
 import { signerManager } from "../../singletons/Signer/SignerManager";
 import { WarningAmber } from "@mui/icons-material";
 import { ViewKeysModal } from "../User/ViewKeysModal";
+import { useNavigate } from "react-router-dom";
+import { nip19 } from "nostr-tools";
 
 const ListItem = styled("li")(() => ({
   padding: "0 16px",
@@ -18,10 +21,25 @@ export const UserMenu: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const [showKeysModal, setShowKeysModal] = React.useState(false);
+  const [showContactsModal, setShowContactsModal] = React.useState(false);
   const { user } = useUserContext();
+  const navigate = useNavigate();
 
   const handleLogOut = () => {
     signerManager.logout();
+    setAnchorEl(null);
+  };
+
+  const handleProfileClick = () => {
+    if (user?.pubkey) {
+      const npub = nip19.npubEncode(user.pubkey);
+      navigate(`/profile/${npub}`);
+      setAnchorEl(null);
+    }
+  };
+
+  const handleContactsClick = () => {
+    setShowContactsModal(true);
     setAnchorEl(null);
   };
 
@@ -54,6 +72,12 @@ export const UserMenu: React.FC = () => {
       >
         {user
           ? [
+              <MenuItem key="profile" onClick={handleProfileClick}>
+                Profile
+              </MenuItem>,
+              <MenuItem key="contacts" onClick={handleContactsClick}>
+                Contacts
+              </MenuItem>,
               user?.privateKey && (
                 <MenuItem
                   key="view-keys"
@@ -66,11 +90,11 @@ export const UserMenu: React.FC = () => {
                 </MenuItem>
               ),
 
-              <MenuItem onClick={() => setShowSettings(true)}>
+              <MenuItem key="settings" onClick={() => setShowSettings(true)}>
                 Settings
               </MenuItem>,
-              <MenuItem onClick={handleLogOut}>Log Out</MenuItem>,
-              <ListItem>
+              <MenuItem key="logout" onClick={handleLogOut}>Log Out</MenuItem>,
+              <ListItem key="color-scheme">
                 <ColorSchemeToggle />
               </ListItem>,
               user?.privateKey && (
@@ -93,10 +117,10 @@ export const UserMenu: React.FC = () => {
               ),
             ]
           : [
-              <MenuItem onClick={() => setShowLoginModal(true)}>
+              <MenuItem key="login" onClick={() => setShowLoginModal(true)}>
                 Log In
               </MenuItem>,
-              <ListItem>
+              <ListItem key="color-scheme">
                 <ColorSchemeToggle />
               </ListItem>,
             ]}
@@ -114,6 +138,10 @@ export const UserMenu: React.FC = () => {
         onClose={() => setShowKeysModal(false)}
         pubkey={user?.pubkey || ""}
         privkey={user?.privateKey || ""}
+      />
+      <ContactsModal
+        open={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
       />
     </div>
   );

@@ -39,8 +39,9 @@ const ModeratorSelectorDialog: React.FC<Props> = ({
     setTemp(selected);
     moderators.forEach((m) => {
       if (!profiles?.get(m)) fetchUserProfileThrottled(m);
-    }, []);
-  }, [selected, profiles]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, moderators]);
 
   const toggle = (pubkey: string) => {
     setTemp((prev) =>

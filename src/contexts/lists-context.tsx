@@ -1,13 +1,11 @@
-import { ReactNode, createContext, useEffect, useRef, useState } from "react";
+import { ReactNode, createContext, useEffect, useState } from "react";
 import { Event, EventTemplate, Filter } from "nostr-tools";
-import { SubCloser } from "nostr-tools/lib/types/pool";
 import { parseContacts, getATagFromEvent } from "../nostr";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
 import { User } from "./user-context";
-import { pool } from "../singletons";
+import { pool, nostrRuntime } from "../singletons";
 import { signerManager } from "../singletons/Signer/SignerManager";
-import { sign } from "crypto";
 
 const WOT_STORAGE_KEY_PREFIX = `pollerama:webOfTrust`;
 const WOT_TTL = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
@@ -47,26 +45,18 @@ export function ListProvider({ children }: { children: ReactNode }) {
         authors: [user.pubkey],
         limit: 1,
       };
-      let resolved = false;
-      const closer = pool.subscribeMany(relays, [filter], {
-        onevent(event: Event) {
-          if (!resolved) {
-            resolved = true;
-            resolve(event);
-            closer.close();
-          }
-        },
-        onclose() {
-          if (!resolved) {
-            resolve(null);
+      let latestEvent: Event | null = null;
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent(event: Event) {
+          // Keep track of the most recent event
+          if (!latestEvent || event.created_at > latestEvent.created_at) {
+            latestEvent = event;
           }
         },
       });
       setTimeout(() => {
-        if (!resolved) {
-          closer.close();
-          resolve(null);
-        }
+        handle.unsubscribe();
+        resolve(latestEvent);
       }, 2000);
     });
   };
@@ -89,7 +79,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
     setSelectedList(id);
   };
 
-  const handleContactListEvent = async (event: Event, closer: SubCloser) => {
+  const handleContactListEvent = async (event: Event) => {
     const follows = await parseContacts(event);
     let a_tag = `${event.kind}:${event.pubkey}`;
     let pastEvent = lists?.get(a_tag);
@@ -113,9 +103,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
       limit: 5,
       authors: [user!.pubkey],
     };
-    let closer = pool.subscribeMany(relays, [contactListFilter], {
-      onevent: (event: Event) => {
-        handleContactListEvent(event, closer);
+    nostrRuntime.subscribe(relays, [contactListFilter], {
+      onEvent: (event: Event) => {
+        handleContactListEvent(event);
       },
     });
   };
@@ -126,10 +116,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
       limit: 100,
       authors: [user!.pubkey],
     };
-    let closer = pool.subscribeMany(relays, [followSetFilter], {
-      onevent: handleListEvent,
+    nostrRuntime.subscribe(relays, [followSetFilter], {
+      onEvent: handleListEvent,
     });
-    return closer;
   };
 
   const subscribeToContacts = () => {
@@ -143,6 +132,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
     );
     const currentTime = new Date().getTime();
 
+    // Use cached WoT if within TTL (5 days)
     if (storedWoT && storedTime && currentTime - Number(storedTime) < WOT_TTL) {
       setUser((prev: User | null) => {
         if (!prev) return null;
@@ -162,19 +152,19 @@ export function ListProvider({ children }: { children: ReactNode }) {
       limit: 500,
     };
 
-    const sub = pool.subscribeMany(relays, [filter], {
-      onevent: (event: Event) => {
+    const handle = nostrRuntime.subscribe(relays, [filter], {
+      onEvent: (event: Event) => {
         const newPubkeys = event.tags
           .filter((tag) => tag[0] === "p" && tag[1])
           .map((tag) => tag[1]);
 
         setUser((prev) => {
-          if (!prev) return null; // Return null if prev is null
+          if (!prev) return null;
 
           const prevTrust = prev.webOfTrust ?? new Set<string>();
           const newSet = new Set([...Array.from(prevTrust), ...newPubkeys]);
 
-          // Ensure all required properties are included in the returned User object
+          // Store in localStorage with 5-day TTL
           localStorage.setItem(
             `${WOT_STORAGE_KEY_PREFIX}${user.pubkey}`,
             JSON.stringify(Array.from(newSet))
@@ -187,16 +177,16 @@ export function ListProvider({ children }: { children: ReactNode }) {
           return {
             ...prev,
             webOfTrust: newSet,
-          } as User; // Ensure the returned object is cast to User
+          } as User;
         });
       },
-      oneose() {
-        sub.close();
+      onEose() {
+        handle.unsubscribe();
         setIsFetchingWoT(false); // Hide warning after fetching
       },
     });
 
-    return sub;
+    return handle;
   };
 
   const fetchMyTopics = async () => {
@@ -212,24 +202,22 @@ export function ListProvider({ children }: { children: ReactNode }) {
     };
 
     return new Promise<void>((resolve) => {
-      const sub = pool.subscribeMany(relays, [filter], {
-        onevent: async (event: Event) => {
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: async (event: Event) => {
           if (myTopicsEvent && event.created_at <= myTopicsEvent.created_at)
             return;
           setMyTopicsEvent(event);
           processMyTopicsFromEvent(event);
-          sub.close();
-          resolve();
         },
-        oneose: () => {
-          sub.close();
+        onEose: () => {
+          handle.unsubscribe();
           resolve();
         },
       });
 
-      // Timeout after 3 seconds
+      // Timeout after 10 seconds
       setTimeout(() => {
-        sub.close();
+        handle.unsubscribe();
         if (!myTopicsEvent) {
           setMyTopicsEvent(null);
         }
@@ -300,12 +288,12 @@ export function ListProvider({ children }: { children: ReactNode }) {
     let existingEvent: Event | null = null;
 
     return new Promise((resolve, reject) => {
-      const sub = pool.subscribeMany(relays, [filter], {
-        onevent: (event) => {
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: (event) => {
           existingEvent = event;
-          sub.close();
         },
-        oneose: async () => {
+        onEose: async () => {
+          handle.unsubscribe();
           try {
             const tags = existingEvent?.tags ?? [];
 
@@ -339,9 +327,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Timeout after 2 seconds
+      // Timeout after 5 seconds
       setTimeout(() => {
-        sub.close();
+        handle.unsubscribe();
         if (!existingEvent) {
           // Create new event if none exists
           handleNewEvent();
@@ -383,12 +371,12 @@ export function ListProvider({ children }: { children: ReactNode }) {
     let existingEvent: Event | null = null;
 
     return new Promise((resolve, reject) => {
-      const sub = pool.subscribeMany(relays, [filter], {
-        onevent: (event) => {
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: (event) => {
           existingEvent = event;
-          sub.close();
         },
-        oneose: async () => {
+        onEose: async () => {
+          handle.unsubscribe();
           try {
             const oldTags = existingEvent?.tags ?? [];
 
@@ -425,7 +413,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
       });
 
       setTimeout(() => {
-        sub.close();
+        handle.unsubscribe();
         resolve(); // No existing event → nothing to remove
       }, 5000);
     });

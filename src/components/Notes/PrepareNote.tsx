@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useRelays } from "../../hooks/useRelays";
 import { Event, nip19 } from "nostr-tools";
 import { Notes } from ".";
-import { Button, Typography } from "@mui/material";
-import { pool } from "../..//singletons";
+import { Typography } from "@mui/material";
+import { nostrRuntime } from "../../singletons";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
 
 interface PrepareNoteInterface {
@@ -23,7 +23,7 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ neventId }) => {
         const relaysToUse = Array.from(
           new Set([...relays, ...(neventRelays || [])])
         );
-        let result = await pool.get(relaysToUse, filter);
+        let result = await nostrRuntime.fetchOne(relaysToUse, filter);
         setEvent(result);
       } catch (error) {
         console.error("Error fetching event:", error);
@@ -32,7 +32,7 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ neventId }) => {
     if (neventId && !event) {
       fetchEvent(neventId);
     }
-  }, [neventId, event, , relays]);
+  }, [neventId, event, relays]);
 
   if (event) return <Notes event={event} />;
   else

@@ -33,7 +33,8 @@ const TopicMetadataModal: React.FC<Props> = ({ open, onClose, topic }) => {
     if (open) {
       buildPreviewEvent().then(setPreviewEvent);
     }
-  }, [ thumb, description, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thumb, description, open]);
 
   const buildTags = () => [
     ["m", "hashtag"],

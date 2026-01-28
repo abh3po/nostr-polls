@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useEffect, useState } from "react";
 import { defaultRelays } from "../nostr";
 import { useUserContext } from "../hooks/useUserContext";
-import { pool } from "../singletons";
+import { nostrRuntime } from "../singletons";
 
 interface RelayContextInterface {
   relays: string[];
@@ -30,7 +30,7 @@ export function RelayProvider({ children }: { children: ReactNode }) {
     const fetchUserRelays = async () => {
       try {
         const filters = { kinds: [10002], authors: [user.pubkey] };
-        const results = await pool.querySync(defaultRelays, filters);
+        const results = await nostrRuntime.querySync(defaultRelays, filters);
 
         if (results && results.length > 0) {
           const userRelays = results[0].tags

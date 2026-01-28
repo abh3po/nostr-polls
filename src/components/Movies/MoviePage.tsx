@@ -10,8 +10,9 @@ import {
   MenuItem,
   SelectChangeEvent,
 } from "@mui/material";
-import { SimplePool, Event, Filter } from "nostr-tools";
+import { Event, Filter } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
+import { nostrRuntime } from "../../singletons";
 import MovieCard from "./MovieCard";
 import ReviewCard from "../Ratings/ReviewCard";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -29,7 +30,6 @@ const MoviePage = () => {
   const fetchReviews = useCallback(() => {
     if (!imdbId) return;
 
-    const pool = new SimplePool();
     const newReviewMap = new Map<string, Event>();
 
     const filters: Filter[] = [
@@ -43,8 +43,8 @@ const MoviePage = () => {
       },
     ];
 
-    const sub = pool.subscribeMany(relays, filters, {
-      onevent(e) {
+    const handle = nostrRuntime.subscribe(relays, filters, {
+      onEvent(e) {
         if (newReviewMap.has(e.pubkey)) {
           if (newReviewMap.get(e.pubkey)!.created_at < e.created_at)
             newReviewMap.set(e.pubkey, e);
@@ -52,14 +52,15 @@ const MoviePage = () => {
           newReviewMap.set(e.pubkey, e);
         }
       },
-      oneose() {
+      onEose() {
         setReviewMap(newReviewMap);
         setLoading(false);
       },
     });
 
-    return () => sub.close();
-  }, [imdbId, filterMode, user?.follows]);
+    return () => handle.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imdbId, filterMode, user?.follows, relays]);
 
   useEffect(() => {
     setLoading(true);

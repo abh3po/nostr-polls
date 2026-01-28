@@ -19,6 +19,7 @@ const OverlappingAvatars: React.FC<OverlappingAvatarsProps> = ({
     visibleIds.forEach((id) => {
       if (!profiles?.get(id)) fetchUserProfileThrottled(id);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const visibleIds = ids.slice(0, maxAvatars);
   let additionalCount = ids.length - visibleIds.length;

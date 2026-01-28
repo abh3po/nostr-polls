@@ -3,9 +3,9 @@ import { Event } from "nostr-tools/lib/types/core";
 import { useRelays } from "../../hooks/useRelays";
 import { useEffect, useState } from "react";
 import { Analytics } from "../PollResults/Analytics";
-import { SubCloser } from "nostr-tools/lib/types/abstract-pool";
 import { nip13 } from "nostr-tools";
-import { pool } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
+import { SubscriptionHandle } from "../../nostrRuntime";
 
 interface FetchResultsProps {
   pollEvent: Event;
@@ -18,7 +18,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
   difficulty,
 }) => {
   const [respones, setResponses] = useState<Event[] | undefined>();
-  const [closer, setCloser] = useState<SubCloser | undefined>();
+  const [closer, setCloser] = useState<SubscriptionHandle | undefined>();
   const relays = pollEvent.tags
     .filter((t) => t[0] === "relay")
     ?.map((r) => r[1]);
@@ -50,7 +50,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
 
   const fetchVoteEvents = (filterPubkeys: string[]) => {
     if (closer) {
-      closer.close();
+      closer.unsubscribe();
       setResponses(undefined);
     }
     let resultFilter: Filter = {
@@ -69,8 +69,8 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
     let pollRelays = pollEvent.tags.filter((t) => t[0] === "relay").map((t) => t[1])
     const useRelays = relays?.length ? relays : userRelays;
     const finalRelays = Array.from(new Set([...pollRelays, ...useRelays]))
-    let newCloser = pool.subscribeMany(finalRelays, [resultFilter], {
-      onevent: handleResultEvent,
+    let newCloser = nostrRuntime.subscribe(finalRelays, [resultFilter], {
+      onEvent: handleResultEvent,
     });
     setCloser(newCloser);
   };
@@ -78,7 +78,7 @@ export const FetchResults: React.FC<FetchResultsProps> = ({
   useEffect(() => {
     fetchVoteEvents(filterPubkeys || []);
     return () => {
-      if (closer) closer.close();
+      if (closer) closer.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterPubkeys]);

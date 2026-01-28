@@ -30,6 +30,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       console.log("ATTEMPTING RESTORE FROM LOCAL STORAGE");
       signerManager.restoreFromStorage();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     signerManager.registerLoginModal(() => {

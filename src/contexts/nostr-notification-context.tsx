@@ -1,13 +1,14 @@
 import {
   ReactNode,
   createContext,
+  useCallback,
   useEffect,
   useState,
   useRef,
   useContext,
 } from "react";
 import { Event, Filter } from "nostr-tools";
-import { pool } from "../singletons";
+import { nostrRuntime } from "../singletons";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
 
@@ -73,7 +74,7 @@ export function NostrNotificationsProvider({
   // Add notification
   // ────────────────────────────────────────────────────────────
   //
-  const pushNotification = (event: Event) => {
+  const pushNotification = useCallback((event: Event) => {
     setNotifications((prev) => {
       if (prev.has(event.id)) return prev;
       const next = new Map(prev);
@@ -84,14 +85,14 @@ export function NostrNotificationsProvider({
     if (!lastSeen || event.created_at > lastSeen) {
       setUnreadCount((c) => c + 1);
     }
-  };
+  }, [lastSeen]);
 
   //
   // ────────────────────────────────────────────────────────────
   // Fetch my polls once on mount
   // ────────────────────────────────────────────────────────────
   //
-  const fetchPollIds = async (pubkey: string): Promise<void> => {
+  const fetchPollIds = useCallback(async (pubkey: string): Promise<void> => {
     return new Promise((resolve) => {
       const filter: Filter = {
         kinds: [1068],
@@ -99,23 +100,23 @@ export function NostrNotificationsProvider({
         limit: 1000,
       };
 
-      const sub = pool.subscribeMany(relays, [filter], {
-        onevent: (event: Event) => {
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: (event: Event) => {
           pollMap.current.set(event.id, event);
         },
-        oneose: () => {
-          sub.close();
+        onEose: () => {
+          handle.unsubscribe();
           resolve();
         },
       });
 
       // timeout after 3 seconds
       setTimeout(() => {
-        sub.close();
+        handle.unsubscribe();
         resolve();
       }, 3000);
     });
-  };
+  }, [relays]);
 
   //
   // ────────────────────────────────────────────────────────────
@@ -164,7 +165,6 @@ export function NostrNotificationsProvider({
   useEffect(() => {
     if (!user?.pubkey) return;
     if (!relays || relays.length === 0) return;
-    if (!pool) return;
     if (hasStarted.current) return;
 
     hasStarted.current = true;
@@ -183,15 +183,15 @@ export function NostrNotificationsProvider({
       // 3. subscribe only after pollIds exist
       const filters = buildFilters(user.pubkey, since);
 
-      const sub = pool.subscribeMany(relays, filters, {
-        onevent: (event: Event) => {
+      nostrRuntime.subscribe(relays, filters, {
+        onEvent: (event: Event) => {
           pushNotification(event);
         },
       });
 
-      // DO NOT CLOSE the subscription (per your requirement)
+      // Subscription remains open (not closed) for real-time notifications
     })();
-  }, [user, relays]);
+  }, [user, relays, fetchPollIds, pushNotification]);
 
   //
   // ────────────────────────────────────────────────────────────
