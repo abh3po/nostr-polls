@@ -208,8 +208,6 @@ export function ListProvider({ children }: { children: ReactNode }) {
             return;
           setMyTopicsEvent(event);
           processMyTopicsFromEvent(event);
-          handle.unsubscribe();
-          resolve();
         },
         onEose: () => {
           handle.unsubscribe();
@@ -293,9 +291,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
       const handle = nostrRuntime.subscribe(relays, [filter], {
         onEvent: (event) => {
           existingEvent = event;
-          handle.unsubscribe();
         },
         onEose: async () => {
+          handle.unsubscribe();
           try {
             const tags = existingEvent?.tags ?? [];
 
@@ -376,9 +374,9 @@ export function ListProvider({ children }: { children: ReactNode }) {
       const handle = nostrRuntime.subscribe(relays, [filter], {
         onEvent: (event) => {
           existingEvent = event;
-          handle.unsubscribe();
         },
         onEose: async () => {
+          handle.unsubscribe();
           try {
             const oldTags = existingEvent?.tags ?? [];
 
