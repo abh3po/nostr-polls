@@ -1,17 +1,53 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Event, Filter } from "nostr-tools";
 import { useRelays } from "../../../../hooks/useRelays";
-import { pool } from "../../../../singletons";
+import { nostrRuntime } from "../../../../singletons";
 import { useUserContext } from "../../../../hooks/useUserContext";
 
 export const useFollowingNotes = () => {
-  const [notes, setNotes] = useState<Map<string, Event>>(new Map());
-  const [reposts, setReposts] = useState<Map<string, Event[]>>(new Map());
   const [loadingMore, setLoadingMore] = useState(false);
+  const [version, setVersion] = useState(0); // Trigger for re-queries
   const missingNotesRef = useRef<Set<string>>(new Set());
 
   const { relays } = useRelays();
   const { user } = useUserContext();
+
+  // Query runtime for notes and reposts
+  const notes = useCallback(() => {
+    if (!user?.follows?.length) return new Map<string, Event>();
+
+    const events = nostrRuntime.query({
+      kinds: [1],
+      authors: Array.from(user.follows),
+    });
+
+    const noteMap = new Map<string, Event>();
+    for (const event of events) {
+      noteMap.set(event.id, event);
+    }
+    return noteMap;
+  }, [user?.follows, version]);
+
+  const reposts = useCallback(() => {
+    if (!user?.follows?.length) return new Map<string, Event[]>();
+
+    const events = nostrRuntime.query({
+      kinds: [6],
+      authors: Array.from(user.follows),
+    });
+
+    const repostMap = new Map<string, Event[]>();
+    for (const event of events) {
+      const originalNoteId = event.tags.find((t) => t[0] === "e")?.[1];
+      if (originalNoteId) {
+        const existing = repostMap.get(originalNoteId) || [];
+        if (!existing.find((e) => e.id === event.id)) {
+          repostMap.set(originalNoteId, [...existing, event]);
+        }
+      }
+    }
+    return repostMap;
+  }, [user?.follows, version]);
 
   const fetchNotes = async () => {
     if (!user?.follows?.length || loadingMore) return;
@@ -25,8 +61,9 @@ export const useFollowingNotes = () => {
       limit: 10,
     };
 
-    if (notes.size > 0) {
-      noteFilter.until = Array.from(notes.values()).sort(
+    const currentNotes = notes();
+    if (currentNotes.size > 0) {
+      noteFilter.until = Array.from(currentNotes.values()).sort(
         (a, b) => a.created_at - b.created_at
       )[0].created_at;
     }
@@ -37,44 +74,27 @@ export const useFollowingNotes = () => {
       limit: 10,
     };
 
-    if (reposts.size > 0) {
+    const currentReposts = reposts();
+    if (currentReposts.size > 0) {
       const oldestRepostTime = Math.min(
-        ...Array.from(reposts.values()).flat().map((r) => r.created_at)
+        ...Array.from(currentReposts.values()).flat().map((r) => r.created_at)
       );
       repostFilter.until = oldestRepostTime;
     }
 
-    const sub = pool.subscribeMany(relays, [noteFilter, repostFilter], {
-      onevent: (event: Event) => {
-        if (event.kind === 1) {
-          setNotes((prev) => {
-            const updated = new Map(prev);
-            const existing = updated.get(event.id);
-            if (!existing || existing.created_at < event.created_at) {
-              updated.set(event.id, event);
-            }
-            return updated;
-          });
-        }
-
+    const handle = nostrRuntime.subscribe(relays, [noteFilter, repostFilter], {
+      onEvent: (event: Event) => {
         if (event.kind === 6) {
           const originalNoteId = event.tags.find((t) => t[0] === "e")?.[1];
           if (originalNoteId) {
             missingNotesRef.current.add(originalNoteId);
-
-            setReposts((prev) => {
-              const updated = new Map(prev);
-              const existing = updated.get(originalNoteId) || [];
-              if (!existing.find((e) => e.id === event.id)) {
-                updated.set(originalNoteId, [...existing, event]);
-              }
-              return updated;
-            });
           }
         }
+        // Events are automatically added to runtime by SubscriptionManager
+        setVersion((v) => v + 1);
       },
-      oneose: () => {
-        sub.close();
+      onEose: () => {
+        handle.unsubscribe();
         startMissingNotesFetcher();
         setLoadingMore(false);
       },
@@ -92,8 +112,9 @@ export const useFollowingNotes = () => {
       authors,
     };
 
-    if (notes.size > 0) {
-      const latest = Array.from(notes.values()).sort(
+    const currentNotes = notes();
+    if (currentNotes.size > 0) {
+      const latest = Array.from(currentNotes.values()).sort(
         (a, b) => b.created_at - a.created_at
       )[0];
       noteFilter.since = latest.created_at + 1;
@@ -104,44 +125,27 @@ export const useFollowingNotes = () => {
       authors,
     };
 
-    if (reposts.size > 0) {
-      const latestRepost = Array.from(reposts.values())
+    const currentReposts = reposts();
+    if (currentReposts.size > 0) {
+      const latestRepost = Array.from(currentReposts.values())
         .flat()
         .sort((a, b) => b.created_at - a.created_at)[0];
       repostFilter.since = latestRepost.created_at + 1;
     }
 
-    const sub = pool.subscribeMany(relays, [noteFilter, repostFilter], {
-      onevent: (event: Event) => {
-        if (event.kind === 1) {
-          setNotes((prev) => {
-            const updated = new Map(prev);
-            const existing = updated.get(event.id);
-            if (!existing || existing.created_at < event.created_at) {
-              updated.set(event.id, event);
-            }
-            return updated;
-          });
-        }
-
+    const handle = nostrRuntime.subscribe(relays, [noteFilter, repostFilter], {
+      onEvent: (event: Event) => {
         if (event.kind === 6) {
           const originalNoteId = event.tags.find((t) => t[0] === "e")?.[1];
           if (originalNoteId) {
             missingNotesRef.current.add(originalNoteId);
-
-            setReposts((prev) => {
-              const updated = new Map(prev);
-              const existing = updated.get(originalNoteId) || [];
-              if (!existing.find((e) => e.id === event.id)) {
-                updated.set(originalNoteId, [...existing, event]);
-              }
-              return updated;
-            });
           }
         }
+        // Events are automatically added to runtime by SubscriptionManager
+        setVersion((v) => v + 1);
       },
-      oneose: () => {
-        sub.close();
+      onEose: () => {
+        handle.unsubscribe();
         startMissingNotesFetcher();
         setLoadingMore(false);
       },
@@ -154,55 +158,59 @@ export const useFollowingNotes = () => {
 
     const fetchedIds = new Set<string>();
 
-    const sub = pool.subscribeMany(relays, [{
-      kinds: [1],
-      ids: idsToFetch,
-    }], {
-      onevent: (event: Event) => {
-        setNotes((prev) => {
-          const updated = new Map(prev);
-          updated.set(event.id, event);
-          return updated;
-        });
-        fetchedIds.add(event.id);
-      },
-    });
+    const handle = nostrRuntime.subscribe(
+      relays,
+      [
+        {
+          kinds: [1],
+          ids: idsToFetch,
+        },
+      ],
+      {
+        onEvent: (event: Event) => {
+          fetchedIds.add(event.id);
+          setVersion((v) => v + 1);
+        },
+      }
+    );
 
     const interval = setInterval(() => {
       const stillMissing = idsToFetch.filter((id) => !fetchedIds.has(id));
       if (stillMissing.length === 0) {
         clearInterval(interval);
-        sub.close();
+        handle.unsubscribe();
         missingNotesRef.current.clear();
         return;
       }
 
-      pool.subscribeMany(relays, [{
-        kinds: [1],
-        ids: stillMissing,
-      }], {
-        onevent: (event: Event) => {
-          setNotes((prev) => {
-            const updated = new Map(prev);
-            updated.set(event.id, event);
-            return updated;
-          });
-          fetchedIds.add(event.id);
-        },
-      });
-
+      // Retry fetching missing notes
+      nostrRuntime.subscribe(
+        relays,
+        [
+          {
+            kinds: [1],
+            ids: stillMissing,
+          },
+        ],
+        {
+          onEvent: (event: Event) => {
+            fetchedIds.add(event.id);
+            setVersion((v) => v + 1);
+          },
+        }
+      );
     }, 1000);
 
     setTimeout(() => {
       clearInterval(interval);
-      sub.close();
+      handle.unsubscribe();
       missingNotesRef.current.clear();
     }, 5000);
   };
 
   return {
-    notes,
-    reposts,
+    notes: notes(),
+    reposts: reposts(),
     fetchNotes,
     fetchNewerNotes,
     loadingMore,

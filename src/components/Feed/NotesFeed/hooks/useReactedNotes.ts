@@ -1,21 +1,59 @@
-import { useState } from "react";
-import { Event, Filter, SimplePool } from "nostr-tools";
+import { useState, useCallback } from "react";
+import { Event, Filter } from "nostr-tools";
 import { useRelays } from "../../../../hooks/useRelays";
+import { nostrRuntime } from "../../../../singletons";
 
 export const useReactedNotes = (user: any) => {
-  const [reactedEvents, setReactedEvents] = useState<Map<string, Event>>(new Map());
-  const [reactionEvents, setReactionEvents] = useState<Map<string, Event>>(new Map());
   const [loading, setLoading] = useState(false);
   const [lastTimestamp, setLastTimestamp] = useState<number | undefined>(undefined);
+  const [version, setVersion] = useState(0);
   const { relays } = useRelays();
+
+  // Query runtime for reactions and reacted notes
+  const reactionEvents = useCallback(() => {
+    if (!user?.follows?.length) return new Map<string, Event>();
+
+    const events = nostrRuntime.query({
+      kinds: [7],
+      authors: user.follows,
+    });
+
+    const reactionMap = new Map<string, Event>();
+    for (const event of events) {
+      reactionMap.set(event.id, event);
+    }
+    return reactionMap;
+  }, [user?.follows, version]);
+
+  const reactedEvents = useCallback(() => {
+    if (!user?.follows?.length) return new Map<string, Event>();
+
+    // Get all reactions
+    const reactions = Array.from(reactionEvents().values());
+
+    // Extract reacted note IDs
+    const reactedNoteIds = reactions
+      .map((e) => e.tags.find((tag) => tag[0] === "e")?.[1])
+      .filter(Boolean) as string[];
+
+    // Query for those notes
+    const noteEvents = nostrRuntime.query({
+      kinds: [1],
+      ids: reactedNoteIds,
+    });
+
+    const noteMap = new Map<string, Event>();
+    for (const event of noteEvents) {
+      noteMap.set(event.id, event);
+    }
+    return noteMap;
+  }, [user?.follows, version, reactionEvents]);
 
   const fetchReactedNotes = async () => {
     if (!user?.follows?.length || loading) return;
     setLoading(true);
 
-    const pool = new SimplePool();
-
-    // Step 1: Get reactions
+    // Step 1: Fetch reactions
     const reactionFilter: Filter = {
       kinds: [7],
       authors: user.follows,
@@ -25,43 +63,59 @@ export const useReactedNotes = (user: any) => {
       reactionFilter.until = lastTimestamp;
     }
 
-    const newReactionEvents = await pool.querySync(relays, reactionFilter);
+    let newReactionEvents: Event[] = [];
+    let reactedNoteIds: string[] = [];
 
-    const updatedReactionEvents = new Map(reactionEvents);
-    newReactionEvents.forEach((e) => updatedReactionEvents.set(e.id, e));
-    setReactionEvents(updatedReactionEvents);
+    const reactionHandle = nostrRuntime.subscribe(relays, [reactionFilter], {
+      onEvent: (event) => {
+        newReactionEvents.push(event);
+        const noteId = event.tags.find((tag) => tag[0] === "e")?.[1];
+        if (noteId) {
+          reactedNoteIds.push(noteId);
+        }
+      },
+      onEose: () => {
+        reactionHandle.unsubscribe();
 
-    const reactedNoteIds = newReactionEvents
-      .map((e) => e.tags.find((tag) => tag[0] === "e")?.[1])
-      .filter(Boolean);
+        // Step 2: Fetch the original notes
+        if (reactedNoteIds.length > 0) {
+          const uniqueNoteIds = Array.from(new Set(reactedNoteIds));
+          const noteFilter: Filter = {
+            kinds: [1],
+            ids: uniqueNoteIds,
+          };
 
-    const uniqueNoteIds = Array.from(new Set(reactedNoteIds));
+          const noteHandle = nostrRuntime.subscribe(relays, [noteFilter], {
+            onEvent: () => {
+              // Events automatically stored in runtime
+            },
+            onEose: () => {
+              noteHandle.unsubscribe();
+              finishFetch();
+            },
+          });
+        } else {
+          finishFetch();
+        }
+      },
+    });
 
-    // Step 2: Fetch the original notes
-    const noteFilter: Filter = {
-      kinds: [1],
-      ids: uniqueNoteIds.filter((id) => id !== undefined),
+    const finishFetch = () => {
+      if (newReactionEvents.length > 0) {
+        const oldest = newReactionEvents.reduce((min, e) =>
+          e.created_at < min.created_at ? e : min
+        );
+        setLastTimestamp(oldest.created_at);
+      }
+
+      setVersion((v) => v + 1);
+      setLoading(false);
     };
-
-    const noteEvents = await pool.querySync(relays, noteFilter);
-
-    const updated = new Map(reactedEvents);
-    noteEvents.forEach((e) => updated.set(e.id, e));
-    setReactedEvents(updated);
-
-    if (newReactionEvents.length > 0) {
-      const oldest = newReactionEvents.reduce((min, e) =>
-        e.created_at < min.created_at ? e : min
-      );
-      setLastTimestamp(oldest.created_at);
-    }
-
-    setLoading(false);
   };
 
   return {
-    reactedEvents,
-    reactionEvents,
+    reactedEvents: reactedEvents(),
+    reactionEvents: reactionEvents(),
     fetchReactedNotes,
     loading,
   };
