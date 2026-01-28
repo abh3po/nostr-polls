@@ -178,7 +178,8 @@ export const Notes: React.FC<NotesProps> = ({
     if (!profiles?.has(event.pubkey)) {
       fetchUserProfileThrottled(event.pubkey);
     }
-  }, [event.pubkey, profiles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.pubkey]);
 
   useResizeObserver(contentRef, checkOverflow);
 

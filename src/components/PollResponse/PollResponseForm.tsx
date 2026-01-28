@@ -13,7 +13,6 @@ import {
   Avatar,
   Typography,
   Alert,
-  Box,
 } from "@mui/material";
 import { Event } from "nostr-tools/lib/types/core";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";

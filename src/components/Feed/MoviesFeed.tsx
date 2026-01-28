@@ -90,6 +90,7 @@ const MoviesFeed: React.FC = () => {
 
   useEffect(() => {
     fetchBatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

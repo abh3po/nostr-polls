@@ -26,6 +26,7 @@ export const useFollowingNotes = () => {
       noteMap.set(event.id, event);
     }
     return noteMap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.follows, version]);
 
   const reposts = useCallback(() => {
@@ -47,6 +48,7 @@ export const useFollowingNotes = () => {
       }
     }
     return repostMap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.follows, version]);
 
   const fetchNotes = async () => {

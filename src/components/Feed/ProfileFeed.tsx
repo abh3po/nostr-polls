@@ -113,6 +113,7 @@ const ProfilesFeed: React.FC = () => {
 
   useEffect(() => {
     fetchRatedProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const sortedProfiles = Array.from(profileEvents.values()).sort(

@@ -8,7 +8,7 @@ const LOAD_TIMEOUT_MS = 5000;
 
 export const useDiscoverNotes = () => {
     const { relays } = useRelays();
-    const { user } = useUserContext();
+    useUserContext();
     const [version, setVersion] = useState(0);
     const [newNotesVersion, setNewNotesVersion] = useState(0);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -24,6 +24,7 @@ export const useDiscoverNotes = () => {
             noteMap.set(event.id, event);
         }
         return noteMap;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [version]);
 
     // New notes buffer (before merge)
@@ -32,6 +33,7 @@ export const useDiscoverNotes = () => {
         // since runtime handles all storage
         // Return empty map for compatibility
         return new Map<string, any>();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [newNotesVersion]);
 
     const mergeNewNotes = useCallback(() => {
@@ -91,7 +93,8 @@ export const useDiscoverNotes = () => {
                 subscriptionHandleRef.current.unsubscribe();
             }
         };
-    }, [relays, user?.follows, initialLoadComplete]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [relays, initialLoadComplete]);
 
     return {
         notes: notes(),

@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import PollResponseForm from "../PollResponse/PollResponseForm";
 import { makeStyles } from "@mui/styles";
 import { Notes } from "../Notes";
-import { nip19 } from "nostr-tools";
 import ReplayIcon from "@mui/icons-material/Replay";
 import Typography from "@mui/material/Typography";
 import OverlappingAvatars from "../Common/OverlappingAvatars";

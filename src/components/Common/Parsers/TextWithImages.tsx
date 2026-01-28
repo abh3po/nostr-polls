@@ -4,7 +4,6 @@ import { nip19 } from "nostr-tools";
 import { isImageUrl } from "../../../utils/common";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
-import { EventPointer } from "nostr-tools/lib/types/nip19";
 import { IconButton, Tooltip } from "@mui/material";
 import { TranslationPopover } from "./../TranslationPopover";
 import TranslateIcon from "@mui/icons-material/Translate";

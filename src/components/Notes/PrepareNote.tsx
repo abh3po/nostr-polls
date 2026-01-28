@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRelays } from "../../hooks/useRelays";
 import { Event, nip19 } from "nostr-tools";
 import { Notes } from ".";
-import { Button, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { nostrRuntime } from "../../singletons";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
 
@@ -32,7 +32,7 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ neventId }) => {
     if (neventId && !event) {
       fetchEvent(neventId);
     }
-  }, [neventId, event, , relays]);
+  }, [neventId, event, relays]);
 
   if (event) return <Notes event={event} />;
   else

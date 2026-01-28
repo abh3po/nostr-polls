@@ -67,6 +67,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   // Query runtime for profiles
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const profiles = useMemo(() => {
     const events = nostrRuntime.query({ kinds: [0] });
     const profileMap = new Map<string, Profile>();
@@ -84,6 +85,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [version]);
 
   // Query runtime for comments map (kind 1 with e tags)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const commentsMap = useMemo(() => {
     const events = nostrRuntime.query({ kinds: [1] });
     const map = new Map<string, Event[]>();
@@ -101,6 +103,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [version]);
 
   // Query runtime for likes map (kind 7 with e tags)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const likesMap = useMemo(() => {
     const events = nostrRuntime.query({ kinds: [7] });
     const map = new Map<string, Event[]>();
@@ -118,6 +121,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [version]);
 
   // Query runtime for zaps map (kind 9735 with e tags)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const zapsMap = useMemo(() => {
     const events = nostrRuntime.query({ kinds: [9735] });
     const map = new Map<string, Event[]>();
@@ -135,6 +139,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [version]);
 
   // Query runtime for reposts map (kind 6 or 16 with e tags)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const repostsMap = useMemo(() => {
     const events = nostrRuntime.query({ kinds: [6, 16] });
     const map = new Map<string, Event[]>();

@@ -41,6 +41,7 @@ const MovieMetadataModal: React.FC<MovieMetadataModalProps> = ({
       }
     };
     initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, poster, year, summary, open]);
 
   const buildTags = () => [

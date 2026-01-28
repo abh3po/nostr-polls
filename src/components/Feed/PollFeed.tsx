@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { styled } from "@mui/system";
-import { pool, nostrRuntime } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
 import { SubscriptionHandle } from "../../nostrRuntime/types";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -50,7 +50,6 @@ export const PollFeed = () => {
   >();
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
-  const [missingIds, setMissingIds] = useState<string[]>([]);
 
   const { user } = useUserContext();
   const { relays } = useRelays();
@@ -243,7 +242,6 @@ export const PollFeed = () => {
       if (!originalId) originalId = repost.tags.find((t) => t[0] === "e")?.[1];
       if (!originalId) return;
       const arr = map.get(originalId) || [];
-      setMissingIds([...missingIds, originalId]);
       arr.push(repost);
       map.set(originalId, arr);
     });
@@ -280,6 +278,7 @@ export const PollFeed = () => {
     const closer = fetchInitialPolls();
     setFeedSubscription(closer);
     return () => closer?.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventSource]);
 
   useEffect(() => {
@@ -288,6 +287,7 @@ export const PollFeed = () => {
       closer = fetchUserResponses();
     }
     return () => closer?.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -295,6 +295,7 @@ export const PollFeed = () => {
       pollForNewPolls();
     }, 15000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollEvents, repostEvents, relays, eventSource]);
   return (
     <Container maxWidth="lg" disableGutters>

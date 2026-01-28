@@ -15,7 +15,6 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { useEffect, useState } from "react";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useRelays } from "../../hooks/useRelays";
-import { useAppContext } from "../../hooks/useAppContext";
 import { nostrRuntime } from "../../singletons";
 
 export const RelaySettings: React.FC = () => {

@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { Event } from "nostr-tools";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
@@ -53,7 +53,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return !isNaN(value) ? value : null;
   };
 
-  const handleEvent = (ev: Event) => {
+  const handleEvent = useCallback((ev: Event) => {
     const dTag = ev.tags.find((t) => t[0] === "d")?.[1];
     const ratingTag = ev.tags.find((t) => t[0] === "rating")?.[1];
     const pubkey = ev.pubkey;
@@ -84,7 +84,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return prev;
       });
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -118,7 +118,7 @@ export const RatingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       clearInterval(interval);
       if (subscriptionRef.current) subscriptionRef.current.unsubscribe();
     };
-  }, [user]);
+  }, [user, handleEvent, relays]);
 
   return (
     <RatingContext.Provider

@@ -30,6 +30,7 @@ const DiscoverFeed = () => {
     ) {
       fetchNotes(user.webOfTrust);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const mergedNotes = useMemo(() => {

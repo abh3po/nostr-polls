@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Typography,
@@ -65,6 +65,45 @@ const ProfilePage: React.FC = () => {
   const { user, requestLogin, setUser } = useUserContext();
   const { fetchLatestContactList } = useListContext();
 
+  const checkIfFollowsYou = useCallback(async (profilePubkey: string) => {
+    if (!user) return;
+
+    try {
+      const filter = {
+        kinds: [3],
+        authors: [profilePubkey],
+        limit: 1,
+      };
+
+      let latestEvent: Event | null = null;
+
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: (event: Event) => {
+          // Keep track of the most recent event
+          if (!latestEvent || event.created_at > latestEvent.created_at) {
+            latestEvent = event;
+          }
+        },
+      });
+
+      // Wait for responses, then check the latest event
+      setTimeout(() => {
+        handle.unsubscribe();
+        if (latestEvent) {
+          const follows = latestEvent.tags
+            .filter((tag) => tag[0] === "p")
+            .map((tag) => tag[1]);
+
+          if (follows.includes(user.pubkey)) {
+            setFollowsYou(true);
+          }
+        }
+      }, 2000);
+    } catch (err) {
+      console.error("Error checking if follows you:", err);
+    }
+  }, [user, relays]);
+
   useEffect(() => {
     const loadProfile = async () => {
       if (!npubOrNprofile) {
@@ -112,46 +151,7 @@ const ProfilePage: React.FC = () => {
     };
 
     loadProfile();
-  }, [npubOrNprofile, relays, user]);
-
-  const checkIfFollowsYou = async (profilePubkey: string) => {
-    if (!user) return;
-
-    try {
-      const filter = {
-        kinds: [3],
-        authors: [profilePubkey],
-        limit: 1,
-      };
-
-      let latestEvent: Event | null = null;
-
-      const handle = nostrRuntime.subscribe(relays, [filter], {
-        onEvent: (event: Event) => {
-          // Keep track of the most recent event
-          if (!latestEvent || event.created_at > latestEvent.created_at) {
-            latestEvent = event;
-          }
-        },
-      });
-
-      // Wait for responses, then check the latest event
-      setTimeout(() => {
-        handle.unsubscribe();
-        if (latestEvent) {
-          const follows = latestEvent.tags
-            .filter((tag) => tag[0] === "p")
-            .map((tag) => tag[1]);
-
-          if (follows.includes(user.pubkey)) {
-            setFollowsYou(true);
-          }
-        }
-      }, 2000);
-    } catch (err) {
-      console.error("Error checking if follows you:", err);
-    }
-  };
+  }, [npubOrNprofile, relays, user, checkIfFollowsYou]);
 
   const addToContacts = async () => {
     if (!user) {

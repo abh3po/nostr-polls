@@ -59,7 +59,8 @@ const MoviePage = () => {
     });
 
     return () => handle.unsubscribe();
-  }, [imdbId, filterMode, user?.follows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imdbId, filterMode, user?.follows, relays]);
 
   useEffect(() => {
     setLoading(true);

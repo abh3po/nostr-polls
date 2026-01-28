@@ -45,6 +45,7 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
       });
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.follows]);
 
   const handleContactClick = (pubkey: string) => {

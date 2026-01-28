@@ -23,6 +23,7 @@ export const useReactedNotes = (user: any) => {
       reactionMap.set(event.id, event);
     }
     return reactionMap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.follows, version]);
 
   const reactedEvents = useCallback(() => {
@@ -47,6 +48,7 @@ export const useReactedNotes = (user: any) => {
       noteMap.set(event.id, event);
     }
     return noteMap;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.follows, version, reactionEvents]);
 
   const fetchReactedNotes = async () => {

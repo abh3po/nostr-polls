@@ -1,6 +1,7 @@
 import {
   ReactNode,
   createContext,
+  useCallback,
   useEffect,
   useState,
   useRef,
@@ -73,7 +74,7 @@ export function NostrNotificationsProvider({
   // Add notification
   // ────────────────────────────────────────────────────────────
   //
-  const pushNotification = (event: Event) => {
+  const pushNotification = useCallback((event: Event) => {
     setNotifications((prev) => {
       if (prev.has(event.id)) return prev;
       const next = new Map(prev);
@@ -84,14 +85,14 @@ export function NostrNotificationsProvider({
     if (!lastSeen || event.created_at > lastSeen) {
       setUnreadCount((c) => c + 1);
     }
-  };
+  }, [lastSeen]);
 
   //
   // ────────────────────────────────────────────────────────────
   // Fetch my polls once on mount
   // ────────────────────────────────────────────────────────────
   //
-  const fetchPollIds = async (pubkey: string): Promise<void> => {
+  const fetchPollIds = useCallback(async (pubkey: string): Promise<void> => {
     return new Promise((resolve) => {
       const filter: Filter = {
         kinds: [1068],
@@ -115,7 +116,7 @@ export function NostrNotificationsProvider({
         resolve();
       }, 3000);
     });
-  };
+  }, [relays]);
 
   //
   // ────────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ export function NostrNotificationsProvider({
 
       // Subscription remains open (not closed) for real-time notifications
     })();
-  }, [user, relays]);
+  }, [user, relays, fetchPollIds, pushNotification]);
 
   //
   // ────────────────────────────────────────────────────────────

@@ -108,7 +108,7 @@ const TopicExplorer: React.FC = () => {
 
     setIsAddingToMyTopics(true);
     try {
-      const signer = await signerManager.getSigner();
+      await signerManager.getSigner();
       await addTopicToMyTopics(tag);
     } catch (error) {
       console.error("Failed to add topic to my topics:", error);
@@ -126,7 +126,7 @@ const TopicExplorer: React.FC = () => {
     if (!tag) return;
 
     try {
-      const signer = await signerManager.getSigner();
+      await signerManager.getSigner();
       await removeTopicFromMyTopics(tag);
     } catch (error) {
       console.error("Failed to remove topic:", error);
@@ -142,6 +142,7 @@ const TopicExplorer: React.FC = () => {
       blockers.forEach((id) => modSet.add(id));
     });
     return Array.from(modSet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curatedIds, blockedUserIds]);
 
   useEffect(() => {
@@ -271,14 +272,6 @@ const TopicExplorer: React.FC = () => {
     return base.sort((a, b) => b.created_at - a.created_at);
   }, [tabValue, notesEvents, pollsEvents]);
 
-  const visibleCurators =
-    feedMode === "contacts" && user?.follows
-      ? Array.from(allModerators).filter(
-          (id) => user.follows!.includes(id) && visibleModerators.includes(id)
-        )
-      : Array.from(allModerators).filter((id) =>
-          visibleModerators.includes(id)
-        );
   const loading = tabValue === 0 ? loadingNotes : loadingPolls;
 
   const itemContent = useMemo(
@@ -396,6 +389,7 @@ const TopicExplorer: React.FC = () => {
         </Box>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey]
   );
 
