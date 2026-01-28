@@ -1,7 +1,7 @@
 identifier: com.formstr.pollerama
 name: Pollerama
 summary: Pollerama is a next-generation decentralized social platform built on the Nostr protocol, empowering users to create, share, and interact with content in real-time—without relying on centralized intermediaries.
-
+version: 1.1.0
 description: Create Notes, Polls, Rate Movies, Moderate Topics, Have fun!
 repository: https://github.com/abh3po/nostr-polls
 release_repository: https://github.com/abh3po/nostr-polls/releases
