@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useRelays } from "../../hooks/useRelays";
 import { useAppContext } from "../../hooks/useAppContext";
-import { pool } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
 
 export const RelaySettings: React.FC = () => {
   const [relayConnectionMap, setRelayConnectionMap] = useState<
@@ -43,7 +43,7 @@ export const RelaySettings: React.FC = () => {
         const queryPromise = new Promise<boolean>(async (resolve) => {
           try {
             // Use querySync with a very simple query to test connection
-            await pool.querySync([relayUrl], {
+            await nostrRuntime.querySync([relayUrl], {
               kinds: [0],
               limit: 1,
             });

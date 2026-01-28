@@ -154,6 +154,56 @@ export class NostrRuntime {
   }
 
   /**
+   * Fetch a single event (equivalent to pool.get)
+   * Returns the first matching event or null. Result is stored in EventStore.
+   *
+   * @param relays - Relay URLs to query
+   * @param filter - Nostr filter to match
+   * @returns Promise resolving to the event or null
+   */
+  async fetchOne(relays: string[], filter: Filter): Promise<Event | null> {
+    const results = await this.querySync(relays, { ...filter, limit: 1 });
+    return results[0] || null;
+  }
+
+  /**
+   * One-shot query (equivalent to pool.querySync)
+   * Creates a subscription, collects events until EOSE, then closes.
+   * Results are automatically stored in EventStore for future cache hits.
+   *
+   * @param relays - Relay URLs to query
+   * @param filter - Single Nostr filter
+   * @returns Promise resolving to array of matching events
+   */
+  async querySync(relays: string[], filter: Filter): Promise<Event[]> {
+    const collected: Event[] = [];
+    const seen = new Set<string>();
+
+    return new Promise((resolve) => {
+      const handle = this.subscriptionManager.subscribe(
+        relays,
+        [filter],
+        (event) => {
+          if (!seen.has(event.id)) {
+            seen.add(event.id);
+            collected.push(event);
+          }
+        },
+        () => {
+          handle.unsubscribe();
+          resolve(collected);
+        }
+      );
+
+      // Timeout fallback (10s) in case EOSE never arrives
+      setTimeout(() => {
+        handle.unsubscribe();
+        resolve(collected);
+      }, 10000);
+    });
+  }
+
+  /**
    * Batch add multiple events
    * More efficient than calling addEvent multiple times
    *

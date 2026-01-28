@@ -7,10 +7,11 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { nip19, SimplePool, Event } from "nostr-tools";
+import { nip19, Event } from "nostr-tools";
 import EventJsonCard from "../Event/EventJSONCard";
 import { useRelays } from "../../hooks/useRelays";
 import { Notes } from "../Notes";
+import { nostrRuntime } from "../../singletons";
 
 interface Props {
   open: boolean;
@@ -63,8 +64,7 @@ const RateEventModal: React.FC<Props> = ({ open, onClose, initialEventId }) => {
       }
     }
 
-    const pool = new SimplePool();
-    const ev = await pool.get(relays, {
+    const ev = await nostrRuntime.fetchOne(relays, {
       ids: [eventId],
     });
 

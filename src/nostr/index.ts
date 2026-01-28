@@ -1,6 +1,6 @@
 import { Event, EventTemplate, Filter, finalizeEvent, SimplePool } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
-import { pool } from "../singletons";
+import { pool, nostrRuntime } from "../singletons";
 import { signerManager } from "../singletons/Signer/SignerManager";
 
 export const defaultRelays = [
@@ -18,7 +18,7 @@ export const fetchUserProfile = async (
   pubkey: string,
   relays: string[] = defaultRelays
 ) => {
-  let result = await pool.get(relays, { kinds: [0], authors: [pubkey] });
+  let result = await nostrRuntime.fetchOne(relays, { kinds: [0], authors: [pubkey] });
   return result;
 };
 
@@ -36,10 +36,10 @@ export async function parseContacts(contactList: Event) {
 
 export const fetchUserProfiles = async (
   pubkeys: string[],
-  pool: SimplePool,
+  _pool: SimplePool,
   relays: string[] = defaultRelays
 ) => {
-  let result = await pool.querySync(relays, {
+  let result = await nostrRuntime.querySync(relays, {
     kinds: [0],
     authors: pubkeys,
   });
@@ -57,7 +57,7 @@ export const fetchReposts = async (
   }
 
   try {
-    const events = await pool.querySync(relays, filters);
+    const events = await nostrRuntime.querySync(relays, filters);
     return events;
   } catch (err) {
     console.error("Error fetching reposts", err);
@@ -67,10 +67,10 @@ export const fetchReposts = async (
 
 export const fetchComments = async (
   eventIds: string[],
-  pool: SimplePool,
+  _pool: SimplePool,
   relays: string[] = defaultRelays
 ) => {
-  let result = await pool.querySync(relays, {
+  let result = await nostrRuntime.querySync(relays, {
     kinds: [1],
     "#e": eventIds,
   });
@@ -79,10 +79,10 @@ export const fetchComments = async (
 
 export const fetchLikes = async (
   eventIds: string[],
-  pool: SimplePool,
+  _pool: SimplePool,
   relays: string[] = defaultRelays
 ) => {
-  let result = await pool.querySync(relays, {
+  let result = await nostrRuntime.querySync(relays, {
     kinds: [7],
     "#e": eventIds,
   });
@@ -91,10 +91,10 @@ export const fetchLikes = async (
 
 export const fetchZaps = async (
   eventIds: string[],
-  pool: SimplePool,
+  _pool: SimplePool,
   relays: string[] = defaultRelays
 ) => {
-  let result = await pool.querySync(relays, {
+  let result = await nostrRuntime.querySync(relays, {
     kinds: [9735],
     "#e": eventIds,
   });

@@ -8,7 +8,7 @@ import { Box, Button, CircularProgress } from "@mui/material";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { pool } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
 import { nip19 } from "nostr-tools";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
 
@@ -36,7 +36,7 @@ export const PollResponse = () => {
       new Set([...relays, ...(neventRelays || [])])
     );
     try {
-      const event = await pool.get(relaysToUse, filter);
+      const event = await nostrRuntime.fetchOne(relaysToUse, filter);
       if (event === null) {
         showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");

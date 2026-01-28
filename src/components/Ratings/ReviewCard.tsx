@@ -14,7 +14,7 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { useMetadata } from "../../hooks/MetadataProvider";
 import { selectBestMetadataEvent } from "../../utils/utils";
 import { useUserContext } from "../../hooks/useUserContext";
-import { pool } from "../../singletons";
+import { nostrRuntime } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
 import { Link as RouterLink } from "react-router-dom";
 
@@ -99,7 +99,7 @@ const ReviewCard: React.FC<Props> = ({ event }) => {
       const eTag = event.tags.find((t) => t[0] === "e")?.[1];
       if (eTag) {
         try {
-          const eventData = await pool.get(relays, { ids: [eTag] });
+          const eventData = await nostrRuntime.fetchOne(relays, { ids: [eTag] });
           if (eventData) {
             if (eventData.kind === 1068) {
               // Poll
