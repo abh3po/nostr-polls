@@ -12,8 +12,8 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { styled } from "@mui/system";
-import { SubCloser } from "nostr-tools/lib/types/pool";
-import { pool } from "../../singletons";
+import { pool, nostrRuntime } from "../../singletons";
+import { SubscriptionHandle } from "../../nostrRuntime/types";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
 import useImmersiveScroll from "../../hooks/useImmersiveScroll";
@@ -35,13 +35,7 @@ const CenteredBox = styled(Box)`
   justify-content: center;
 `;
 
-// new: chunking helpers
-const CHUNK_SIZE = 1000;
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const res: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
-  return res;
-}
+// Note: Chunking is now handled automatically by nostrRuntime
 
 export const PollFeed = () => {
   const [pollEvents, setPollEvents] = useState<Event[]>([]);
@@ -52,7 +46,7 @@ export const PollFeed = () => {
     "global" | "following" | "webOfTrust"
   >("global");
   const [feedSubscription, setFeedSubscription] = useState<
-    SubCloser | undefined
+    SubscriptionHandle | undefined
   >();
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -86,43 +80,21 @@ export const PollFeed = () => {
     [setPollEvents, setRepostEvents]
   );
 
-  // helper to subscribe with possibly chunked author lists and return a single closer
+  // Helper to subscribe - runtime handles chunking automatically for large author lists
   const subscribeWithAuthors = useCallback(
     (filters: Filter[], onAllChunksComplete?: () => void) => {
-      // if filters already have authors (small lists) just subscribe directly
-      const authors = filters[0]?.authors as string[] | undefined;
-      if (!authors || authors.length <= CHUNK_SIZE) {
-        return pool.subscribeMany(relays, filters, {
-          onevent: handleIncomingEvent,
-          oneose: () => {
-            onAllChunksComplete?.();
-          },
-        });
-      }
+      const handle = nostrRuntime.subscribe(relays, filters, {
+        onEvent: handleIncomingEvent,
+        onEose: () => {
+          onAllChunksComplete?.();
+        },
+      });
 
-      // large author list -> chunk
-      const closers: SubCloser[] = [];
-      const chunks = chunkArray(authors, CHUNK_SIZE);
-      let completed = 0;
-
-      for (const chunk of chunks) {
-        const chunkedFilters = filters.map((f) => ({ ...f, authors: chunk }));
-        const closer = pool.subscribeMany(relays, chunkedFilters, {
-          onevent: handleIncomingEvent,
-          oneose: () => {
-            completed++;
-            if (completed === chunks.length) {
-              onAllChunksComplete?.();
-              closers.forEach((c) => c.close());
-            }
-          },
-        });
-        closers.push(closer);
-      }
-
+      // Return a wrapper that matches the old API
       return {
-        close: () => closers.forEach((c) => c.close()),
-      } as SubCloser;
+        ...handle,
+        close: () => handle.unsubscribe(),
+      };
     },
     [relays, handleIncomingEvent]
   );
@@ -234,13 +206,18 @@ export const PollFeed = () => {
       },
     ];
 
-    return pool.subscribeMany(relays, filter, {
-      onevent: (event: Event) => {
+    const handle = nostrRuntime.subscribe(relays, filter, {
+      onEvent: (event: Event) => {
         if (verifyEvent(event)) {
           setUserResponses((prev) => [...prev, event]);
         }
       },
     });
+
+    return {
+      ...handle,
+      close: () => handle.unsubscribe(),
+    };
   };
 
   const getLatestResponsesByPoll = (events: Event[]) => {
@@ -296,21 +273,21 @@ export const PollFeed = () => {
   }, [pollEvents, repostsByPollId]);
 
   useEffect(() => {
-    if (feedSubscription) feedSubscription.close();
+    if (feedSubscription) feedSubscription.unsubscribe();
     setPollEvents([]);
     setRepostEvents([]);
     setLoadingInitial(true);
     const closer = fetchInitialPolls();
     setFeedSubscription(closer);
-    return () => closer?.close();
+    return () => closer?.unsubscribe();
   }, [eventSource]);
 
   useEffect(() => {
-    let closer: SubCloser | undefined;
+    let closer: SubscriptionHandle | undefined;
     if (user && userResponses.length === 0) {
       closer = fetchUserResponses();
     }
-    return () => closer?.close();
+    return () => closer?.unsubscribe();
   }, [user]);
 
   useEffect(() => {

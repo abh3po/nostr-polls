@@ -9,15 +9,25 @@ import {
   CardContent,
   Tabs,
   Tab,
+  Button,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
-import { nip19 } from "nostr-tools";
+import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
-import { fetchUserProfile } from "../../nostr";
+import { fetchUserProfile, signEvent } from "../../nostr";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import Rate from "../Ratings/Rate";
 import UserPollsFeed from "./UserPollsFeed";
 import UserNotesFeed from "./UserNotesFeed";
 import UserRatingsGiven from "./UserRatingsGiven";
+import { useUserContext } from "../../hooks/useUserContext";
+import { useListContext } from "../../hooks/useListContext";
+import { pool, nostrRuntime } from "../../singletons";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -48,7 +58,12 @@ const ProfilePage: React.FC = () => {
   const [pubkey, setPubkey] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [followsYou, setFollowsYou] = useState(false);
+  const [showContactListWarning, setShowContactListWarning] = useState(false);
+  const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
   const { relays } = useRelays();
+  const { user, requestLogin, setUser } = useUserContext();
+  const { fetchLatestContactList } = useListContext();
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -83,6 +98,11 @@ const ProfilePage: React.FC = () => {
           setProfile(profileData);
         }
 
+        // Check if this profile follows the current user
+        if (user) {
+          checkIfFollowsYou(extractedPubkey);
+        }
+
         setLoading(false);
       } catch (err) {
         console.error("Error loading profile:", err);
@@ -92,7 +112,92 @@ const ProfilePage: React.FC = () => {
     };
 
     loadProfile();
-  }, [npubOrNprofile, relays]);
+  }, [npubOrNprofile, relays, user]);
+
+  const checkIfFollowsYou = async (profilePubkey: string) => {
+    if (!user) return;
+
+    try {
+      const filter = {
+        kinds: [3],
+        authors: [profilePubkey],
+        limit: 1,
+      };
+
+      let latestEvent: Event | null = null;
+
+      const handle = nostrRuntime.subscribe(relays, [filter], {
+        onEvent: (event: Event) => {
+          // Keep track of the most recent event
+          if (!latestEvent || event.created_at > latestEvent.created_at) {
+            latestEvent = event;
+          }
+        },
+      });
+
+      // Wait for responses, then check the latest event
+      setTimeout(() => {
+        handle.unsubscribe();
+        if (latestEvent) {
+          const follows = latestEvent.tags
+            .filter((tag) => tag[0] === "p")
+            .map((tag) => tag[1]);
+
+          if (follows.includes(user.pubkey)) {
+            setFollowsYou(true);
+          }
+        }
+      }, 2000);
+    } catch (err) {
+      console.error("Error checking if follows you:", err);
+    }
+  };
+
+  const addToContacts = async () => {
+    if (!user) {
+      requestLogin();
+      return;
+    }
+
+    if (!pubkey) return;
+
+    const contactEvent = await fetchLatestContactList();
+
+    if (!contactEvent) {
+      setPendingFollowKey(pubkey);
+      setShowContactListWarning(true);
+      return;
+    }
+
+    await updateContactList(contactEvent, pubkey);
+  };
+
+  const updateContactList = async (
+    contactEvent: Event | null,
+    pubkeyToAdd: string
+  ) => {
+    const existingTags = contactEvent?.tags || [];
+    const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
+
+    if (pTags.includes(pubkeyToAdd)) return;
+
+    const updatedTags = [...existingTags, ["p", pubkeyToAdd]];
+
+    const newEvent: EventTemplate = {
+      kind: 3,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: updatedTags,
+      content: contactEvent?.content || "",
+    };
+
+    const signed = await signEvent(newEvent);
+    pool.publish(relays, signed);
+    setUser({
+      pubkey: signed.pubkey,
+      ...user,
+      follows: [...pTags, pubkeyToAdd],
+    });
+  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -124,7 +229,7 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 } }}>
+    <Box maxWidth={800} mx="auto" sx={{ px: 2, py: { xs: 2, sm: 4 } }}>
       {/* Profile Header */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -142,9 +247,48 @@ const ProfilePage: React.FC = () => {
               sx={{ width: 80, height: 80 }}
             />
             <Box sx={{ flex: 1, textAlign: { xs: "center", sm: "left" } }}>
-              <Typography variant="h5" gutterBottom>
-                {profile?.name || profile?.username || "Unnamed"}
-              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  justifyContent: { xs: "center", sm: "flex-start" },
+                  mb: 1,
+                }}
+              >
+                <Typography variant="h5">
+                  {profile?.name || profile?.username || "Unnamed"}
+                </Typography>
+                {user && user.pubkey !== pubkey && (
+                  <>
+                    {user.follows?.includes(pubkey) ? (
+                      <Chip
+                        label="Following"
+                        icon={<CheckCircleIcon />}
+                        color="primary"
+                        size="small"
+                      />
+                    ) : (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={addToContacts}
+                      >
+                        {followsYou ? "Follow Back" : "Follow"}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Box>
+              {followsYou && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mb: 1, display: "block" }}
+                >
+                  Follows you
+                </Typography>
+              )}
               {profile?.nip05 && (
                 <Typography
                   variant="body2"
@@ -193,6 +337,37 @@ const ProfilePage: React.FC = () => {
       <TabPanel value={tabValue} index={2}>
         <UserRatingsGiven pubkey={pubkey} />
       </TabPanel>
+
+      <Dialog
+        open={showContactListWarning}
+        onClose={() => setShowContactListWarning(false)}
+      >
+        <DialogTitle>Warning</DialogTitle>
+        <DialogContent>
+          <Typography>
+            We couldn't find your existing contact list. If you continue, your
+            follow list will only contain this person.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowContactListWarning(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (pendingFollowKey) {
+                updateContactList(null, pendingFollowKey);
+              }
+              setShowContactListWarning(false);
+              setPendingFollowKey(null);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Continue Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

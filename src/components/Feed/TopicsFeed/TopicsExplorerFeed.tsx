@@ -28,7 +28,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import useTopicExplorerScroll from "../../../hooks/useTopicExplorerScroll";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
-import { pool } from "../../../singletons";
+import { pool, nostrRuntime } from "../../../singletons";
 import { useMetadata } from "../../../hooks/MetadataProvider";
 import { selectBestMetadataEvent } from "../../../utils/utils";
 import {
@@ -211,8 +211,9 @@ const TopicExplorer: React.FC = () => {
       { kinds: [1068], "#t": [tag], limit: 50 },
     ];
 
-    const sub = pool.subscribeMany(relays, filters, {
-      onevent: (event) => {
+
+    const handle = nostrRuntime.subscribe(relays, filters, {
+      onEvent: (event: Event) => {
         if (event.kind === OFFTOPIC_KIND) {
           const eTags = event.tags.filter((t) => t[0] === "e").map((t) => t[1]);
           for (const e of eTags) {
@@ -245,16 +246,23 @@ const TopicExplorer: React.FC = () => {
           setPollsEvents((prev) => [...prev, event]);
         }
       },
-      onclose: () => {
-        setLoadingNotes(false);
-        setLoadingPolls(false);
-      },
     });
 
-    subRef.current = sub;
+    // Store reference for cleanup
+    subRef.current = {
+      close: () => handle.unsubscribe(),
+    };
+
+    // Handle loading state after timeout
+    setTimeout(() => {
+      setLoadingNotes(false);
+      setLoadingPolls(false);
+    }, 3000);
 
     return () => {
-      sub.close();
+      if (subRef.current) {
+        subRef.current.close();
+      }
     };
   }, [tag, relays]);
 
