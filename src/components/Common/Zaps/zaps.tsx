@@ -51,14 +51,11 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const getTotalZaps = () => {
     let amount = 0;
     zapsMap?.get(pollEvent.id)?.forEach((e) => {
-      let zapRequestTag = e.tags.find((t) => t[0] === "description");
-      if (zapRequestTag && zapRequestTag[1]) {
+      const bolt11Tag = e.tags.find((t) => t[0] === "bolt11");
+      if (bolt11Tag && bolt11Tag[1]) {
         try {
-          const zapRequest = JSON.parse(zapRequestTag[1]);
-          let requestAmount =
-            zapRequest.tags.find((t: any) => t[0] === "amount")?.[1] / 1000 ||
-            0;
-          amount += requestAmount;
+          const sats = nip57.getSatoshisAmountFromBolt11(bolt11Tag[1]);
+          amount += sats || 0;
         } catch (e) {
           return;
         }
