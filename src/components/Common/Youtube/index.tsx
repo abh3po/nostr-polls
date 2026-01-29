@@ -81,13 +81,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ url }) => {
       });
     });
 
-    function onPlayerReady(event: any) {
-      console.log("Player ready");
-    }
+    function onPlayerReady(event: any) {}
 
-    function onPlayerStateChange(event: any) {
-      console.log("Player state changed to:", event.data);
-    }
+    function onPlayerStateChange(event: any) {}
 
     return () => {
       cancelled = true;
