@@ -1,4 +1,4 @@
-import { Event } from "nostr-tools";
+import { Event, nip57 } from "nostr-tools";
 
 export type ParsedNotification = {
     type: "poll-response" | "comment" | "reaction" | "zap" | "unknown";
@@ -48,37 +48,34 @@ export function parseNotification(ev: Event): ParsedNotification {
 
     // ZAP
     if (ev.kind === 9735) {
-        // console.log("Parsing zap event", ev);
         let sats: number | null = null;
+        const bolt11Tag = ev.tags.find((t) => t[0] === "bolt11")?.[1];
         const requestEvent = ev.tags.find((t) => t[0] === "description")?.[1];
-        let reqObj: Event | null = null;
-        if (requestEvent) {
-            try {
-                reqObj = JSON.parse(requestEvent) as Event;
-                sats = reqObj.tags.find((t) => t[0] === "amount")
-                    ? parseInt(reqObj?.tags.find((t) => t[0] === "amount")![1], 10) / 1000
-                    : null;
-                return {
-                    type: "zap",
-                    sats,
-                    fromPubkey: reqObj!.pubkey,
-                }
 
+        if (bolt11Tag) {
+            try {
+                sats = nip57.getSatoshisAmountFromBolt11(bolt11Tag);
             } catch (e) {
-                console.log("Failed to parse zap request event", e, ev);
-                return {
-                    type: "unknown",
-                    fromPubkey,
-                }// ignore
+                console.log("Failed to parse bolt11 invoice", e, ev);
             }
         }
-        else {
-            console.log("Failed to parse zap request event", ev);
-            return {
-                type: "unknown",
-                fromPubkey,
-            }//
+
+        // Get sender pubkey from the zap request
+        let senderPubkey = fromPubkey;
+        if (requestEvent) {
+            try {
+                const reqObj = JSON.parse(requestEvent) as Event;
+                senderPubkey = reqObj.pubkey;
+            } catch (e) {
+                console.log("Failed to parse zap request event", e, ev);
+            }
         }
+
+        return {
+            type: "zap",
+            sats,
+            fromPubkey: senderPubkey,
+        };
     }
 
     return {

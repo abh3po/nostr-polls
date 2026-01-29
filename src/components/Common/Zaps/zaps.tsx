@@ -11,6 +11,7 @@ import { styled } from "@mui/system";
 import { getColorsWithTheme } from "../../../styles/theme";
 import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
+import ZapModal from "./ZapModal";
 
 interface ZapProps {
   pollEvent: Event;
@@ -26,10 +27,13 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const { fetchZapsThrottled, zapsMap, profiles } = useAppContext();
   const { user } = useUserContext();
   const [hasZapped, setHasZapped] = useState<boolean>(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const { showNotification } = useNotification();
   const { relays } = useRelays();
+
+  const recipient = profiles?.get(pollEvent.pubkey);
+
   useEffect(() => {
-    // Fetch existing zaps for the poll event
     const fetchZaps = async () => {
       if (!zapsMap?.get(pollEvent.id)) {
         fetchZapsThrottled(pollEvent.id);
@@ -47,14 +51,11 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   const getTotalZaps = () => {
     let amount = 0;
     zapsMap?.get(pollEvent.id)?.forEach((e) => {
-      let zapRequestTag = e.tags.find((t) => t[0] === "description");
-      if (zapRequestTag && zapRequestTag[1]) {
+      const bolt11Tag = e.tags.find((t) => t[0] === "bolt11");
+      if (bolt11Tag && bolt11Tag[1]) {
         try {
-          const zapRequest = JSON.parse(zapRequestTag[1]);
-          let requestAmount =
-            zapRequest.tags.find((t: any) => t[0] === "amount")?.[1] / 1000 ||
-            0;
-          amount += requestAmount;
+          const sats = nip57.getSatoshisAmountFromBolt11(bolt11Tag[1]);
+          amount += sats || 0;
         } catch (e) {
           return;
         }
@@ -63,46 +64,56 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
     return amount.toString();
   };
 
-  const sendZap = async () => {
+  const handleZapClick = () => {
     if (!user) {
       showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_ZAP, "warning");
       return;
     }
-    let recipient = profiles?.get(pollEvent.pubkey);
     if (!recipient) {
       showNotification(NOTIFICATION_MESSAGES.RECIPIENT_PROFILE_ERROR, "error");
       return;
     }
-    const zapAmount = prompt("Enter the amount to zap (in satoshis):");
-    if (!zapAmount || isNaN(Number(zapAmount))) {
-      showNotification(NOTIFICATION_MESSAGES.INVALID_AMOUNT, "error");
-      return;
+    setModalOpen(true);
+  };
+
+  const handleZap = async (amount: number): Promise<string | null> => {
+    if (!recipient) {
+      showNotification(NOTIFICATION_MESSAGES.RECIPIENT_PROFILE_ERROR, "error");
+      return null;
     }
 
-    let zapRequestEvent = nip57.makeZapRequest({
-      profile: pollEvent.pubkey,
-      event: pollEvent.id,
-      amount: Number(zapAmount) * 1000,
-      comment: "",
-      relays: relays,
-    });
-    let serializedZapEvent = encodeURI(
-      JSON.stringify(signEvent(zapRequestEvent, user.privateKey))
-    );
-    let zapEndpoint = await nip57.getZapEndpoint(recipient.event);
-    const zaprequestUrl =
-      zapEndpoint +
-      `?amount=${Number(zapAmount) * 1000}&nostr=${serializedZapEvent}`;
-    const paymentRequest = await fetch(zaprequestUrl);
-    const request = await paymentRequest.json();
-    const openAppUrl = "lightning:" + request.pr;
-    window.location.assign(openAppUrl);
-    fetchZapsThrottled(pollEvent.id);
+    try {
+      const zapRequestEvent = nip57.makeZapRequest({
+        profile: pollEvent.pubkey,
+        event: pollEvent.id,
+        amount: amount * 1000,
+        comment: "",
+        relays: relays,
+      });
+      const serializedZapEvent = encodeURI(
+        JSON.stringify(signEvent(zapRequestEvent, user!.privateKey))
+      );
+      const zapEndpoint = await nip57.getZapEndpoint(recipient.event);
+      const zaprequestUrl =
+        zapEndpoint + `?amount=${amount * 1000}&nostr=${serializedZapEvent}`;
+      const paymentRequest = await fetch(zaprequestUrl);
+      const request = await paymentRequest.json();
+      fetchZapsThrottled(pollEvent.id);
+      return request.pr;
+    } catch (error) {
+      console.error("Failed to create zap invoice:", error);
+      showNotification("Failed to create invoice", "error");
+      return null;
+    }
   };
+
+  const recipientName =
+    recipient?.event?.tags?.find((t) => t[0] === "name")?.[1] ||
+    recipient?.event?.tags?.find((t) => t[0] === "display_name")?.[1];
 
   return (
     <Wrapper style={{ marginLeft: 20 }}>
-      <Tooltip onClick={sendZap} title="Send a Zap">
+      <Tooltip onClick={handleZapClick} title="Send a Zap">
         <span
           style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}
         >
@@ -136,6 +147,13 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
           ) : null}
         </span>
       </Tooltip>
+
+      <ZapModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onZap={handleZap}
+        recipientName={recipientName}
+      />
     </Wrapper>
   );
 };
