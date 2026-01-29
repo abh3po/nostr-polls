@@ -24,7 +24,7 @@ const ReactedFeed = () => {
   }, [user, reactedEvents, fetchReactedNotes]);
 
   const sorted = Array.from(reactedEvents.values()).sort(
-    (a, b) => b.created_at - a.created_at
+    (a, b) => b.created_at - a.created_at,
   );
 
   return (
@@ -40,7 +40,6 @@ const ReactedFeed = () => {
           />
         )}
         endReached={() => {
-          console.log("Reached bottom, loading more...");
           fetchReactedNotes();
         }}
         components={{

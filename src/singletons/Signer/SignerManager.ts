@@ -74,10 +74,6 @@ class SignerManager {
     this.signer = signer;
     this.user = userData;
     localStorage.setItem("nip55PackageName", packageName);
-    console.log(
-      "Saved local storage package name",
-      localStorage.getItem("nip55PackageName")
-    );
 
     setUserDataInLocalStorage(userData);
     this.notify();
@@ -99,7 +95,6 @@ class SignerManager {
   }
   async restoreFromStorage() {
     const cachedUser = getUserDataFromLocalStorage();
-    console.log("Got a cached user", cachedUser);
     if (cachedUser) this.user = cachedUser.user;
 
     try {
@@ -114,7 +109,6 @@ class SignerManager {
       const bunkerUri = getBunkerUriInLocalStorage();
       const keys = getKeysFromLocalStorage();
       const nip55PackageName = localStorage.getItem("nip55PackageName");
-      console.log("Got nip55Package name", nip55PackageName);
       if (nip55PackageName) {
         await this.loginWithNip55(nip55PackageName);
       } else if (bunkerUri?.bunkerUri) {
@@ -172,7 +166,7 @@ class SignerManager {
 
   async createGuestAccount(
     privkey: string,
-    userMetadata: { name?: string; picture?: string; about?: string }
+    userMetadata: { name?: string; picture?: string; about?: string },
   ) {
     this.signer = createLocalSigner(privkey);
 

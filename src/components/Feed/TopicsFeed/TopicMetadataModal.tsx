@@ -54,16 +54,14 @@ const TopicMetadataModal: React.FC<Props> = ({ open, onClose, topic }) => {
   });
 
   const handlePublish = async () => {
-    console.log("Publishing")
     const event = {
       kind: 30300,
-      content:  topic,
+      content: topic,
       tags: buildTags(),
       created_at: Math.floor(Date.now() / 1000),
     };
 
     const signed = await signEvent(event);
-    console.log("Signed Event is", signed)
     if (!signed) return;
 
     pool.publish(relays, signed);

@@ -82,18 +82,28 @@ export function ListProvider({ children }: { children: ReactNode }) {
   const handleContactListEvent = async (event: Event) => {
     const follows = await parseContacts(event);
     let a_tag = `${event.kind}:${event.pubkey}`;
-    let pastEvent = lists?.get(a_tag);
-    if (event.created_at > (pastEvent?.created_at || 0)) {
-      setUser({
-        ...user,
-        follows: Array.from(follows),
-      } as User);
-      setLists((prevMap) => {
+
+    setLists((prevMap) => {
+      const pastEvent = prevMap?.get(a_tag);
+      console.log("Did it find past event", pastEvent);
+
+      // Only update if this event is newer than what we have
+      if (event.created_at > (pastEvent?.created_at || 0)) {
+        setUser((prevUser) => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            follows: Array.from(follows),
+          } as User;
+        });
         const newMap = new Map(prevMap);
         newMap.set(a_tag, event);
         return newMap;
-      });
-    }
+      }
+
+      // Return unchanged map if this event is older
+      return prevMap;
+    });
   };
 
   const fetchContacts = () => {
@@ -104,6 +114,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
     };
     nostrRuntime.subscribe(relays, [contactListFilter], {
       onEvent: (event: Event) => {
+        console.log("Got contact event with filter", event, contactListFilter);
         handleContactListEvent(event);
       },
     });
