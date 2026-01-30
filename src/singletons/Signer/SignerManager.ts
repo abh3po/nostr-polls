@@ -20,7 +20,7 @@ import { ANONYMOUS_USER_NAME, User } from "../../contexts/user-context";
 import { pool } from "..";
 import { createLocalSigner } from "./LocalSigner";
 import { isNative } from "../../utils/platform";
-import { getNsec, removeNsec, saveNsec } from "../../utils/secureKeyStorage";
+import { getNsec, removeNsec, saveNsec, getNip55Credentials, saveNip55Credentials, removeNip55Credentials } from "../../utils/secureKeyStorage";
 import { bytesToHex } from "@noble/hashes/utils";
 import { createNIP55Signer } from "./NIP55Signer";
 
@@ -58,10 +58,10 @@ class SignerManager {
     // TODO: Replace with your actual event publish method
   }
 
-  async loginWithNip55(packageName: string) {
-    const signer = createNIP55Signer(packageName);
+  async loginWithNip55(packageName: string, cachedPubkey?: string) {
+    const signer = createNIP55Signer(packageName, cachedPubkey);
 
-    // Step 1: ask Amber for pubkey
+    // Step 1: ask Amber for pubkey (skipped if cachedPubkey provided)
     const pubkey = await signer.getPublicKey();
 
     // Step 2: fetch kind0 profile
@@ -73,7 +73,7 @@ class SignerManager {
     // Step 3: save signer and user
     this.signer = signer;
     this.user = userData;
-    localStorage.setItem("nip55PackageName", packageName);
+    await saveNip55Credentials(packageName, pubkey);
 
     setUserDataInLocalStorage(userData);
     this.notify();
@@ -108,9 +108,12 @@ class SignerManager {
 
       const bunkerUri = getBunkerUriInLocalStorage();
       const keys = getKeysFromLocalStorage();
-      const nip55PackageName = localStorage.getItem("nip55PackageName");
-      if (nip55PackageName) {
-        await this.loginWithNip55(nip55PackageName);
+      const nip55Creds = await getNip55Credentials();
+      if (nip55Creds) {
+        // Use cached pubkey to avoid prompting Amber again
+        console.log("Restoring NIP-55 session with cached pubkey:", nip55Creds.pubkey);
+        await this.loginWithNip55(nip55Creds.packageName, nip55Creds.pubkey);
+        return;
       } else if (bunkerUri?.bunkerUri) {
         await this.loginWithNip46(bunkerUri.bunkerUri);
       } else if (!isNative && window.nostr) {
@@ -120,6 +123,9 @@ class SignerManager {
       }
     } catch (e) {
       console.error("Signer restore failed:", e);
+      // If NIP-55 restore failed, clear credentials so user can re-login properly
+      console.log("Clearing NIP-55 credentials after restore failure");
+      await removeNip55Credentials();
     }
 
     this.notify();
@@ -226,7 +232,7 @@ class SignerManager {
     this.user = userData;
     this.notify();
   }
-  logout() {
+  async logout() {
     this.signer = null;
     this.user = null;
 
@@ -235,7 +241,7 @@ class SignerManager {
     removeBunkerUriFromLocalStorage();
     removeAppSecretFromLocalStorage();
     removeUserDataFromLocalStorage();
-    localStorage.removeItem("nip55PackageName");
+    await removeNip55Credentials();
 
     this.notify();
   }

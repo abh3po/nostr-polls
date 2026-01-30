@@ -21,7 +21,11 @@ import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { useUserContext } from "../../../hooks/useUserContext";
 import useImmersiveScroll from "../../../hooks/useImmersiveScroll";
 
-const MyTopicsFeed = () => {
+interface MyTopicsFeedProps {
+  onNavigateToDiscover?: () => void;
+}
+
+const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
   const { myTopics } = useListContext();
   const { notes, toggleShowAnyway, publishModeration, loading } =
     useMyTopicsFeed(myTopics || new Set());
@@ -39,7 +43,6 @@ const MyTopicsFeed = () => {
   } | null>(null);
 
   if (!user) {
-    // Show login button if user not logged in
     return (
       <Box
         sx={{
@@ -49,11 +52,43 @@ const MyTopicsFeed = () => {
           justifyContent: "center",
           height: "100%",
           mt: 4,
+          gap: 2,
         }}
       >
+        <Typography variant="body1" color="text.secondary">
+          Login to see notes from your interests
+        </Typography>
         <Button variant="contained" onClick={requestLogin}>
-          Login to view your Interests feed
+          Login
         </Button>
+      </Box>
+    );
+  }
+
+  if (!myTopics || myTopics.size === 0) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          mt: 4,
+          gap: 2,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary">
+          You haven't added any interests yet
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Discover topics in the "Recently Rated" tab and add them to your interests
+        </Typography>
+        {onNavigateToDiscover && (
+          <Button variant="contained" onClick={onNavigateToDiscover}>
+            Browse Topics
+          </Button>
+        )}
       </Box>
     );
   }

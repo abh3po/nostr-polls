@@ -8,11 +8,12 @@ import { Notes } from "../Notes";
 
 interface UserNotesFeedProps {
   pubkey: string;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const KIND_NOTE = 1;
 
-const UserNotesFeed: React.FC<UserNotesFeedProps> = ({ pubkey }) => {
+const UserNotesFeed: React.FC<UserNotesFeedProps> = ({ pubkey, scrollContainerRef }) => {
   const [notes, setNotes] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { relays } = useRelays();
@@ -76,16 +77,15 @@ const UserNotesFeed: React.FC<UserNotesFeedProps> = ({ pubkey }) => {
   }
 
   return (
-    <Box sx={{ height: "600px" }}>
-      <Virtuoso
-        data={notes}
-        itemContent={(index, note) => (
-          <Box key={note.id} sx={{ mb: 2 }}>
-            <Notes event={note} />
-          </Box>
-        )}
-      />
-    </Box>
+    <Virtuoso
+      data={notes}
+      customScrollParent={scrollContainerRef?.current ?? undefined}
+      itemContent={(index, note) => (
+        <Box key={note.id} sx={{ mb: 2 }}>
+          <Notes event={note} />
+        </Box>
+      )}
+    />
   );
 };
 

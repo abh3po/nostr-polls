@@ -1,7 +1,7 @@
 // src/features/Notes/components/Feeds/DiscoverFeed.tsx
 
 import { useEffect, useMemo, useRef } from "react";
-import { Button, CircularProgress, Fab } from "@mui/material";
+import { Button, CircularProgress, Fab, Box, Typography } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
 // add:
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -37,23 +37,52 @@ const DiscoverFeed = () => {
       .sort((a, b) => b.latestActivity - a.latestActivity);
   }, [notes]);
 
+  if (!user) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "50vh",
+          gap: 2,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary">
+          Login to see notes from people you follow
+        </Typography>
+        <Button variant="contained" onClick={requestLogin}>
+          Login
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!user.webOfTrust || user.webOfTrust.size === 0) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "50vh",
+          gap: 2,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary">
+          You're not following anyone yet
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Follow people to see your social graph in your discover feed
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <div>
-      {!user ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            margin: 10,
-          }}
-        >
-          <Button variant="contained" onClick={requestLogin}>
-            login to view feed
-          </Button>
-        </div>
-      ) : null}
-
       {loadingMore && (
         <div
           style={{ display: "flex", justifyContent: "center", marginTop: 16 }}

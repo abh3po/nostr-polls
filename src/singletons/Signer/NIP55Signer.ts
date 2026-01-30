@@ -2,15 +2,30 @@ import { EventTemplate, getEventHash, Event, nip19 } from "nostr-tools";
 import { NostrSigner } from "./types";
 import { NostrSignerPlugin } from "nostr-signer-capacitor-plugin";
 
-export function createNIP55Signer(packageName: string): NostrSigner {
-  let cachedPubkey: string | undefined;
+export function createNIP55Signer(
+  packageName: string,
+  initialPubkey?: string
+): NostrSigner {
+  let cachedPubkey: string | undefined = initialPubkey;
+  let packageNameSet = false;
+
+  const ensurePackageNameSet = async () => {
+    if (!packageNameSet) {
+      await NostrSignerPlugin.setPackageName(packageName);
+      packageNameSet = true;
+    }
+  };
 
   return {
     async getPublicKey(): Promise<string> {
-      if (cachedPubkey) return cachedPubkey;
+      if (cachedPubkey) {
+        // Still need to set package name for subsequent operations
+        await ensurePackageNameSet();
+        return cachedPubkey;
+      }
 
       // Set the package in the plugin
-      await NostrSignerPlugin.setPackageName(packageName);
+      await ensurePackageNameSet();
 
       // Get public key from signer
       const { npub } = await NostrSignerPlugin.getPublicKey();
