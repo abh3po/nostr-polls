@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   Typography,
@@ -28,6 +28,7 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { useListContext } from "../../hooks/useListContext";
 import { pool, nostrRuntime } from "../../singletons";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PeopleIcon from "@mui/icons-material/People";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -61,9 +62,13 @@ const ProfilePage: React.FC = () => {
   const [followsYou, setFollowsYou] = useState(false);
   const [showContactListWarning, setShowContactListWarning] = useState(false);
   const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
   const { relays } = useRelays();
   const { user, requestLogin, setUser } = useUserContext();
   const { fetchLatestContactList } = useListContext();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const checkIfFollowsYou = useCallback(async (profilePubkey: string) => {
     if (!user) return;
@@ -104,6 +109,63 @@ const ProfilePage: React.FC = () => {
     }
   }, [user, relays]);
 
+  const fetchFollowerStats = useCallback(async (profilePubkey: string) => {
+    setLoadingFollowers(true);
+
+    try {
+      // Fetch who this profile follows (their contact list)
+      const followingFilter = {
+        kinds: [3],
+        authors: [profilePubkey],
+        limit: 1,
+      };
+
+      let followingEvent: Event | null = null;
+      const followingHandle = nostrRuntime.subscribe(relays, [followingFilter], {
+        onEvent: (event: Event) => {
+          if (!followingEvent || event.created_at > followingEvent.created_at) {
+            followingEvent = event;
+          }
+        },
+      });
+
+      // Fetch who follows this profile (search for contact lists that include this pubkey)
+      const followersFilter = {
+        kinds: [3],
+        "#p": [profilePubkey],
+        limit: 500,
+      };
+
+      const followers = new Set<string>();
+      const followersHandle = nostrRuntime.subscribe(relays, [followersFilter], {
+        onEvent: (event: Event) => {
+          followers.add(event.pubkey);
+        },
+      });
+
+      // Wait for responses
+      setTimeout(() => {
+        followingHandle.unsubscribe();
+        followersHandle.unsubscribe();
+
+        // Count following
+        if (followingEvent) {
+          const followingList = followingEvent.tags.filter((tag) => tag[0] === "p");
+          setFollowingCount(followingList.length);
+        } else {
+          setFollowingCount(0);
+        }
+
+        // Count followers
+        setFollowerCount(followers.size);
+        setLoadingFollowers(false);
+      }, 3000);
+    } catch (err) {
+      console.error("Error fetching follower stats:", err);
+      setLoadingFollowers(false);
+    }
+  }, [relays]);
+
   useEffect(() => {
     const loadProfile = async () => {
       if (!npubOrNprofile) {
@@ -115,6 +177,9 @@ const ProfilePage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
+        setFollowerCount(null);
+        setFollowingCount(null);
+        setFollowsYou(false);
 
         // Decode npub or nprofile to get pubkey
         const decoded = nip19.decode(npubOrNprofile);
@@ -229,7 +294,17 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <Box maxWidth={800} mx="auto" sx={{ px: 2, py: { xs: 2, sm: 4 } }}>
+    <Box
+      ref={scrollContainerRef}
+      maxWidth={800}
+      mx="auto"
+      sx={{
+        px: 2,
+        py: { xs: 2, sm: 4 },
+        height: "100vh",
+        overflowY: "auto",
+      }}
+    >
       {/* Profile Header */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -289,6 +364,37 @@ const ProfilePage: React.FC = () => {
                   Follows you
                 </Typography>
               )}
+              {/* Follower/Following Stats */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  mb: 1,
+                  justifyContent: { xs: "center", sm: "flex-start" },
+                }}
+              >
+                {followerCount !== null && followingCount !== null ? (
+                  <>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>{followerCount}</strong> followers
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>{followingCount}</strong> following
+                    </Typography>
+                  </>
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={loadingFollowers ? <CircularProgress size={16} /> : <PeopleIcon />}
+                    onClick={() => pubkey && fetchFollowerStats(pubkey)}
+                    disabled={loadingFollowers}
+                  >
+                    {loadingFollowers ? "Loading..." : "Load followers"}
+                  </Button>
+                )}
+              </Box>
               {profile?.nip05 && (
                 <Typography
                   variant="body2"
@@ -329,13 +435,13 @@ const ProfilePage: React.FC = () => {
 
       {/* Tab Content */}
       <TabPanel value={tabValue} index={0}>
-        <UserPollsFeed pubkey={pubkey} />
+        <UserPollsFeed pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
       </TabPanel>
       <TabPanel value={tabValue} index={1}>
-        <UserNotesFeed pubkey={pubkey} />
+        <UserNotesFeed pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
       </TabPanel>
       <TabPanel value={tabValue} index={2}>
-        <UserRatingsGiven pubkey={pubkey} />
+        <UserRatingsGiven pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
       </TabPanel>
 
       <Dialog

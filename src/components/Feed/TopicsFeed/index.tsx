@@ -231,32 +231,57 @@ const TopicsFeed: React.FC = () => {
 
       <Box sx={{ flexGrow: 1, minHeight: 0 }}>
         {activeTab === "interests" ? (
-          // MyTopicsFeed handles its own loading & empty states internally
-          <MyTopicsFeed />
+          <MyTopicsFeed onNavigateToDiscover={() => setActiveTab("discover")} />
         ) : loading && activeTab === "discover" ? (
           // Loading state for discover tab
           <Box display="flex" justifyContent="center" py={6}>
             <CircularProgress />
           </Box>
         ) : displayTags.length === 0 ? (
-          // Empty state for discover / myTopics
-          <Typography>
-            {activeTab === "discover"
-              ? "No topics found yet."
-              : (() => {
-                  if (!user)
-                    return (
-                      <Button
-                        variant="contained"
-                        onClick={requestLogin}
-                        style={{ padding: 10, margin: 20 }}
-                      >
-                        Login to see your topics
-                      </Button>
-                    );
-                  return <div>"No topics added yet."</div>;
-                })()}
-          </Typography>
+          activeTab === "discover" ? (
+            <Typography color="text.secondary" sx={{ textAlign: "center", mt: 4 }}>
+              No topics found yet.
+            </Typography>
+          ) : !user ? (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                mt: 4,
+                gap: 2,
+              }}
+            >
+              <Typography variant="body1" color="text.secondary">
+                Login to see your interests
+              </Typography>
+              <Button variant="contained" onClick={requestLogin}>
+                Login
+              </Button>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                mt: 4,
+                gap: 2,
+              }}
+            >
+              <Typography variant="body1" color="text.secondary">
+                You haven't added any interests yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Discover topics in the "Recently Rated" tab and add them to your interests
+              </Typography>
+              <Button variant="contained" onClick={() => setActiveTab("discover")}>
+                Browse Topics
+              </Button>
+            </Box>
+          )
         ) : (
           // Show list of topic cards for discover / myTopics
           <Virtuoso

@@ -8,11 +8,12 @@ import ReviewCard from "../Ratings/ReviewCard";
 
 interface UserRatingsGivenProps {
   pubkey: string;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const KIND_RATING = 34259;
 
-const UserRatingsGiven: React.FC<UserRatingsGivenProps> = ({ pubkey }) => {
+const UserRatingsGiven: React.FC<UserRatingsGivenProps> = ({ pubkey, scrollContainerRef }) => {
   const [ratings, setRatings] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { relays } = useRelays();
@@ -76,16 +77,15 @@ const UserRatingsGiven: React.FC<UserRatingsGivenProps> = ({ pubkey }) => {
   }
 
   return (
-    <Box sx={{ height: "600px" }}>
-      <Virtuoso
-        data={ratings}
-        itemContent={(index, rating) => (
-          <Box key={rating.id} sx={{ mb: 2 }}>
-            <ReviewCard event={rating} />
-          </Box>
-        )}
-      />
-    </Box>
+    <Virtuoso
+      data={ratings}
+      customScrollParent={scrollContainerRef?.current ?? undefined}
+      itemContent={(index, rating) => (
+        <Box key={rating.id} sx={{ mb: 2 }}>
+          <ReviewCard event={rating} />
+        </Box>
+      )}
+    />
   );
 };
 

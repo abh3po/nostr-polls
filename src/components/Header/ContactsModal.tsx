@@ -3,22 +3,25 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Avatar,
   IconButton,
   Typography,
   Box,
   CircularProgress,
+  Card,
+  CardContent,
+  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useAppContext } from "../../hooks/useAppContext";
+import { useListContext } from "../../hooks/useListContext";
+import { useRelays } from "../../hooks/useRelays";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
-import { nip19 } from "nostr-tools";
+import { EventTemplate, nip19 } from "nostr-tools";
 import { useNavigate } from "react-router-dom";
+import { signEvent } from "../../nostr";
+import { pool } from "../../singletons";
 
 interface ContactsModalProps {
   open: boolean;
@@ -29,15 +32,17 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
   open,
   onClose,
 }) => {
-  const { user } = useUserContext();
+  const { user, setUser } = useUserContext();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
+  const { fetchLatestContactList } = useListContext();
+  const { relays } = useRelays();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [unfollowingPubkey, setUnfollowingPubkey] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && user?.follows) {
       setLoading(true);
-      // Fetch profiles for all follows
       user.follows.forEach((pubkey) => {
         if (!profiles?.has(pubkey)) {
           fetchUserProfileThrottled(pubkey);
@@ -52,6 +57,42 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
     const npub = nip19.npubEncode(pubkey);
     navigate(`/profile/${npub}`);
     onClose();
+  };
+
+  const handleUnfollow = async (pubkeyToRemove: string) => {
+    if (!user) return;
+
+    setUnfollowingPubkey(pubkeyToRemove);
+
+    try {
+      const contactEvent = await fetchLatestContactList();
+      const existingTags = contactEvent?.tags || [];
+      const updatedTags = existingTags.filter(
+        ([t, pk]) => !(t === "p" && pk === pubkeyToRemove)
+      );
+
+      const newEvent: EventTemplate = {
+        kind: 3,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: updatedTags,
+        content: contactEvent?.content || "",
+      };
+
+      const signed = await signEvent(newEvent);
+      pool.publish(relays, signed);
+
+      const updatedFollows = (user.follows || []).filter(
+        (pk) => pk !== pubkeyToRemove
+      );
+      setUser({
+        ...user,
+        follows: updatedFollows,
+      });
+    } catch (error) {
+      console.error("Failed to unfollow:", error);
+    } finally {
+      setUnfollowingPubkey(null);
+    }
   };
 
   if (!user || !user.follows) {
@@ -92,7 +133,7 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
         ) : user.follows.length === 0 ? (
           <Typography>You don't follow anyone yet.</Typography>
         ) : (
-          <List>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {user.follows.map((pubkey) => {
               const profile = profiles?.get(pubkey);
               const npub = nip19.npubEncode(pubkey);
@@ -103,25 +144,72 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
                 `${npub.slice(0, 8)}...${npub.slice(-4)}`;
 
               return (
-                <ListItem
-                  key={pubkey}
-                  onClick={() => handleContactClick(pubkey)}
-                  sx={{ cursor: "pointer" }}
-                >
-                  <ListItemAvatar>
+                <Card key={pubkey} variant="outlined">
+                  <CardContent
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      py: 1.5,
+                      "&:last-child": { pb: 1.5 },
+                    }}
+                  >
                     <Avatar
                       src={profile?.picture || DEFAULT_IMAGE_URL}
                       alt={displayName}
+                      sx={{ cursor: "pointer" }}
+                      onClick={() => handleContactClick(pubkey)}
                     />
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={displayName}
-                    secondary={profile?.nip05 || null}
-                  />
-                </ListItem>
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleContactClick(pubkey)}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 500,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {displayName}
+                      </Typography>
+                      {profile?.nip05 && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {profile.nip05}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      disabled={unfollowingPubkey === pubkey}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUnfollow(pubkey);
+                      }}
+                    >
+                      {unfollowingPubkey === pubkey ? "..." : "Unfollow"}
+                    </Button>
+                  </CardContent>
+                </Card>
               );
             })}
-          </List>
+          </Box>
         )}
       </DialogContent>
     </Dialog>

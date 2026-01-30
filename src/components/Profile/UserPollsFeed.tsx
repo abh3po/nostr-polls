@@ -8,11 +8,12 @@ import PollResponseForm from "../PollResponse/PollResponseForm";
 
 interface UserPollsFeedProps {
   pubkey: string;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const KIND_POLL = 1068;
 
-const UserPollsFeed: React.FC<UserPollsFeedProps> = ({ pubkey }) => {
+const UserPollsFeed: React.FC<UserPollsFeedProps> = ({ pubkey, scrollContainerRef }) => {
   const [polls, setPolls] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { relays } = useRelays();
@@ -76,18 +77,17 @@ const UserPollsFeed: React.FC<UserPollsFeedProps> = ({ pubkey }) => {
   }
 
   return (
-    <Box sx={{ height: "600px" }}>
-      <Virtuoso
-        data={polls}
-        itemContent={(index, poll) => (
-          <Box key={poll.id} sx={{ mb: 2 }}>
-            <PollResponseForm
-              pollEvent={poll}
-            />
-          </Box>
-        )}
-      />
-    </Box>
+    <Virtuoso
+      data={polls}
+      customScrollParent={scrollContainerRef?.current ?? undefined}
+      itemContent={(index, poll) => (
+        <Box key={poll.id} sx={{ mb: 2 }}>
+          <PollResponseForm
+            pollEvent={poll}
+          />
+        </Box>
+      )}
+    />
   );
 };
 
