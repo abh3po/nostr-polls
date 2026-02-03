@@ -25,6 +25,7 @@ import { MetadataProvider } from "./hooks/MetadataProvider";
 import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
 import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
+import { DMProvider } from "./contexts/dm-context";
 
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material";
@@ -40,6 +41,9 @@ import TopicsFeed from "./components/Feed/TopicsFeed";
 import TopicExplorer from "./components/Feed/TopicsFeed/TopicsExplorerFeed";
 import FeedsLayout from "./components/Feed/FeedsLayout";
 import ProfilePage from "./components/Profile/ProfilePage";
+import ConversationList from "./components/Messages/ConversationList";
+import ChatView from "./components/Messages/ChatView";
+import NewConversation from "./components/Messages/NewConversation";
 
 declare global {
   interface Window {
@@ -72,6 +76,7 @@ const App: React.FC = () => {
         <AppContextProvider>
           <UserProvider>
             <RelayProvider>
+              <DMProvider>
               <NostrNotificationsProvider>
                 <ListProvider>
                   <RatingProvider>
@@ -101,6 +106,9 @@ const App: React.FC = () => {
                             path="/result/:eventId"
                             element={<PollResults />}
                           />
+                          <Route path="/messages" element={<ConversationList />} />
+                          <Route path="/messages/new" element={<NewConversation />} />
+                          <Route path="/messages/:npub" element={<ChatView />} />
                           <Route path="/ratings" element={<EventList />} />
 
                           <Route path="/feeds" element={<FeedsLayout />}>
@@ -133,6 +141,7 @@ const App: React.FC = () => {
                   </RatingProvider>
                 </ListProvider>
               </NostrNotificationsProvider>
+              </DMProvider>
             </RelayProvider>
           </UserProvider>
         </AppContextProvider>

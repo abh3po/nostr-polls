@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Tabs, Tab, useMediaQuery, useTheme } from "@mui/material";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import CreateFAB from "./CreateFAB";
 
 const feedOptions = [
   { value: "polls", label: "Polls" },
@@ -47,6 +48,7 @@ const FeedsLayout: React.FC = () => {
 
       {/* Renders the selected feed component here */}
       <Outlet />
+      <CreateFAB />
     </Box>
   );
 };

@@ -1,11 +1,13 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Button } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, IconButton, Badge } from "@mui/material";
 import { styled } from "@mui/system";
+import MailIcon from "@mui/icons-material/Mail";
 import logo from "../../Images/logo.svg";
 import { UserMenu } from "./UserMenu";
 import { useNavigate } from "react-router-dom";
 import { getColorsWithTheme } from "../../styles/theme";
 import { NotificationBell } from "./NotificationBell";
+import { useDMContext } from "../../hooks/useDMContext";
 
 const StyledAppBar = styled(AppBar)(({ theme }) => {
   return {
@@ -38,6 +40,7 @@ const LogoAndTitle = styled("div")({
 
 const Header: React.FC = () => {
   let navigate = useNavigate();
+  const { unreadTotal } = useDMContext();
 
   return (
     <StyledAppBar position="static">
@@ -51,10 +54,12 @@ const Header: React.FC = () => {
           </LogoAndTitle>
         </HeaderCenterSection>
         <HeaderRightSection>
-          <NotificationBell />  
-          <Button variant="contained" onClick={() => navigate("/create")}>
-            <Typography>Create</Typography>
-          </Button>
+          <NotificationBell />
+          <IconButton color="inherit" onClick={() => navigate("/messages")} sx={{ mr: 1 }}>
+            <Badge badgeContent={unreadTotal} color="primary" invisible={unreadTotal === 0}>
+              <MailIcon />
+            </Badge>
+          </IconButton>
           <UserMenu />
         </HeaderRightSection>
       </Toolbar>

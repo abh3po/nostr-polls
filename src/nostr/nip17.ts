@@ -1,0 +1,341 @@
+import {
+  Event,
+  EventTemplate,
+  UnsignedEvent,
+  nip44,
+  generateSecretKey,
+  getPublicKey,
+  finalizeEvent,
+} from "nostr-tools";
+import { hexToBytes, bytesToHex } from "@noble/hashes/utils";
+import { sha256 } from "@noble/hashes/sha256";
+import { defaultRelays } from "./index";
+import { pool, nostrRuntime } from "../singletons";
+import { signerManager } from "../singletons/Signer/SignerManager";
+
+// A rumor is an unsigned event with an id
+export type Rumor = UnsignedEvent & { id: string };
+
+/**
+ * Fetch inbox relays (kind 10050) for a pubkey.
+ * Falls back to wss://relay.damus.io/ if none found.
+ */
+export async function fetchInboxRelays(pubkey: string): Promise<string[]> {
+  try {
+    const event = await nostrRuntime.fetchOne(defaultRelays, {
+      kinds: [10050],
+      authors: [pubkey],
+    });
+
+    if (event) {
+      const relays = event.tags
+        .filter((t) => t[0] === "relay")
+        .map((t) => t[1]);
+      if (relays.length > 0) return relays;
+    }
+  } catch (e) {
+    console.error("Error fetching inbox relays:", e);
+  }
+
+  return ["wss://relay.damus.io/"];
+}
+
+/**
+ * Publish kind 10050 inbox relay list for the current user.
+ */
+export async function publishInboxRelays(relays: string[]): Promise<void> {
+  const signer = await signerManager.getSigner();
+  const event: EventTemplate = {
+    kind: 10050,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: relays.map((r) => ["relay", r]),
+    content: "",
+  };
+  const signed = await signer.signEvent(event);
+  pool.publish(defaultRelays, signed);
+}
+
+/**
+ * Generate a random timestamp within the past 2 days per NIP-59.
+ */
+function randomTimestamp(): number {
+  const twoDays = 2 * 24 * 60 * 60;
+  return Math.floor(Date.now() / 1000) - Math.floor(Math.random() * twoDays);
+}
+
+/**
+ * Compute a deterministic rumor ID from an unsigned event.
+ */
+function computeRumorId(rumor: UnsignedEvent): string {
+  const serialized = JSON.stringify([
+    0,
+    rumor.pubkey,
+    rumor.created_at,
+    rumor.kind,
+    rumor.tags,
+    rumor.content,
+  ]);
+  return bytesToHex(sha256(new TextEncoder().encode(serialized)));
+}
+
+/**
+ * Create a rumor (unsigned kind 14 DM event).
+ */
+function createRumor(
+  senderPubkey: string,
+  recipientPubkey: string,
+  content: string,
+  replyToId?: string
+): Rumor {
+  const tags: string[][] = [["p", recipientPubkey]];
+  if (replyToId) {
+    tags.push(["e", replyToId, "", "reply"]);
+  }
+
+  const unsigned: UnsignedEvent = {
+    kind: 14,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content,
+    pubkey: senderPubkey,
+  };
+
+  return {
+    ...unsigned,
+    id: computeRumorId(unsigned),
+  };
+}
+
+/**
+ * Create a gift wrap with a local private key (LocalSigner path).
+ * Implements NIP-59: rumor -> seal (kind 13) -> gift wrap (kind 1059).
+ */
+function createGiftWrapLocal(
+  senderPrivkey: Uint8Array,
+  rumor: Rumor,
+  recipientPubkey: string
+): Event {
+  // Step 1: Create seal (kind 13) - encrypt rumor with sender's key for recipient
+  const rumorJson = JSON.stringify(rumor);
+  const sealConvKey = nip44.getConversationKey(senderPrivkey, recipientPubkey);
+  const encryptedRumor = nip44.encrypt(rumorJson, sealConvKey);
+
+  const sealEvent: UnsignedEvent = {
+    kind: 13,
+    created_at: randomTimestamp(),
+    tags: [],
+    content: encryptedRumor,
+    pubkey: getPublicKey(senderPrivkey),
+  };
+  const seal = finalizeEvent(sealEvent, senderPrivkey);
+
+  // Step 2: Create gift wrap (kind 1059) with ephemeral key
+  const ephemeralKey = generateSecretKey();
+  const ephemeralPubkey = getPublicKey(ephemeralKey);
+
+  const sealJson = JSON.stringify(seal);
+  const wrapConvKey = nip44.getConversationKey(ephemeralKey, recipientPubkey);
+  const encryptedSeal = nip44.encrypt(sealJson, wrapConvKey);
+
+  const wrapEvent: UnsignedEvent = {
+    kind: 1059,
+    created_at: randomTimestamp(),
+    tags: [["p", recipientPubkey]],
+    content: encryptedSeal,
+    pubkey: ephemeralPubkey,
+  };
+
+  return finalizeEvent(wrapEvent, ephemeralKey);
+}
+
+/**
+ * Create a gift wrap using external signer for seal, ephemeral key for wrap.
+ */
+async function createGiftWrapForSigner(
+  signer: {
+    signEvent: (e: EventTemplate) => Promise<Event>;
+    nip44Encrypt?: (pk: string, txt: string) => Promise<string>;
+  },
+  rumor: Rumor,
+  recipientPubkey: string
+): Promise<Event> {
+  if (!signer.nip44Encrypt) {
+    throw new Error("Signer does not support NIP-44 encryption");
+  }
+
+  // Step 1: Encrypt rumor content into a seal
+  const rumorJson = JSON.stringify(rumor);
+  const encryptedRumor = await signer.nip44Encrypt(recipientPubkey, rumorJson);
+
+  // Step 2: Create and sign the seal (kind 13)
+  const sealTemplate: EventTemplate = {
+    kind: 13,
+    created_at: randomTimestamp(),
+    tags: [],
+    content: encryptedRumor,
+  };
+  const seal = await signer.signEvent(sealTemplate);
+
+  // Step 3: Create gift wrap with ephemeral key (kind 1059)
+  const ephemeralKey = generateSecretKey();
+  const ephemeralPubkey = getPublicKey(ephemeralKey);
+
+  const sealJson = JSON.stringify(seal);
+  const conversationKey = nip44.getConversationKey(
+    ephemeralKey,
+    recipientPubkey
+  );
+  const encryptedSeal = nip44.encrypt(sealJson, conversationKey);
+
+  const wrapTemplate: UnsignedEvent = {
+    kind: 1059,
+    created_at: randomTimestamp(),
+    tags: [["p", recipientPubkey]],
+    content: encryptedSeal,
+    pubkey: ephemeralPubkey,
+  };
+
+  return finalizeEvent(wrapTemplate, ephemeralKey);
+}
+
+/**
+ * Unwrap a gift wrap (kind 1059) locally with a private key.
+ */
+function unwrapGiftWrapLocal(
+  wrap: Event,
+  recipientPrivkey: Uint8Array
+): Rumor {
+  // Step 1: Decrypt the gift wrap to get the seal
+  const wrapConvKey = nip44.getConversationKey(recipientPrivkey, wrap.pubkey);
+  const sealJson = nip44.decrypt(wrap.content, wrapConvKey);
+  const seal: Event = JSON.parse(sealJson);
+
+  // Step 2: Decrypt the seal to get the rumor
+  const sealConvKey = nip44.getConversationKey(recipientPrivkey, seal.pubkey);
+  const rumorJson = nip44.decrypt(seal.content, sealConvKey);
+  const rumor: Rumor = JSON.parse(rumorJson);
+
+  return rumor;
+}
+
+/**
+ * Wrap and send a DM using NIP-17 protocol.
+ * Handles both LocalSigner (has privateKey) and external signer paths.
+ */
+export async function wrapAndSendDM(
+  recipientPubkey: string,
+  content: string,
+  privateKey?: string,
+  replyToId?: string
+): Promise<Rumor> {
+  const signer = await signerManager.getSigner();
+  const senderPubkey = await signer.getPublicKey();
+
+  // Fetch inbox relays for both parties
+  const [recipientInbox, senderInbox] = await Promise.all([
+    fetchInboxRelays(recipientPubkey),
+    fetchInboxRelays(senderPubkey),
+  ]);
+
+  // Create the rumor (unsigned kind 14)
+  const rumor = createRumor(
+    senderPubkey,
+    recipientPubkey,
+    content,
+    replyToId
+  );
+
+  if (privateKey) {
+    // LocalSigner path: use direct crypto with private key
+    const privkeyBytes = hexToBytes(privateKey);
+
+    const wrapForRecipient = createGiftWrapLocal(
+      privkeyBytes,
+      rumor,
+      recipientPubkey
+    );
+    const wrapForSender = createGiftWrapLocal(
+      privkeyBytes,
+      rumor,
+      senderPubkey
+    );
+
+    pool.publish(recipientInbox, wrapForRecipient);
+    pool.publish(senderInbox, wrapForSender);
+  } else {
+    // External signer path: manually construct seal + wrap
+    if (!signer.nip44Encrypt) {
+      throw new Error(
+        "Your signer does not support NIP-44 encryption, which is required for DMs."
+      );
+    }
+
+    const recipientWrap = await createGiftWrapForSigner(
+      signer,
+      rumor,
+      recipientPubkey
+    );
+    pool.publish(recipientInbox, recipientWrap);
+
+    const senderWrap = await createGiftWrapForSigner(
+      signer,
+      rumor,
+      senderPubkey
+    );
+    pool.publish(senderInbox, senderWrap);
+  }
+
+  return rumor;
+}
+
+/**
+ * Unwrap a gift wrap (kind 1059) to extract the rumor.
+ * Handles both LocalSigner and external signer paths.
+ */
+export async function unwrapGiftWrap(
+  wrap: Event,
+  privateKey?: string
+): Promise<Rumor | null> {
+  try {
+    if (privateKey) {
+      // LocalSigner path: direct decryption with private key
+      const privkeyBytes = hexToBytes(privateKey);
+      const rumor = unwrapGiftWrapLocal(wrap, privkeyBytes);
+      return rumor;
+    } else {
+      // External signer path: manual decryption via signer
+      const signer = await signerManager.getSigner();
+      if (!signer.nip44Decrypt) {
+        throw new Error("Signer does not support NIP-44 decryption");
+      }
+
+      // Step 1: Decrypt the gift wrap to get the seal
+      const sealJson = await signer.nip44Decrypt(wrap.pubkey, wrap.content);
+      const seal: Event = JSON.parse(sealJson);
+
+      // Step 2: Decrypt the seal to get the rumor
+      const rumorJson = await signer.nip44Decrypt(seal.pubkey, seal.content);
+      const rumor: Rumor = JSON.parse(rumorJson);
+
+      // Verify seal.pubkey matches rumor.pubkey
+      if (seal.pubkey !== rumor.pubkey) {
+        console.warn("Seal pubkey does not match rumor pubkey, discarding");
+        return null;
+      }
+
+      return rumor;
+    }
+  } catch (e) {
+    console.error("Failed to unwrap gift wrap:", e);
+    return null;
+  }
+}
+
+/**
+ * Compute a conversation ID from participant pubkeys.
+ * Sorts all participants and joins with "+".
+ */
+export function getConversationId(myPubkey: string, pTags: string[]): string {
+  const participants = Array.from(new Set([myPubkey, ...pTags]));
+  return participants.sort().join("+");
+}
