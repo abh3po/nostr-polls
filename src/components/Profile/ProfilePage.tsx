@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Typography,
   Box,
@@ -29,6 +29,7 @@ import { useListContext } from "../../hooks/useListContext";
 import { pool, nostrRuntime } from "../../singletons";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleIcon from "@mui/icons-material/People";
+import MailIcon from "@mui/icons-material/Mail";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -69,6 +70,7 @@ const ProfilePage: React.FC = () => {
   const { user, requestLogin, setUser } = useUserContext();
   const { fetchLatestContactList } = useListContext();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const checkIfFollowsYou = useCallback(async (profilePubkey: string) => {
     if (!user) return;
@@ -352,6 +354,16 @@ const ProfilePage: React.FC = () => {
                         {followsYou ? "Follow Back" : "Follow"}
                       </Button>
                     )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<MailIcon />}
+                      onClick={() =>
+                        navigate(`/messages/${nip19.npubEncode(pubkey)}`)
+                      }
+                    >
+                      Message
+                    </Button>
                   </>
                 )}
               </Box>

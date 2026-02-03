@@ -1,0 +1,273 @@
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Event } from "nostr-tools";
+import { useUserContext } from "../hooks/useUserContext";
+import { nostrRuntime } from "../singletons";
+import {
+  fetchInboxRelays,
+  unwrapGiftWrap,
+  wrapAndSendDM,
+  getConversationId,
+  Rumor,
+} from "../nostr/nip17";
+import { defaultRelays } from "../nostr";
+
+export interface DMMessage {
+  id: string; // rumor id
+  wrapId: string; // gift wrap event id (for dedup/cache key)
+  pubkey: string; // sender pubkey
+  content: string;
+  created_at: number;
+  tags: string[][];
+}
+
+export interface Conversation {
+  id: string; // conversationId (sorted pubkeys joined with +)
+  participants: string[];
+  messages: DMMessage[];
+  lastMessageAt: number;
+  unreadCount: number;
+}
+
+interface DMContextInterface {
+  conversations: Map<string, Conversation>;
+  sendMessage: (
+    recipientPubkey: string,
+    content: string,
+    replyToId?: string
+  ) => Promise<void>;
+  markAsRead: (conversationId: string) => void;
+  unreadTotal: number;
+  loading: boolean;
+}
+
+export const DMContext = createContext<DMContextInterface | null>(null);
+
+const CACHE_PREFIX = "dm_cache_";
+const LAST_SEEN_PREFIX = "dm_lastseen_";
+
+function getCachedRumor(wrapId: string): DMMessage | null {
+  try {
+    const cached = localStorage.getItem(CACHE_PREFIX + wrapId);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedRumor(wrapId: string, msg: DMMessage): void {
+  try {
+    localStorage.setItem(CACHE_PREFIX + wrapId, JSON.stringify(msg));
+  } catch {
+    // localStorage full, ignore
+  }
+}
+
+function getLastSeen(conversationId: string): number {
+  try {
+    const ts = localStorage.getItem(LAST_SEEN_PREFIX + conversationId);
+    return ts ? parseInt(ts, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setLastSeen(conversationId: string, timestamp: number): void {
+  try {
+    localStorage.setItem(LAST_SEEN_PREFIX + conversationId, String(timestamp));
+  } catch {
+    // ignore
+  }
+}
+
+export function DMProvider({ children }: { children: ReactNode }) {
+  const { user } = useUserContext();
+  const [conversations, setConversations] = useState<Map<string, Conversation>>(
+    new Map()
+  );
+  const [loading, setLoading] = useState(false);
+  const seenRumorIds = useRef<Set<string>>(new Set());
+  const subRef = useRef<{ unsubscribe: () => void } | null>(null);
+
+  const addMessage = useCallback(
+    (rumor: Rumor, wrapId: string, myPubkey: string) => {
+      // Dedup by rumor.id
+      if (seenRumorIds.current.has(rumor.id)) return;
+      seenRumorIds.current.add(rumor.id);
+
+      const pTags = rumor.tags
+        .filter((t) => t[0] === "p")
+        .map((t) => t[1]);
+      const conversationId = getConversationId(myPubkey, pTags);
+      const participants = conversationId.split("+");
+
+      const msg: DMMessage = {
+        id: rumor.id,
+        wrapId,
+        pubkey: rumor.pubkey,
+        content: rumor.content,
+        created_at: rumor.created_at,
+        tags: rumor.tags,
+      };
+
+      // Cache decrypted message
+      setCachedRumor(wrapId, msg);
+
+      setConversations((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(conversationId);
+        const lastSeen = getLastSeen(conversationId);
+
+        if (existing) {
+          // Check if message already exists
+          if (existing.messages.some((m) => m.id === rumor.id)) return prev;
+
+          const updatedMessages = [...existing.messages, msg].sort(
+            (a, b) => a.created_at - b.created_at
+          );
+          const isUnread =
+            rumor.pubkey !== myPubkey && rumor.created_at > lastSeen;
+          next.set(conversationId, {
+            ...existing,
+            messages: updatedMessages,
+            lastMessageAt: Math.max(existing.lastMessageAt, rumor.created_at),
+            unreadCount: existing.unreadCount + (isUnread ? 1 : 0),
+          });
+        } else {
+          const isUnread =
+            rumor.pubkey !== myPubkey && rumor.created_at > lastSeen;
+          next.set(conversationId, {
+            id: conversationId,
+            participants,
+            messages: [msg],
+            lastMessageAt: rumor.created_at,
+            unreadCount: isUnread ? 1 : 0,
+          });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // Subscribe to incoming gift wraps
+  useEffect(() => {
+    if (!user) {
+      setConversations(new Map());
+      seenRumorIds.current.clear();
+      subRef.current?.unsubscribe();
+      subRef.current = null;
+      return;
+    }
+
+    const myPubkey = user.pubkey;
+    const privateKey = user.privateKey;
+
+    const startSubscription = async () => {
+      setLoading(true);
+
+      const inboxRelays = await fetchInboxRelays(myPubkey);
+      // Use both inbox relays and default relays to catch messages
+      const relaysToUse = Array.from(new Set([...inboxRelays, ...defaultRelays]));
+
+      const handle = nostrRuntime.subscribe(
+        relaysToUse,
+        [{ kinds: [1059], "#p": [myPubkey] }],
+        {
+          onEvent: async (event: Event) => {
+            // Check cache first
+            const cached = getCachedRumor(event.id);
+            if (cached) {
+              // Reconstruct rumor-like object from cache
+              const fakeRumor: Rumor = {
+                id: cached.id,
+                pubkey: cached.pubkey,
+                content: cached.content,
+                created_at: cached.created_at,
+                tags: cached.tags,
+                kind: 14,
+              };
+              addMessage(fakeRumor, event.id, myPubkey);
+              return;
+            }
+
+            // Decrypt the gift wrap
+            const rumor = await unwrapGiftWrap(event, privateKey);
+            if (rumor) {
+              addMessage(rumor, event.id, myPubkey);
+            }
+          },
+          onEose: () => {
+            setLoading(false);
+          },
+        }
+      );
+
+      subRef.current = handle;
+    };
+
+    startSubscription();
+
+    return () => {
+      subRef.current?.unsubscribe();
+      subRef.current = null;
+    };
+  }, [user, addMessage]);
+
+  const sendMessage = useCallback(
+    async (
+      recipientPubkey: string,
+      content: string,
+      replyToId?: string
+    ) => {
+      if (!user) throw new Error("Must be logged in to send DMs");
+
+      const rumor = await wrapAndSendDM(
+        recipientPubkey,
+        content,
+        user.privateKey,
+        replyToId
+      );
+
+      // Optimistically add to state
+      addMessage(rumor, `local_${rumor.id}`, user.pubkey);
+    },
+    [user, addMessage]
+  );
+
+  const markAsRead = useCallback(
+    (conversationId: string) => {
+      const now = Math.floor(Date.now() / 1000);
+      setLastSeen(conversationId, now);
+
+      setConversations((prev) => {
+        const next = new Map(prev);
+        const conv = next.get(conversationId);
+        if (conv && conv.unreadCount > 0) {
+          next.set(conversationId, { ...conv, unreadCount: 0 });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const unreadTotal = Array.from(conversations.values()).reduce(
+    (sum, c) => sum + c.unreadCount,
+    0
+  );
+
+  return (
+    <DMContext.Provider
+      value={{ conversations, sendMessage, markAsRead, unreadTotal, loading }}
+    >
+      {children}
+    </DMContext.Provider>
+  );
+}
