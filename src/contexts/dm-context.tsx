@@ -43,6 +43,7 @@ interface DMContextInterface {
     replyToId?: string
   ) => Promise<void>;
   markAsRead: (conversationId: string) => void;
+  markAllAsRead: () => void;
   unreadTotal: number;
   loading: boolean;
 }
@@ -260,6 +261,21 @@ export function DMProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const markAllAsRead = useCallback(() => {
+    const now = Math.floor(Date.now() / 1000);
+
+    setConversations((prev) => {
+      const next = new Map(prev);
+      Array.from(next.entries()).forEach(([id, conv]) => {
+        if (conv.unreadCount > 0) {
+          setLastSeen(id, now);
+          next.set(id, { ...conv, unreadCount: 0 });
+        }
+      });
+      return next;
+    });
+  }, []);
+
   const unreadTotal = Array.from(conversations.values()).reduce(
     (sum, c) => sum + c.unreadCount,
     0
@@ -267,7 +283,7 @@ export function DMProvider({ children }: { children: ReactNode }) {
 
   return (
     <DMContext.Provider
-      value={{ conversations, sendMessage, markAsRead, unreadTotal, loading }}
+      value={{ conversations, sendMessage, markAsRead, markAllAsRead, unreadTotal, loading }}
     >
       {children}
     </DMContext.Provider>

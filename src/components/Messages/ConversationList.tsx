@@ -12,6 +12,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
 import { useNavigate } from "react-router-dom";
 import { nip19 } from "nostr-tools";
 import dayjs from "dayjs";
@@ -24,7 +25,7 @@ import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 dayjs.extend(relativeTime);
 
 const ConversationList: React.FC = () => {
-  const { conversations, loading } = useDMContext();
+  const { conversations, loading, markAllAsRead, unreadTotal } = useDMContext();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user } = useUserContext();
   const navigate = useNavigate();
@@ -80,14 +81,26 @@ const ConversationList: React.FC = () => {
         mb={2}
       >
         <Typography variant="h5">Messages</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate("/messages/new")}
-          size="small"
-        >
-          New
-        </Button>
+        <Box display="flex" gap={1}>
+          {unreadTotal > 0 && (
+            <Button
+              variant="outlined"
+              startIcon={<DoneAllIcon />}
+              onClick={markAllAsRead}
+              size="small"
+            >
+              Mark all read
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate("/messages/new")}
+            size="small"
+          >
+            New
+          </Button>
+        </Box>
       </Box>
 
       {sorted.length === 0 ? (

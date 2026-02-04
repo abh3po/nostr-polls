@@ -25,21 +25,28 @@ const ShareButton: React.FC<ShareButtonProps> = ({ event }) => {
     setDialogOpen(true);
   };
 
-  const handleSelect = async (recipientPubkey: string) => {
-    try {
-      // Build a nostr: URI for the event so TextWithImages will render it
-      const neventId = nip19.neventEncode({
-        id: event.id,
-        kind: event.kind,
-        author: event.pubkey,
-      });
-      const content = `nostr:${neventId}`;
+  const handleSelect = async (pubkeys: string[], message?: string) => {
+    // Build a nostr: URI for the event so TextWithImages will render it
+    const neventId = nip19.neventEncode({
+      id: event.id,
+      kind: event.kind,
+      author: event.pubkey,
+    });
+    const neventUri = `nostr:${neventId}`;
+    const content = message ? `${message}\n\n${neventUri}` : neventUri;
 
-      await sendMessage(recipientPubkey, content);
-      showNotification("Sent!", "success");
-    } catch (e) {
-      console.error("Failed to share via DM:", e);
-      showNotification("Failed to send DM", "error");
+    const results = await Promise.allSettled(
+      pubkeys.map((pk) => sendMessage(pk, content))
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    if (failed === 0) {
+      showNotification(`Sent to ${pubkeys.length} ${pubkeys.length === 1 ? "person" : "people"}!`, "success");
+    } else if (failed < pubkeys.length) {
+      showNotification(`Sent, but ${failed} failed`, "warning");
+    } else {
+      showNotification("Failed to send DMs", "error");
+      throw new Error("All sends failed");
     }
   };
 
@@ -64,6 +71,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ event }) => {
         onClose={() => setDialogOpen(false)}
         onSelect={handleSelect}
         title="Share with..."
+        showMessageStep
       />
     </>
   );

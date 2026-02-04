@@ -19,6 +19,13 @@ Pollerama is a next-generation decentralized social platform built on the Nostr 
 - **Cross-Platform:** Native Android support and web-ready design for seamless access.
 - **Real-Time Interactions:** Live updates and immersive scrolling for seamless user experience.
 
+# 1.2.0
+
+- Added DMs
+- Added share post to DMs button
+- Feedback Menu UI uplift
+- Various UI fixes
+
 ## 1.1.2
 
 - Added User Profiles
