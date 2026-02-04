@@ -13,6 +13,7 @@ import {
   fetchInboxRelays,
   unwrapGiftWrap,
   wrapAndSendDM,
+  wrapAndSendReaction,
   getConversationId,
   Rumor,
 } from "../nostr/nip17";
@@ -27,12 +28,18 @@ export interface DMMessage {
   tags: string[][];
 }
 
+export interface DMReaction {
+  emoji: string;
+  pubkey: string; // who reacted
+}
+
 export interface Conversation {
   id: string; // conversationId (sorted pubkeys joined with +)
   participants: string[];
   messages: DMMessage[];
   lastMessageAt: number;
   unreadCount: number;
+  reactions: Map<string, DMReaction[]>; // messageId -> reactions
 }
 
 interface DMContextInterface {
@@ -41,6 +48,11 @@ interface DMContextInterface {
     recipientPubkey: string,
     content: string,
     replyToId?: string
+  ) => Promise<void>;
+  sendReaction: (
+    recipientPubkey: string,
+    emoji: string,
+    messageId: string
   ) => Promise<void>;
   markAsRead: (conversationId: string) => void;
   markAllAsRead: () => void;
@@ -52,6 +64,7 @@ export const DMContext = createContext<DMContextInterface | null>(null);
 
 const CACHE_PREFIX = "dm_cache_";
 const LAST_SEEN_PREFIX = "dm_lastseen_";
+const REACTION_CACHE_PREFIX = "dm_reactions_";
 
 function getCachedRumor(wrapId: string): DMMessage | null {
   try {
@@ -96,17 +109,79 @@ export function DMProvider({ children }: { children: ReactNode }) {
   const seenRumorIds = useRef<Set<string>>(new Set());
   const subRef = useRef<{ unsubscribe: () => void } | null>(null);
 
+  const addReactionToConversation = useCallback(
+    (rumor: Rumor, myPubkey: string) => {
+      const pTags = rumor.tags
+        .filter((t) => t[0] === "p")
+        .map((t) => t[1]);
+      const conversationId = getConversationId(rumor.pubkey, pTags);
+      const targetMessageId = rumor.tags.find((t) => t[0] === "e")?.[1];
+      if (!targetMessageId) return;
+
+      const reaction: DMReaction = {
+        emoji: rumor.content,
+        pubkey: rumor.pubkey,
+      };
+
+      // Cache reaction
+      try {
+        const cacheKey = REACTION_CACHE_PREFIX + conversationId;
+        const cached = localStorage.getItem(cacheKey);
+        const reactions: Record<string, DMReaction[]> = cached
+          ? JSON.parse(cached)
+          : {};
+        if (!reactions[targetMessageId]) reactions[targetMessageId] = [];
+        // Dedup: don't add same pubkey+emoji twice
+        if (
+          !reactions[targetMessageId].some(
+            (r) => r.pubkey === reaction.pubkey && r.emoji === reaction.emoji
+          )
+        ) {
+          reactions[targetMessageId].push(reaction);
+          localStorage.setItem(cacheKey, JSON.stringify(reactions));
+        }
+      } catch {
+        // localStorage full, ignore
+      }
+
+      setConversations((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(conversationId);
+        if (!existing) return prev;
+
+        const reactionsMap = new Map(existing.reactions);
+        const existing_reactions = reactionsMap.get(targetMessageId) || [];
+        // Dedup
+        if (
+          existing_reactions.some(
+            (r) => r.pubkey === reaction.pubkey && r.emoji === reaction.emoji
+          )
+        ) {
+          return prev;
+        }
+        reactionsMap.set(targetMessageId, [...existing_reactions, reaction]);
+        next.set(conversationId, { ...existing, reactions: reactionsMap });
+        return next;
+      });
+    },
+    []
+  );
+
   const addMessage = useCallback(
     (rumor: Rumor, wrapId: string, myPubkey: string) => {
       // Dedup by rumor.id
       if (seenRumorIds.current.has(rumor.id)) return;
       seenRumorIds.current.add(rumor.id);
 
+      // Handle kind 7 reaction rumors
+      if (rumor.kind === 7) {
+        addReactionToConversation(rumor, myPubkey);
+        return;
+      }
+
       const pTags = rumor.tags
         .filter((t) => t[0] === "p")
         .map((t) => t[1]);
-      // Include rumor.pubkey (the sender) so both sides of the conversation
-      // are represented — p-tags only contain recipients, not the sender.
       const conversationId = getConversationId(rumor.pubkey, pTags);
       const participants = conversationId.split("+");
 
@@ -122,13 +197,25 @@ export function DMProvider({ children }: { children: ReactNode }) {
       // Cache decrypted message
       setCachedRumor(wrapId, msg);
 
+      // Load cached reactions for this conversation
+      let cachedReactions = new Map<string, DMReaction[]>();
+      try {
+        const cacheKey = REACTION_CACHE_PREFIX + conversationId;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed: Record<string, DMReaction[]> = JSON.parse(cached);
+          cachedReactions = new Map(Object.entries(parsed));
+        }
+      } catch {
+        // ignore
+      }
+
       setConversations((prev) => {
         const next = new Map(prev);
         const existing = next.get(conversationId);
         const lastSeen = getLastSeen(conversationId);
 
         if (existing) {
-          // Check if message already exists
           if (existing.messages.some((m) => m.id === rumor.id)) return prev;
 
           const updatedMessages = [...existing.messages, msg].sort(
@@ -151,12 +238,13 @@ export function DMProvider({ children }: { children: ReactNode }) {
             messages: [msg],
             lastMessageAt: rumor.created_at,
             unreadCount: isUnread ? 1 : 0,
+            reactions: cachedReactions,
           });
         }
         return next;
       });
     },
-    []
+    [addReactionToConversation]
   );
 
   // Subscribe to incoming gift wraps
@@ -187,14 +275,13 @@ export function DMProvider({ children }: { children: ReactNode }) {
             // Check cache first
             const cached = getCachedRumor(event.id);
             if (cached) {
-              // Reconstruct rumor-like object from cache
               const fakeRumor: Rumor = {
                 id: cached.id,
                 pubkey: cached.pubkey,
                 content: cached.content,
                 created_at: cached.created_at,
                 tags: cached.tags,
-                kind: 14,
+                kind: (cached as any).kind || 14,
               };
               addMessage(fakeRumor, event.id, myPubkey);
               return;
@@ -244,6 +331,23 @@ export function DMProvider({ children }: { children: ReactNode }) {
     [user, addMessage]
   );
 
+  const sendReaction = useCallback(
+    async (recipientPubkey: string, emoji: string, messageId: string) => {
+      if (!user) throw new Error("Must be logged in to react to DMs");
+
+      const rumor = await wrapAndSendReaction(
+        recipientPubkey,
+        emoji,
+        messageId,
+        user.privateKey
+      );
+
+      // Optimistically add reaction
+      addMessage(rumor, `local_reaction_${rumor.id}`, user.pubkey);
+    },
+    [user, addMessage]
+  );
+
   const markAsRead = useCallback(
     (conversationId: string) => {
       const now = Math.floor(Date.now() / 1000);
@@ -283,7 +387,7 @@ export function DMProvider({ children }: { children: ReactNode }) {
 
   return (
     <DMContext.Provider
-      value={{ conversations, sendMessage, markAsRead, markAllAsRead, unreadTotal, loading }}
+      value={{ conversations, sendMessage, sendReaction, markAsRead, markAllAsRead, unreadTotal, loading }}
     >
       {children}
     </DMContext.Provider>

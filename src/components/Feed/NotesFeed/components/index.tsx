@@ -1,17 +1,22 @@
 import React, { useState, lazy, Suspense } from "react";
-import { Typography, CircularProgress } from "@mui/material";
+import { Typography, CircularProgress, Chip, Box } from "@mui/material";
 import RateEventModal from "../../../Ratings/RateEventModal";
 import NotesFeedTabs from "./NotesFeedTabs";
 
 const FollowingFeed = lazy(() => import("./FollowingFeed"));
 const ReactedFeed = lazy(() => import("./ReactedFeed"));
-const DiscoverFeed = lazy(() => import("./DiscoverFeed")); // 🆕
+const DiscoverFeed = lazy(() => import("./DiscoverFeed"));
+
+export type NoteMode = "notes" | "conversations";
 
 const NotesFeed = () => {
   const [activeTab, setActiveTab] = useState<
     "following" | "reacted" | "discover"
   >("discover");
   const [modalOpen, setModalOpen] = useState(false);
+  const [noteMode, setNoteMode] = useState<NoteMode>("notes");
+
+  const showNoteFilter = activeTab === "following" || activeTab === "discover";
 
   return (
     <>
@@ -25,13 +30,32 @@ const NotesFeed = () => {
           : "Discover new posts from friends of friends"}
       </Typography>
 
+      {showNoteFilter && (
+        <Box display="flex" gap={1} sx={{ mt: 1, mb: 1, ml: 1 }}>
+          <Chip
+            label="Notes"
+            size="small"
+            variant={noteMode === "notes" ? "filled" : "outlined"}
+            color={noteMode === "notes" ? "primary" : "default"}
+            onClick={() => setNoteMode("notes")}
+          />
+          <Chip
+            label="Conversations"
+            size="small"
+            variant={noteMode === "conversations" ? "filled" : "outlined"}
+            color={noteMode === "conversations" ? "primary" : "default"}
+            onClick={() => setNoteMode("conversations")}
+          />
+        </Box>
+      )}
+
       <Suspense fallback={<CircularProgress sx={{ m: 4 }} />}>
         {activeTab === "following" ? (
-          <FollowingFeed />
+          <FollowingFeed noteMode={noteMode} />
         ) : activeTab === "reacted" ? (
           <ReactedFeed />
         ) : (
-          <DiscoverFeed />
+          <DiscoverFeed noteMode={noteMode} />
         )}
       </Suspense>
 

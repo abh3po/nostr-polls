@@ -26,6 +26,7 @@ import { getAppBaseUrl } from "../../utils/platform";
 import { PrepareNote } from "./PrepareNote";
 import { FeedbackMenu } from "../FeedbackMenu";
 import { alpha, useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useResizeObserver } from "../../hooks/useResizeObserver";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RateEventModal from "../../components/Ratings/RateEventModal";
@@ -160,6 +161,9 @@ export const Notes: React.FC<NotesProps> = ({
   };
 
   const theme = useTheme();
+  const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMedium = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const maxContentHeight = isSmall ? 150 : isMedium ? 250 : 350;
   const primaryColor = theme.palette.primary.main;
   const subtleGradient = `linear-gradient(
     to bottom,
@@ -282,7 +286,7 @@ export const Notes: React.FC<NotesProps> = ({
               sx={{
                 position: "relative",
                 overflow: isExpanded ? "visible" : "hidden",
-                maxHeight: isExpanded ? "none" : 200,
+                maxHeight: isExpanded ? "none" : maxContentHeight,
                 transition: "max-height 0.3s ease",
                 p: 2,
               }}
