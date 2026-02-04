@@ -203,6 +203,73 @@ export class NostrRuntime {
     });
   }
 
+  // -- Batched fetch state --
+  private _batchQueue: {
+    id: string;
+    relays: string[];
+    resolve: (event: Event | null) => void;
+  }[] = [];
+  private _batchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Fetch a single event by ID, batching multiple calls into one relay query.
+   * Calls made within a 50ms window are combined into a single querySync
+   * with all requested IDs, drastically reducing relay round-trips.
+   */
+  fetchBatched(relays: string[], id: string): Promise<Event | null> {
+    // Check cache first
+    const cached = this.eventStore.getById(id);
+    if (cached) return Promise.resolve(cached);
+
+    return new Promise((resolve) => {
+      this._batchQueue.push({ id, relays, resolve });
+
+      if (!this._batchTimer) {
+        this._batchTimer = setTimeout(() => {
+          this._flushBatch();
+        }, 50);
+      }
+    });
+  }
+
+  private async _flushBatch() {
+    const queue = this._batchQueue;
+    this._batchQueue = [];
+    this._batchTimer = null;
+
+    if (queue.length === 0) return;
+
+    // Merge all relays and deduplicate IDs
+    const allRelays = new Set<string>();
+    const idToResolvers = new Map<string, ((event: Event | null) => void)[]>();
+
+    for (const item of queue) {
+      for (const r of item.relays) allRelays.add(r);
+      if (!idToResolvers.has(item.id)) idToResolvers.set(item.id, []);
+      idToResolvers.get(item.id)!.push(item.resolve);
+    }
+
+    const ids = Array.from(idToResolvers.keys());
+
+    try {
+      const events = await this.querySync(Array.from(allRelays), { ids });
+      const eventMap = new Map<string, Event>();
+      for (const event of events) {
+        eventMap.set(event.id, event);
+      }
+
+      idToResolvers.forEach((resolvers, id) => {
+        const event = eventMap.get(id) || null;
+        resolvers.forEach((resolve) => resolve(event));
+      });
+    } catch (err) {
+      // Resolve all with null on error
+      idToResolvers.forEach((resolvers) => {
+        resolvers.forEach((resolve) => resolve(null));
+      });
+    }
+  }
+
   /**
    * Batch add multiple events
    * More efficient than calling addEvent multiple times

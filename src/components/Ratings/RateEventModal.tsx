@@ -64,9 +64,7 @@ const RateEventModal: React.FC<Props> = ({ open, onClose, initialEventId }) => {
       }
     }
 
-    const ev = await nostrRuntime.fetchOne(relays, {
-      ids: [eventId],
-    });
+    const ev = await nostrRuntime.fetchBatched(relays, eventId);
 
     if (!ev) {
       setError("Event not found.");
