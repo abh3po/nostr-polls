@@ -24,20 +24,28 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { getConversationId } from "../../nostr/nip17";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
-import type { DMReaction } from "../../contexts/dm-context";
 
-const QUICK_EMOJIS = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F622}", "\u{1F525}"];
+const QUICK_EMOJIS = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F602}",
+  "\u{1F622}",
+  "\u{1F525}",
+];
 
 const ChatView: React.FC = () => {
   const { npub } = useParams<{ npub: string }>();
   const navigate = useNavigate();
-  const { conversations, sendMessage, sendReaction, markAsRead } = useDMContext();
+  const { conversations, sendMessage, sendReaction, markAsRead } =
+    useDMContext();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user } = useUserContext();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [showPickerForMsg, setShowPickerForMsg] = useState<string | null>(null);
-  const [reactionAnchor, setReactionAnchor] = useState<HTMLElement | null>(null);
+  const [reactionAnchor, setReactionAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
 
@@ -119,7 +127,7 @@ const ChatView: React.FC = () => {
         console.error("Failed to send reaction:", e);
       }
     },
-    [recipientPubkey, sendReaction]
+    [recipientPubkey, sendReaction],
   );
 
   if (!recipientPubkey) {
@@ -247,9 +255,7 @@ const ChatView: React.FC = () => {
                     maxWidth: "85%",
                     borderRadius: 2,
                     overflow: "hidden",
-                    backgroundColor: isMine
-                      ? "primary.main"
-                      : "action.hover",
+                    backgroundColor: isMine ? "primary.main" : "action.hover",
                   }}
                 >
                   <Box
@@ -267,9 +273,7 @@ const ChatView: React.FC = () => {
                   <Typography
                     variant="caption"
                     sx={{
-                      color: isMine
-                        ? "primary.contrastText"
-                        : "text.secondary",
+                      color: isMine ? "primary.contrastText" : "text.secondary",
                       opacity: 0.7,
                       display: "block",
                       textAlign: "right",
