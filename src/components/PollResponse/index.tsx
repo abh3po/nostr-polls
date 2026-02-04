@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import PollResponseForm from "./PollResponseForm";
 import { useEffect, useState } from "react";
 import { Event } from "nostr-tools/lib/types/core";
-import { Filter } from "nostr-tools/lib/types/filter";
 import { useRelays } from "../../hooks/useRelays";
 import { Box, Button, CircularProgress } from "@mui/material";
 import { useNotification } from "../../contexts/notification-context";
@@ -28,15 +27,12 @@ export const PollResponse = () => {
 
   const fetchPollEvent = async (neventId: string) => {
     const decoded = nip19.decode(neventId).data as EventPointer;
-    const filter: Filter = {
-      ids: [decoded.id],
-    };
     const neventRelays = decoded.relays;
     const relaysToUse = Array.from(
       new Set([...relays, ...(neventRelays || [])])
     );
     try {
-      const event = await nostrRuntime.fetchOne(relaysToUse, filter);
+      const event = await nostrRuntime.fetchBatched(relaysToUse, decoded.id);
       if (event === null) {
         showNotification(NOTIFICATION_MESSAGES.POLL_NOT_FOUND, "error");
         navigate("/");

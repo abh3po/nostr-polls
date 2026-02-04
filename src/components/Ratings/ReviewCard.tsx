@@ -99,7 +99,7 @@ const ReviewCard: React.FC<Props> = ({ event }) => {
       const eTag = event.tags.find((t) => t[0] === "e")?.[1];
       if (eTag) {
         try {
-          const eventData = await nostrRuntime.fetchOne(relays, { ids: [eTag] });
+          const eventData = await nostrRuntime.fetchBatched(relays, eTag);
           if (eventData) {
             if (eventData.kind === 1068) {
               // Poll
