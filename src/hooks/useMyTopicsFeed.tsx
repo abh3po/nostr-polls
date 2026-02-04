@@ -34,6 +34,53 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
   const seenNotes = useRef<Set<string>>(new Set());
   const seenModeration = useRef<Set<string>>(new Set());
 
+  /* ------------------ moderation processing ------------------ */
+
+  const processModerationEvent = (event: Event) => {
+    if (seenModeration.current.has(event.id)) return;
+    seenModeration.current.add(event.id);
+
+    const topicTags = event.tags
+      .filter((t) => t[0] === "t")
+      .map((t) => t[1]);
+    const eTags = event.tags
+      .filter((t) => t[0] === "e")
+      .map((t) => t[1]);
+    const pTags = event.tags
+      .filter((t) => t[0] === "p")
+      .map((t) => t[1]);
+
+    for (const topic of topicTags) {
+      if (!myTopics.has(topic)) continue;
+
+      if (!moderationByTopic.current.has(topic)) {
+        moderationByTopic.current.set(topic, {
+          offTopicNotes: new Map(),
+          blockedUsers: new Map(),
+        });
+      }
+
+      const mod = moderationByTopic.current.get(topic)!;
+
+      for (const noteId of eTags) {
+        if (!mod.offTopicNotes.has(noteId)) {
+          mod.offTopicNotes.set(noteId, new Set());
+        }
+        mod.offTopicNotes.get(noteId)!.add(event.pubkey);
+      }
+
+      for (const pubkey of pTags) {
+        if (!mod.blockedUsers.has(pubkey)) {
+          mod.blockedUsers.set(pubkey, new Set());
+        }
+        mod.blockedUsers.get(pubkey)!.add(event.pubkey);
+      }
+    }
+
+    // force rerender
+    setNotes((prev) => new Map(prev));
+  };
+
   /* ------------------ subscriptions ------------------ */
 
   useEffect(() => {
@@ -54,48 +101,7 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
         onEvent: (event) => {
           /* ---- moderation events ---- */
           if (event.kind === OFFTOPIC_KIND) {
-            if (seenModeration.current.has(event.id)) return;
-            seenModeration.current.add(event.id);
-
-            const topicTags = event.tags
-              .filter((t) => t[0] === "t")
-              .map((t) => t[1]);
-            const eTags = event.tags
-              .filter((t) => t[0] === "e")
-              .map((t) => t[1]);
-            const pTags = event.tags
-              .filter((t) => t[0] === "p")
-              .map((t) => t[1]);
-
-            for (const topic of topicTags) {
-              if (!myTopics.has(topic)) continue;
-
-              if (!moderationByTopic.current.has(topic)) {
-                moderationByTopic.current.set(topic, {
-                  offTopicNotes: new Map(),
-                  blockedUsers: new Map(),
-                });
-              }
-
-              const mod = moderationByTopic.current.get(topic)!;
-
-              for (const noteId of eTags) {
-                if (!mod.offTopicNotes.has(noteId)) {
-                  mod.offTopicNotes.set(noteId, new Set());
-                }
-                mod.offTopicNotes.get(noteId)!.add(event.pubkey);
-              }
-
-              for (const pubkey of pTags) {
-                if (!mod.blockedUsers.has(pubkey)) {
-                  mod.blockedUsers.set(pubkey, new Set());
-                }
-                mod.blockedUsers.get(pubkey)!.add(event.pubkey);
-              }
-            }
-
-            // force rerender
-            setNotes((prev) => new Map(prev));
+            processModerationEvent(event);
             return;
           }
 
@@ -126,6 +132,7 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
       sub.unsubscribe();
       clearTimeout(timeout);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [relays, myTopics]);
 
   /* ------------------ moderation resolution ------------------ */
@@ -221,6 +228,42 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
       });
 
       await pool.publish(relays, signed);
+
+      // Optimistic local update
+      if (!moderationByTopic.current.has(topic)) {
+        moderationByTopic.current.set(topic, {
+          offTopicNotes: new Map(),
+          blockedUsers: new Map(),
+        });
+      }
+      const mod = moderationByTopic.current.get(topic)!;
+      if (type === "off-topic") {
+        if (!mod.offTopicNotes.has(note.id))
+          mod.offTopicNotes.set(note.id, new Set());
+        mod.offTopicNotes.get(note.id)!.add(user.pubkey);
+      } else {
+        if (!mod.blockedUsers.has(note.pubkey))
+          mod.blockedUsers.set(note.pubkey, new Set());
+        mod.blockedUsers.get(note.pubkey)!.add(user.pubkey);
+      }
+    }
+
+    // Force re-render for immediate UI feedback
+    setNotes((prev) => new Map(prev));
+
+    // Refetch own moderation events to ensure consistency
+    try {
+      const topicValues = Array.from(new Set(topics));
+      const events = await nostrRuntime.fetchOne(relays, {
+        kinds: [OFFTOPIC_KIND],
+        authors: [user.pubkey],
+        "#t": topicValues,
+      });
+      if (events) {
+        processModerationEvent(events);
+      }
+    } catch (e) {
+      console.error("Failed to refetch moderation events:", e);
     }
   };
 

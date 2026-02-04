@@ -6,12 +6,18 @@ import {
   IconButton,
   TextField,
   Paper,
+  Chip,
+  Modal,
+  Popover,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
+import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
 import { useNavigate, useParams } from "react-router-dom";
 import { nip19 } from "nostr-tools";
 import dayjs from "dayjs";
+import EmojiPicker, { Theme } from "emoji-picker-react";
+import { useTheme } from "@mui/material/styles";
 import { useDMContext } from "../../hooks/useDMContext";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -19,15 +25,29 @@ import { getConversationId } from "../../nostr/nip17";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
 
+const QUICK_EMOJIS = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F602}",
+  "\u{1F622}",
+  "\u{1F525}",
+];
+
 const ChatView: React.FC = () => {
   const { npub } = useParams<{ npub: string }>();
   const navigate = useNavigate();
-  const { conversations, sendMessage, markAsRead } = useDMContext();
+  const { conversations, sendMessage, sendReaction, markAsRead } =
+    useDMContext();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user } = useUserContext();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [showPickerForMsg, setShowPickerForMsg] = useState<string | null>(null);
+  const [reactionAnchor, setReactionAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
   // Decode npub to pubkey
   let recipientPubkey: string | null = null;
@@ -95,6 +115,20 @@ const ChatView: React.FC = () => {
       handleSend();
     }
   };
+
+  const handleReaction = useCallback(
+    async (emoji: string, messageId: string) => {
+      if (!recipientPubkey) return;
+      setShowPickerForMsg(null);
+      setReactionAnchor(null);
+      try {
+        await sendReaction(recipientPubkey, emoji, messageId);
+      } catch (e) {
+        console.error("Failed to send reaction:", e);
+      }
+    },
+    [recipientPubkey, sendReaction],
+  );
 
   if (!recipientPubkey) {
     return (
@@ -175,52 +209,174 @@ const ChatView: React.FC = () => {
         )}
         {messages.map((msg) => {
           const isMine = msg.pubkey === user?.pubkey;
+          const msgReactions = conversation?.reactions?.get(msg.id) || [];
+
+          // Group reactions by emoji with counts
+          const groupedReactions = msgReactions.reduce<
+            Record<string, { emoji: string; count: number; pubkeys: string[] }>
+          >((acc, r) => {
+            if (!acc[r.emoji]) {
+              acc[r.emoji] = { emoji: r.emoji, count: 0, pubkeys: [] };
+            }
+            acc[r.emoji].count++;
+            acc[r.emoji].pubkeys.push(r.pubkey);
+            return acc;
+          }, {});
+
           return (
             <Box
               key={msg.id}
               display="flex"
-              justifyContent={isMine ? "flex-end" : "flex-start"}
+              flexDirection="column"
+              alignItems={isMine ? "flex-end" : "flex-start"}
+              sx={{
+                "&:hover .reaction-trigger": { opacity: 1 },
+              }}
             >
-              <Paper
-                elevation={1}
-                sx={{
-                  px: 2,
-                  py: 1,
-                  maxWidth: "85%",
-                  borderRadius: 2,
-                  overflow: "hidden",
-                  backgroundColor: isMine
-                    ? "primary.main"
-                    : "action.hover",
+              <Box display="flex" alignItems="center" gap={0.5}>
+                {isMine && (
+                  <IconButton
+                    className="reaction-trigger"
+                    size="small"
+                    sx={{ opacity: 0, transition: "opacity 0.2s" }}
+                    onClick={(e) => {
+                      setShowPickerForMsg(msg.id);
+                      setReactionAnchor(e.currentTarget);
+                    }}
+                  >
+                    <AddReactionOutlinedIcon fontSize="small" />
+                  </IconButton>
+                )}
+                <Paper
+                  elevation={1}
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    maxWidth: "85%",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    backgroundColor: isMine ? "primary.main" : "action.hover",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      color: isMine ? "primary.contrastText" : "text.primary",
+                      wordBreak: "break-word",
+                      fontSize: "0.875rem",
+                      "& a": {
+                        color: isMine ? "primary.contrastText" : "#FAD13F",
+                      },
+                    }}
+                  >
+                    <TextWithImages content={msg.content} />
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: isMine ? "primary.contrastText" : "text.secondary",
+                      opacity: 0.7,
+                      display: "block",
+                      textAlign: "right",
+                      mt: 0.5,
+                    }}
+                  >
+                    {dayjs.unix(msg.created_at).format("HH:mm")}
+                  </Typography>
+                </Paper>
+                {!isMine && (
+                  <IconButton
+                    className="reaction-trigger"
+                    size="small"
+                    sx={{ opacity: 0, transition: "opacity 0.2s" }}
+                    onClick={(e) => {
+                      setShowPickerForMsg(msg.id);
+                      setReactionAnchor(e.currentTarget);
+                    }}
+                  >
+                    <AddReactionOutlinedIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+
+              {/* Reaction badges */}
+              {Object.keys(groupedReactions).length > 0 && (
+                <Box display="flex" gap={0.5} mt={0.5} flexWrap="wrap">
+                  {Object.values(groupedReactions).map((r) => (
+                    <Chip
+                      key={r.emoji}
+                      label={`${r.emoji} ${r.count > 1 ? r.count : ""}`}
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleReaction(r.emoji, msg.id)}
+                      sx={{
+                        height: 24,
+                        fontSize: "0.75rem",
+                        cursor: "pointer",
+                      }}
+                    />
+                  ))}
+                </Box>
+              )}
+
+              {/* Quick react popover */}
+              <Popover
+                open={showPickerForMsg === msg.id && Boolean(reactionAnchor)}
+                anchorEl={reactionAnchor}
+                onClose={() => {
+                  setShowPickerForMsg(null);
+                  setReactionAnchor(null);
                 }}
+                anchorOrigin={{ vertical: "top", horizontal: "center" }}
+                transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+              >
+                <Box display="flex" alignItems="center" p={0.5} gap={0.5}>
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <IconButton
+                      key={emoji}
+                      size="small"
+                      onClick={() => handleReaction(emoji, msg.id)}
+                    >
+                      <span style={{ fontSize: 20 }}>{emoji}</span>
+                    </IconButton>
+                  ))}
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowPickerForMsg(`picker_${msg.id}`)}
+                  >
+                    <AddReactionOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Popover>
+
+              {/* Full emoji picker modal */}
+              <Modal
+                open={showPickerForMsg === `picker_${msg.id}`}
+                onClose={() => setShowPickerForMsg(null)}
               >
                 <Box
                   sx={{
-                    color: isMine ? "primary.contrastText" : "text.primary",
-                    wordBreak: "break-word",
-                    fontSize: "0.875rem",
-                    "& a": {
-                      color: isMine ? "primary.contrastText" : "#FAD13F",
-                    },
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    bgcolor: "background.paper",
+                    boxShadow: 24,
+                    p: 2,
+                    borderRadius: 2,
                   }}
                 >
-                  <TextWithImages content={msg.content} />
+                  <EmojiPicker
+                    theme={
+                      theme.palette.mode === "light"
+                        ? ("light" as Theme)
+                        : ("dark" as Theme)
+                    }
+                    onEmojiClick={(emojiData) =>
+                      handleReaction(emojiData.emoji, msg.id)
+                    }
+                  />
                 </Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: isMine
-                      ? "primary.contrastText"
-                      : "text.secondary",
-                    opacity: 0.7,
-                    display: "block",
-                    textAlign: "right",
-                    mt: 0.5,
-                  }}
-                >
-                  {dayjs.unix(msg.created_at).format("HH:mm")}
-                </Typography>
-              </Paper>
+              </Modal>
             </Box>
           );
         })}

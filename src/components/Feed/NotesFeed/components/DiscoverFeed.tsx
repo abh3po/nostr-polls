@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Button, CircularProgress, Fab, Box, Typography } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
-// add:
 import type { VirtuosoHandle } from "react-virtuoso";
 import useImmersiveScroll from "../../../../hooks/useImmersiveScroll";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import RepostsCard from "./RepostedNoteCard";
 import { useDiscoverNotes } from "../hooks/useDiscoverNotes";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import type { NoteMode } from "./index";
 
-const DiscoverFeed = () => {
+const isRootNote = (event: { tags: string[][] }) =>
+  !event.tags.some((t) => t[0] === "e");
+
+const DiscoverFeed = ({ noteMode }: { noteMode: NoteMode }) => {
   const { user, requestLogin } = useUserContext();
   const { notes, newNotes, fetchNotes, loadingMore, mergeNewNotes } =
     useDiscoverNotes();
@@ -30,12 +33,15 @@ const DiscoverFeed = () => {
 
   const mergedNotes = useMemo(() => {
     return Array.from(notes.values())
+      .filter((note) =>
+        noteMode === "notes" ? isRootNote(note) : !isRootNote(note)
+      )
       .map((note) => ({
         note,
         latestActivity: note.created_at,
       }))
       .sort((a, b) => b.latestActivity - a.latestActivity);
-  }, [notes]);
+  }, [notes, noteMode]);
 
   if (!user) {
     return (

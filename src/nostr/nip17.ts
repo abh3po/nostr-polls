@@ -79,21 +79,24 @@ function computeRumorId(rumor: UnsignedEvent): string {
 }
 
 /**
- * Create a rumor (unsigned kind 14 DM event).
+ * Create a rumor (unsigned event). Defaults to kind 14 (DM).
  */
 function createRumor(
   senderPubkey: string,
   recipientPubkey: string,
   content: string,
-  replyToId?: string
+  replyToId?: string,
+  kind: number = 14,
+  extraTags: string[][] = []
 ): Rumor {
   const tags: string[][] = [["p", recipientPubkey]];
   if (replyToId) {
     tags.push(["e", replyToId, "", "reply"]);
   }
+  tags.push(...extraTags);
 
   const unsigned: UnsignedEvent = {
-    kind: 14,
+    kind,
     created_at: Math.floor(Date.now() / 1000),
     tags,
     content,
@@ -245,6 +248,10 @@ export async function wrapAndSendDM(
     replyToId
   );
 
+  // Publish to inbox relays + defaultRelays for reliability
+  const recipientRelays = Array.from(new Set([...recipientInbox, ...defaultRelays]));
+  const senderRelays = Array.from(new Set([...senderInbox, ...defaultRelays]));
+
   if (privateKey) {
     // LocalSigner path: use direct crypto with private key
     const privkeyBytes = hexToBytes(privateKey);
@@ -260,8 +267,8 @@ export async function wrapAndSendDM(
       senderPubkey
     );
 
-    pool.publish(recipientInbox, wrapForRecipient);
-    pool.publish(senderInbox, wrapForSender);
+    await Promise.allSettled(pool.publish(recipientRelays, wrapForRecipient));
+    await Promise.allSettled(pool.publish(senderRelays, wrapForSender));
   } else {
     // External signer path: manually construct seal + wrap
     if (!signer.nip44Encrypt) {
@@ -275,14 +282,86 @@ export async function wrapAndSendDM(
       rumor,
       recipientPubkey
     );
-    pool.publish(recipientInbox, recipientWrap);
+    await Promise.allSettled(pool.publish(recipientRelays, recipientWrap));
 
     const senderWrap = await createGiftWrapForSigner(
       signer,
       rumor,
       senderPubkey
     );
-    pool.publish(senderInbox, senderWrap);
+    await Promise.allSettled(pool.publish(senderRelays, senderWrap));
+  }
+
+  return rumor;
+}
+
+/**
+ * Wrap and send a reaction to a DM message using NIP-17 gift wrapping.
+ * Creates a kind 7 rumor with the emoji as content and an e-tag pointing to the target message.
+ */
+export async function wrapAndSendReaction(
+  recipientPubkey: string,
+  emoji: string,
+  targetMessageId: string,
+  privateKey?: string
+): Promise<Rumor> {
+  const signer = await signerManager.getSigner();
+  const senderPubkey = await signer.getPublicKey();
+
+  const [recipientInbox, senderInbox] = await Promise.all([
+    fetchInboxRelays(recipientPubkey),
+    fetchInboxRelays(senderPubkey),
+  ]);
+
+  // Create a kind 7 reaction rumor with e-tag for target message
+  const rumor = createRumor(
+    senderPubkey,
+    recipientPubkey,
+    emoji,
+    undefined,
+    7,
+    [["e", targetMessageId]]
+  );
+
+  const recipientRelays = Array.from(new Set([...recipientInbox, ...defaultRelays]));
+  const senderRelays = Array.from(new Set([...senderInbox, ...defaultRelays]));
+
+  if (privateKey) {
+    const privkeyBytes = hexToBytes(privateKey);
+
+    const wrapForRecipient = createGiftWrapLocal(
+      privkeyBytes,
+      rumor,
+      recipientPubkey
+    );
+    const wrapForSender = createGiftWrapLocal(
+      privkeyBytes,
+      rumor,
+      senderPubkey
+    );
+
+    await Promise.allSettled(pool.publish(recipientRelays, wrapForRecipient));
+    await Promise.allSettled(pool.publish(senderRelays, wrapForSender));
+  } else {
+    if (!signer.nip44Encrypt) {
+      throw new Error(
+        "Your signer does not support NIP-44 encryption, which is required for DM reactions."
+      );
+    }
+
+    const recipientWrap = await createGiftWrapForSigner(
+      signer,
+      rumor,
+      recipientPubkey
+    );
+    await Promise.allSettled(pool.publish(recipientRelays, recipientWrap));
+
+    const senderWrap = await createGiftWrapForSigner(
+      signer,
+      rumor,
+      senderPubkey
+    );
+    await Promise.allSettled(pool.publish(senderRelays, senderWrap));
   }
 
   return rumor;
