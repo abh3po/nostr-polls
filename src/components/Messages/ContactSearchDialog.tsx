@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -34,6 +34,43 @@ interface Contact {
   picture: string;
 }
 
+interface ContactRowProps {
+  contact: Contact;
+  selected: boolean;
+  onToggle: (contact: Contact) => void;
+}
+
+const ContactRow = React.memo<ContactRowProps>(({ contact, selected, onToggle }) => (
+  <ListItem
+    onClick={() => onToggle(contact)}
+    sx={{
+      cursor: "pointer",
+      borderRadius: 1.5,
+      mb: 0.5,
+      "&:hover": { backgroundColor: "action.hover" },
+    }}
+  >
+    <Checkbox
+      checked={selected}
+      size="small"
+      sx={{ mr: 0.5, p: 0.5 }}
+      tabIndex={-1}
+      disableRipple
+    />
+    <ListItemAvatar>
+      <Avatar src={contact.picture} sx={{ width: 36, height: 36 }} />
+    </ListItemAvatar>
+    <ListItemText
+      primary={
+        <Typography variant="body2" fontWeight={500}>
+          {contact.name || contact.pubkey.slice(0, 12) + "..."}
+        </Typography>
+      }
+      secondary={contact.nip05 || undefined}
+    />
+  </ListItem>
+));
+
 interface ContactSearchDialogProps {
   open: boolean;
   onClose: () => void;
@@ -57,24 +94,32 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
   const [step, setStep] = useState<"pick" | "compose">("pick");
   const [sending, setSending] = useState(false);
 
-  const contacts = useMemo(() => {
+  const followPubkeys = useMemo(() => {
     if (!user?.follows) return [];
+    return user.follows.filter((pubkey) => pubkey !== user.pubkey);
+  }, [user]);
 
-    return user.follows
-      .filter((pubkey) => pubkey !== user.pubkey)
-      .map((pubkey) => {
-        const profile = profiles?.get(pubkey);
-        if (!profile) {
-          fetchUserProfileThrottled(pubkey);
-        }
-        return {
-          pubkey,
-          name: profile?.display_name || profile?.name || "",
-          nip05: profile?.nip05 || "",
-          picture: profile?.picture || DEFAULT_IMAGE_URL,
-        };
-      });
-  }, [user, profiles, fetchUserProfileThrottled]);
+  // Fetch missing profiles as a side effect, not inside useMemo
+  useEffect(() => {
+    if (!open) return;
+    followPubkeys.forEach((pubkey) => {
+      if (!profiles?.get(pubkey)) {
+        fetchUserProfileThrottled(pubkey);
+      }
+    });
+  }, [open, followPubkeys, profiles, fetchUserProfileThrottled]);
+
+  const contacts = useMemo(() => {
+    return followPubkeys.map((pubkey) => {
+      const profile = profiles?.get(pubkey);
+      return {
+        pubkey,
+        name: profile?.display_name || profile?.name || "",
+        nip05: profile?.nip05 || "",
+        picture: profile?.picture || DEFAULT_IMAGE_URL,
+      };
+    });
+  }, [followPubkeys, profiles]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return contacts;
@@ -87,16 +132,18 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
     );
   }, [contacts, search]);
 
-  const isSelected = (pubkey: string) =>
-    selectedContacts.some((c) => c.pubkey === pubkey);
+  const selectedSet = useMemo(
+    () => new Set(selectedContacts.map((c) => c.pubkey)),
+    [selectedContacts]
+  );
 
-  const toggleContact = (contact: Contact) => {
+  const toggleContact = useCallback((contact: Contact) => {
     setSelectedContacts((prev) =>
       prev.some((c) => c.pubkey === contact.pubkey)
         ? prev.filter((c) => c.pubkey !== contact.pubkey)
         : [...prev, contact]
     );
-  };
+  }, []);
 
   const handleNext = () => {
     if (showMessageStep) {
@@ -259,35 +306,12 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
             ) : (
               <List disablePadding dense>
                 {filtered.map((c) => (
-                  <ListItem
+                  <ContactRow
                     key={c.pubkey}
-                    onClick={() => toggleContact(c)}
-                    sx={{
-                      cursor: "pointer",
-                      borderRadius: 1.5,
-                      mb: 0.5,
-                      "&:hover": { backgroundColor: "action.hover" },
-                    }}
-                  >
-                    <Checkbox
-                      checked={isSelected(c.pubkey)}
-                      size="small"
-                      sx={{ mr: 0.5, p: 0.5 }}
-                      tabIndex={-1}
-                      disableRipple
-                    />
-                    <ListItemAvatar>
-                      <Avatar src={c.picture} sx={{ width: 36, height: 36 }} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2" fontWeight={500}>
-                          {c.name || c.pubkey.slice(0, 12) + "..."}
-                        </Typography>
-                      }
-                      secondary={c.nip05 || undefined}
-                    />
-                  </ListItem>
+                    contact={c}
+                    selected={selectedSet.has(c.pubkey)}
+                    onToggle={toggleContact}
+                  />
                 ))}
               </List>
             )}
