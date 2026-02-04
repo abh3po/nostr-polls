@@ -104,7 +104,9 @@ export function DMProvider({ children }: { children: ReactNode }) {
       const pTags = rumor.tags
         .filter((t) => t[0] === "p")
         .map((t) => t[1]);
-      const conversationId = getConversationId(myPubkey, pTags);
+      // Include rumor.pubkey (the sender) so both sides of the conversation
+      // are represented — p-tags only contain recipients, not the sender.
+      const conversationId = getConversationId(rumor.pubkey, pTags);
       const participants = conversationId.split("+");
 
       const msg: DMMessage = {
