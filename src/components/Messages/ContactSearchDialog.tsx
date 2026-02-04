@@ -17,6 +17,7 @@ import {
   Checkbox,
   CircularProgress,
   AvatarGroup,
+  DialogActions,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -291,19 +292,20 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
               </List>
             )}
 
-            {selectedContacts.length > 0 && (
+          </DialogContent>
+          {selectedContacts.length > 0 && (
+            <DialogActions sx={{ px: 2, pb: 2 }}>
               <Button
                 fullWidth
                 variant="contained"
                 onClick={handleNext}
-                sx={{ mt: 1 }}
               >
                 {showMessageStep
                   ? `Next (${selectedContacts.length})`
                   : `Send (${selectedContacts.length})`}
               </Button>
-            )}
-          </DialogContent>
+            </DialogActions>
+          )}
         </>
       )}
     </Dialog>
