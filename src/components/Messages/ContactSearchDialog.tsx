@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +25,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
+import { useDMContext } from "../../hooks/useDMContext";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 
 interface Contact {
@@ -33,6 +34,43 @@ interface Contact {
   nip05: string;
   picture: string;
 }
+
+interface ContactRowProps {
+  contact: Contact;
+  selected: boolean;
+  onToggle: (contact: Contact) => void;
+}
+
+const ContactRow = React.memo<ContactRowProps>(({ contact, selected, onToggle }) => (
+  <ListItem
+    onClick={() => onToggle(contact)}
+    sx={{
+      cursor: "pointer",
+      borderRadius: 1.5,
+      mb: 0.5,
+      "&:hover": { backgroundColor: "action.hover" },
+    }}
+  >
+    <Checkbox
+      checked={selected}
+      size="small"
+      sx={{ mr: 0.5, p: 0.5 }}
+      tabIndex={-1}
+      disableRipple
+    />
+    <ListItemAvatar>
+      <Avatar src={contact.picture} sx={{ width: 36, height: 36 }} />
+    </ListItemAvatar>
+    <ListItemText
+      primary={
+        <Typography variant="body2" fontWeight={500}>
+          {contact.name || contact.pubkey.slice(0, 12) + "..."}
+        </Typography>
+      }
+      secondary={contact.nip05 || undefined}
+    />
+  </ListItem>
+));
 
 interface ContactSearchDialogProps {
   open: boolean;
@@ -51,52 +89,91 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
 }) => {
   const { profiles, fetchUserProfileThrottled } = useAppContext();
   const { user } = useUserContext();
+  const { conversations } = useDMContext();
   const [search, setSearch] = useState("");
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [message, setMessage] = useState("");
   const [step, setStep] = useState<"pick" | "compose">("pick");
   const [sending, setSending] = useState(false);
 
-  const contacts = useMemo(() => {
+  const followPubkeys = useMemo(() => {
     if (!user?.follows) return [];
+    return user.follows.filter((pubkey) => pubkey !== user.pubkey);
+  }, [user]);
 
-    return user.follows
-      .filter((pubkey) => pubkey !== user.pubkey)
-      .map((pubkey) => {
-        const profile = profiles?.get(pubkey);
-        if (!profile) {
-          fetchUserProfileThrottled(pubkey);
-        }
-        return {
-          pubkey,
-          name: profile?.display_name || profile?.name || "",
-          nip05: profile?.nip05 || "",
-          picture: profile?.picture || DEFAULT_IMAGE_URL,
-        };
-      });
-  }, [user, profiles, fetchUserProfileThrottled]);
+  // Fetch missing profiles as a side effect, not inside useMemo
+  useEffect(() => {
+    if (!open) return;
+    followPubkeys.forEach((pubkey) => {
+      if (!profiles?.get(pubkey)) {
+        fetchUserProfileThrottled(pubkey);
+      }
+    });
+  }, [open, followPubkeys, profiles, fetchUserProfileThrottled]);
+
+  const contacts = useMemo(() => {
+    return followPubkeys.map((pubkey) => {
+      const profile = profiles?.get(pubkey);
+      return {
+        pubkey,
+        name: profile?.display_name || profile?.name || "",
+        nip05: profile?.nip05 || "",
+        picture: profile?.picture || DEFAULT_IMAGE_URL,
+      };
+    });
+  }, [followPubkeys, profiles]);
+
+  // Rank contacts by DM conversation message count
+  const frequentPubkeys = useMemo(() => {
+    if (!user) return new Map<string, number>();
+    const counts = new Map<string, number>();
+    Array.from(conversations.values()).forEach((conv) => {
+      const other = conv.participants.find((p) => p !== user.pubkey);
+      if (other) {
+        counts.set(other, conv.messages.length);
+      }
+    });
+    return counts;
+  }, [conversations, user]);
+
+  const frequentContacts = useMemo(() => {
+    return contacts
+      .filter((c) => (frequentPubkeys.get(c.pubkey) || 0) > 0)
+      .sort((a, b) => (frequentPubkeys.get(b.pubkey) || 0) - (frequentPubkeys.get(a.pubkey) || 0))
+      .slice(0, 8);
+  }, [contacts, frequentPubkeys]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return contacts;
-    const q = search.toLowerCase();
-    return contacts.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.nip05.toLowerCase().includes(q) ||
-        c.pubkey.startsWith(q)
-    );
-  }, [contacts, search]);
+    let list = contacts;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = contacts.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.nip05.toLowerCase().includes(q) ||
+          c.pubkey.startsWith(q)
+      );
+    }
+    // Sort frequent contacts to the top
+    return list.slice().sort((a, b) => {
+      const aFreq = frequentPubkeys.get(a.pubkey) || 0;
+      const bFreq = frequentPubkeys.get(b.pubkey) || 0;
+      return bFreq - aFreq;
+    });
+  }, [contacts, search, frequentPubkeys]);
 
-  const isSelected = (pubkey: string) =>
-    selectedContacts.some((c) => c.pubkey === pubkey);
+  const selectedSet = useMemo(
+    () => new Set(selectedContacts.map((c) => c.pubkey)),
+    [selectedContacts]
+  );
 
-  const toggleContact = (contact: Contact) => {
+  const toggleContact = useCallback((contact: Contact) => {
     setSelectedContacts((prev) =>
       prev.some((c) => c.pubkey === contact.pubkey)
         ? prev.filter((c) => c.pubkey !== contact.pubkey)
         : [...prev, contact]
     );
-  };
+  }, []);
 
   const handleNext = () => {
     if (showMessageStep) {
@@ -231,6 +308,62 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
             </IconButton>
           </DialogTitle>
           <DialogContent sx={{ px: 2, pt: 0 }}>
+            {!search.trim() && frequentContacts.length > 0 && (
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                  Frequent
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1.5, overflowX: "auto", pb: 0.5 }}>
+                  {frequentContacts.map((c) => (
+                    <Box
+                      key={c.pubkey}
+                      onClick={() => toggleContact(c)}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        minWidth: 56,
+                        position: "relative",
+                      }}
+                    >
+                      <Box sx={{ position: "relative" }}>
+                        <Avatar src={c.picture} sx={{ width: 40, height: 40 }} />
+                        {selectedSet.has(c.pubkey) && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              bottom: -2,
+                              right: -2,
+                              width: 16,
+                              height: 16,
+                              borderRadius: "50%",
+                              bgcolor: "primary.main",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "primary.contrastText",
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                          >
+                            ✓
+                          </Box>
+                        )}
+                      </Box>
+                      <Typography
+                        variant="caption"
+                        noWrap
+                        sx={{ maxWidth: 56, textAlign: "center", mt: 0.25 }}
+                      >
+                        {c.name || c.pubkey.slice(0, 6)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
             <TextField
               fullWidth
               size="small"
@@ -259,35 +392,12 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
             ) : (
               <List disablePadding dense>
                 {filtered.map((c) => (
-                  <ListItem
+                  <ContactRow
                     key={c.pubkey}
-                    onClick={() => toggleContact(c)}
-                    sx={{
-                      cursor: "pointer",
-                      borderRadius: 1.5,
-                      mb: 0.5,
-                      "&:hover": { backgroundColor: "action.hover" },
-                    }}
-                  >
-                    <Checkbox
-                      checked={isSelected(c.pubkey)}
-                      size="small"
-                      sx={{ mr: 0.5, p: 0.5 }}
-                      tabIndex={-1}
-                      disableRipple
-                    />
-                    <ListItemAvatar>
-                      <Avatar src={c.picture} sx={{ width: 36, height: 36 }} />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2" fontWeight={500}>
-                          {c.name || c.pubkey.slice(0, 12) + "..."}
-                        </Typography>
-                      }
-                      secondary={c.nip05 || undefined}
-                    />
-                  </ListItem>
+                    contact={c}
+                    selected={selectedSet.has(c.pubkey)}
+                    onToggle={toggleContact}
+                  />
                 ))}
               </List>
             )}

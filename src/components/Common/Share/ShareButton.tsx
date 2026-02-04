@@ -66,13 +66,15 @@ const ShareButton: React.FC<ShareButtonProps> = ({ event }) => {
           </span>
         </Tooltip>
       </div>
-      <ContactSearchDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSelect={handleSelect}
-        title="Share with..."
-        showMessageStep
-      />
+      {dialogOpen && (
+        <ContactSearchDialog
+          open
+          onClose={() => setDialogOpen(false)}
+          onSelect={handleSelect}
+          title="Share with..."
+          showMessageStep
+        />
+      )}
     </>
   );
 };
