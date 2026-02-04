@@ -45,7 +45,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ event }) => {
 
   return (
     <>
-      <div style={{ marginLeft: 20 }}>
+      <div style={{ marginLeft: 20, marginTop: -5 }}>
         <Tooltip title="Share via DM" onClick={handleClick}>
           <span
             style={{
@@ -55,7 +55,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ event }) => {
               padding: 2,
             }}
           >
-            <SendIcon sx={{ fontSize: 20, transform: "rotate(-30deg)" }} />
+            <SendIcon sx={{ fontSize: 20, transform: "rotate(-45deg)" }} />
           </span>
         </Tooltip>
       </div>
