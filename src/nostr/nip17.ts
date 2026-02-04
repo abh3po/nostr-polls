@@ -248,6 +248,10 @@ export async function wrapAndSendDM(
     replyToId
   );
 
+  // Publish to inbox relays + defaultRelays for reliability
+  const recipientRelays = Array.from(new Set([...recipientInbox, ...defaultRelays]));
+  const senderRelays = Array.from(new Set([...senderInbox, ...defaultRelays]));
+
   if (privateKey) {
     // LocalSigner path: use direct crypto with private key
     const privkeyBytes = hexToBytes(privateKey);
@@ -263,8 +267,8 @@ export async function wrapAndSendDM(
       senderPubkey
     );
 
-    pool.publish(recipientInbox, wrapForRecipient);
-    pool.publish(senderInbox, wrapForSender);
+    await Promise.allSettled(pool.publish(recipientRelays, wrapForRecipient));
+    await Promise.allSettled(pool.publish(senderRelays, wrapForSender));
   } else {
     // External signer path: manually construct seal + wrap
     if (!signer.nip44Encrypt) {
@@ -278,14 +282,14 @@ export async function wrapAndSendDM(
       rumor,
       recipientPubkey
     );
-    pool.publish(recipientInbox, recipientWrap);
+    await Promise.allSettled(pool.publish(recipientRelays, recipientWrap));
 
     const senderWrap = await createGiftWrapForSigner(
       signer,
       rumor,
       senderPubkey
     );
-    pool.publish(senderInbox, senderWrap);
+    await Promise.allSettled(pool.publish(senderRelays, senderWrap));
   }
 
   return rumor;
@@ -319,6 +323,9 @@ export async function wrapAndSendReaction(
     [["e", targetMessageId]]
   );
 
+  const recipientRelays = Array.from(new Set([...recipientInbox, ...defaultRelays]));
+  const senderRelays = Array.from(new Set([...senderInbox, ...defaultRelays]));
+
   if (privateKey) {
     const privkeyBytes = hexToBytes(privateKey);
 
@@ -333,8 +340,8 @@ export async function wrapAndSendReaction(
       senderPubkey
     );
 
-    pool.publish(recipientInbox, wrapForRecipient);
-    pool.publish(senderInbox, wrapForSender);
+    await Promise.allSettled(pool.publish(recipientRelays, wrapForRecipient));
+    await Promise.allSettled(pool.publish(senderRelays, wrapForSender));
   } else {
     if (!signer.nip44Encrypt) {
       throw new Error(
@@ -347,14 +354,14 @@ export async function wrapAndSendReaction(
       rumor,
       recipientPubkey
     );
-    pool.publish(recipientInbox, recipientWrap);
+    await Promise.allSettled(pool.publish(recipientRelays, recipientWrap));
 
     const senderWrap = await createGiftWrapForSigner(
       signer,
       rumor,
       senderPubkey
     );
-    pool.publish(senderInbox, senderWrap);
+    await Promise.allSettled(pool.publish(senderRelays, senderWrap));
   }
 
   return rumor;
