@@ -186,8 +186,9 @@ const ChatView: React.FC = () => {
                 sx={{
                   px: 2,
                   py: 1,
-                  maxWidth: "70%",
+                  maxWidth: "85%",
                   borderRadius: 2,
+                  overflow: "hidden",
                   backgroundColor: isMine
                     ? "primary.main"
                     : "action.hover",
