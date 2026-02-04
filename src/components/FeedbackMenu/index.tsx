@@ -9,7 +9,6 @@ import {
   Grow,
   Fade,
 } from "@mui/material";
-import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -84,7 +83,10 @@ export const FeedbackMenu: React.FC<FeedbackMenuProps> = ({
   const isNested = depth > 0;
 
   return (
-    <Card variant={isNested ? "outlined" : "elevation"} elevation={isNested ? 0 : 1}>
+    <Card
+      variant={isNested ? "outlined" : "elevation"}
+      elevation={isNested ? 0 : 1}
+    >
       <CardContent
         sx={{
           "&:last-child": { pb: isNested ? 1 : 1.5 },
@@ -139,16 +141,16 @@ export const FeedbackMenu: React.FC<FeedbackMenuProps> = ({
             >
               <IconButton
                 size="small"
-                sx={{ p: 0.25 }}
-                color={showRating ? "primary" : "default"}
+                sx={{ p: 0.25, padding: 2 }}
+                // color={showRating ? "primary" : "default"}
               >
                 {totalRatings ? (
-                  <StarIcon
+                  <StarBorderIcon
                     sx={{
                       fontSize: "22px !important",
-                      color: "#FAD13F",
                       transition: "transform 0.2s ease",
                       transform: showRating ? "scale(1.2)" : "scale(1)",
+                      color: "#FAD13F",
                     }}
                   />
                 ) : (
@@ -166,7 +168,7 @@ export const FeedbackMenu: React.FC<FeedbackMenuProps> = ({
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    sx={{ ml: 0.25, fontWeight: 500, fontSize: "0.7rem" }}
+                    sx={{ fontWeight: 500, fontSize: "0.7rem" }}
                   >
                     {displayRating}
                   </Typography>

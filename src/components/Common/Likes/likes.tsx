@@ -119,6 +119,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
         onClose={() => setShowPicker(false)}
       >
         <Box
+          onWheel={(e) => e.stopPropagation()}
           sx={{
             position: "absolute" as const,
             top: "50%",
@@ -128,6 +129,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
             boxShadow: 24,
             p: 2,
             borderRadius: 2,
+            overscrollBehavior: "contain",
           }}
         >
           <EmojiPicker
