@@ -5,6 +5,7 @@ import { Notes } from ".";
 import { Typography } from "@mui/material";
 import { nostrRuntime } from "../../singletons";
 import { EventPointer } from "nostr-tools/lib/types/nip19";
+import PollResponseForm from "../PollResponse/PollResponseForm";
 
 interface PrepareNoteInterface {
   neventId: string;
@@ -34,7 +35,12 @@ export const PrepareNote: React.FC<PrepareNoteInterface> = ({ neventId }) => {
     }
   }, [neventId, event, relays]);
 
-  if (event) return <Notes event={event} />;
+  if (event) {
+    if (event.kind === 1068) {
+      return <PollResponseForm pollEvent={event} />;
+    }
+    return <Notes event={event} />;
+  }
   else
     return (
       <Typography style={{ fontSize: 10 }} color="primary">

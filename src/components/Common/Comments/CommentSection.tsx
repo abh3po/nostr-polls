@@ -3,17 +3,17 @@ import {
   Avatar,
   Button,
   Card,
-  CardActions,
   CardContent,
   CardHeader,
   Typography,
+  Collapse,
+  Box,
 } from "@mui/material";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { signEvent } from "../../../nostr";
 import { useRelays } from "../../../hooks/useRelays";
 import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
-import CommentIcon from "@mui/icons-material/Comment";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { TextWithImages } from "../Parsers/TextWithImages";
 import { calculateTimeAgo } from "../../../utils/common";
@@ -23,13 +23,19 @@ import { useNotification } from "../../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../../constants/notifications";
 import { pool, nostrRuntime } from "../../../singletons";
 import { SubscriptionHandle } from "../../../nostrRuntime/types";
+import { FeedbackMenu } from "../../FeedbackMenu";
 
 interface CommentSectionProps {
   eventId: string;
   showComments: boolean;
+  depth?: number;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({
+  eventId,
+  showComments,
+  depth = 0,
+}) => {
   const { showNotification } = useNotification();
   const {
     profiles,
@@ -115,7 +121,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }
       })
       .map((comment) => {
         const commentUser = profiles?.get(comment.pubkey);
-        if (!commentUser) fetchUserProfileThrottled(comment.pubkey); // Fetch user profile if not found
+        if (!commentUser) fetchUserProfileThrottled(comment.pubkey);
 
         const hasReplies = comments.some((c) =>
           c.tags.some((tag) => tag[3] === "reply" && tag[1] === comment.id)
@@ -134,26 +140,20 @@ const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }
                 }
                 subheader={calculateTimeAgo(comment.created_at)}
               />
-              <CardContent style={{ marginLeft: "8px", padding: "8px"}}>
+              <CardContent style={{ marginLeft: "8px", padding: "8px" }}>
                 <Typography>
                   <TextWithImages content={comment.content} />
                 </Typography>
               </CardContent>
-              <CardActions style={{ marginLeft: "16px", marginBottom: "16px", padding: "0px" }}>
-                <CommentIcon
-                  onClick={() =>
-                    setReplyTo(replyTo === comment.id ? null : comment.id)
-                  }
-                  sx={(theme) => {
-                    return {
-                      color: theme.palette.mode === "light" ? "black" : "white",
-                      fontSize: 18,
-                      cursor: "pointer"
-                    };
-                  }}
-                />
-                {/* Show/Hide Replies Button */}
-                {hasReplies && (
+
+              {/* Full FeedbackMenu on each comment */}
+              <Box sx={{ px: 1, pb: 1 }}>
+                <FeedbackMenu event={comment} depth={depth + 1} />
+              </Box>
+
+              {/* Show/Hide Replies Button */}
+              {hasReplies && (
+                <Box sx={{ px: 2, pb: 1 }}>
                   <Button
                     onClick={() =>
                       setShowReplies((prev) => {
@@ -163,32 +163,40 @@ const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }
                       })
                     }
                     size="small"
-                    style={{ marginLeft: "16px", padding: 0, top: 0 }}
                     sx={(theme) => ({
                       ...getColorsWithTheme(theme, { color: "#000000" }),
+                      p: 0,
+                      fontSize: "0.75rem",
                     })}
                   >
                     {showReplies.get(comment.id)
                       ? "Hide Replies"
                       : "Show Replies"}
                   </Button>
-                )}
-              </CardActions>
+                </Box>
+              )}
             </Card>
-            {/* Reply Button */}
 
-            {/* Render reply input only if this comment is selected for replying */}
-            {replyTo === comment.id && (
-              <CommentInput
-                onSubmit={(content) => {
-                  handleSubmitComment(content, comment.id);
-                  setReplyTo(null); // Reset replyTo after submitting
-                }}
-              />
-            )}
+            {/* Reply input when this comment is selected for replying */}
+            <Collapse in={replyTo === comment.id} timeout={200} unmountOnExit>
+              <Box sx={{ mt: 1, ml: 1 }}>
+                <CommentInput
+                  onSubmit={(content) => {
+                    handleSubmitComment(content, comment.id);
+                    setReplyTo(null);
+                  }}
+                />
+              </Box>
+            </Collapse>
+
             {/* Render child comments if visible */}
-            {showReplies.get(comment.id) &&
-              renderComments(comments, comment.id)}
+            <Collapse
+              in={!!showReplies.get(comment.id)}
+              timeout={200}
+              unmountOnExit
+            >
+              {renderComments(comments, comment.id)}
+            </Collapse>
           </div>
         );
       });
@@ -202,10 +210,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ eventId, showComments }
   }
 
   return (
-    <div style={{ width: "100%", marginTop: "16px" }}>
+    <div style={{ width: "100%" }}>
       <CommentInput onSubmit={(content) => handleSubmitComment(content)} />
       <div style={{ marginTop: "16px" }}>
-        {comments.length === 0 ? <h5>No Comments</h5> : <h5>Comments</h5>}
+        {comments.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No comments yet
+          </Typography>
+        ) : (
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+            Comments
+          </Typography>
+        )}
         {renderComments(Array.from(localCommentsMap.values()), null)}
       </div>
     </div>

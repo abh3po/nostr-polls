@@ -17,6 +17,7 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { getConversationId } from "../../nostr/nip17";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
+import { TextWithImages } from "../Common/Parsers/TextWithImages";
 
 const ChatView: React.FC = () => {
   const { npub } = useParams<{ npub: string }>();
@@ -185,22 +186,26 @@ const ChatView: React.FC = () => {
                 sx={{
                   px: 2,
                   py: 1,
-                  maxWidth: "70%",
+                  maxWidth: "85%",
                   borderRadius: 2,
+                  overflow: "hidden",
                   backgroundColor: isMine
                     ? "primary.main"
                     : "action.hover",
                 }}
               >
-                <Typography
-                  variant="body2"
+                <Box
                   sx={{
                     color: isMine ? "primary.contrastText" : "text.primary",
                     wordBreak: "break-word",
+                    fontSize: "0.875rem",
+                    "& a": {
+                      color: isMine ? "primary.contrastText" : "#FAD13F",
+                    },
                   }}
                 >
-                  {msg.content}
-                </Typography>
+                  <TextWithImages content={msg.content} />
+                </Box>
                 <Typography
                   variant="caption"
                   sx={{

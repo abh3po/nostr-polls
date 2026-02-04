@@ -276,7 +276,7 @@ export const Notes: React.FC<NotesProps> = ({
             message="Copied nevent to clipboard"
           />
 
-          <Card variant="outlined" sx={{ position: "relative" }}>
+          <Card variant="outlined" sx={{ position: "relative", overflow: "hidden" }}>
             <CardContent
               ref={contentRef}
               sx={{

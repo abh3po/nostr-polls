@@ -101,7 +101,7 @@ const NostrParser = ({
     const { type, data } = nip19.decode(encoded);
     if (type === "nevent") {
       return (
-        <div key={index} style={{ marginTop: "0.5rem" }}>
+        <div key={index} style={{ marginTop: "0.5rem", zoom: 0.85 }}>
           <PrepareNote neventId={encoded} />
         </div>
       );
@@ -112,7 +112,7 @@ const NostrParser = ({
         kind: 1,
       });
       return (
-        <div key={index} style={{ marginTop: "0.5rem" }}>
+        <div key={index} style={{ marginTop: "0.5rem", zoom: 0.85 }}>
           <PrepareNote neventId={neventId} />
         </div>
       );
@@ -275,9 +275,10 @@ Text:\n\n${content}`;
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        minWidth: 0,
       }}
     >
-      <div>{renderContent(displayedText)}</div>
+      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>{renderContent(displayedText)}</div>
       {hasOllama && shouldShowTranslate && (
         <div>
           <Tooltip title="Translate">
