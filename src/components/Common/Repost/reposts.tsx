@@ -141,11 +141,13 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
           <ListItemText>Quote Post</ListItemText>
         </MenuItem>
       </Menu>
-      <QuotePostDialog
-        open={quoteDialogOpen}
-        onClose={() => setQuoteDialogOpen(false)}
-        event={event}
-      />
+      {quoteDialogOpen && (
+        <QuotePostDialog
+          open={quoteDialogOpen}
+          onClose={() => setQuoteDialogOpen(false)}
+          event={event}
+        />
+      )}
     </div>
   );
 };

@@ -10,8 +10,9 @@ import { Notes } from '../Notes';
 import { useUserContext } from '../../hooks/useUserContext';
 import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
 
-// Valid 64-character hex string for preview purposes
+// Valid 64-character hex strings for preview purposes
 const MOCK_PUBKEY = '0000000000000000000000000000000000000000000000000000000000000001';
+const MOCK_EVENT_ID = '0000000000000000000000000000000000000000000000000000000000000000';
 
 interface NotePreviewProps {
   noteEvent: Partial<Event>;
@@ -42,13 +43,13 @@ export const NotePreview: React.FC<NotePreviewProps> = ({ noteEvent }) => {
         ) : (
           <Box sx={{ opacity: 0.8, pointerEvents: 'none' }}>
             <Notes event={{
-              id: 'preview-note-id',
+              id: MOCK_EVENT_ID,
               pubkey: previewPubkey,
               created_at: Math.floor(Date.now() / 1000),
               kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
               tags: [],
               content: noteEvent.content || '',
-              sig: 'preview-note-id',
+              sig: MOCK_EVENT_ID,
             }} />
           </Box>
         )}
