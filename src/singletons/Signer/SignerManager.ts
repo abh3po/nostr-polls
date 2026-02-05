@@ -3,6 +3,7 @@ import { createNip46Signer } from "./BunkerSigner";
 import { NostrSigner } from "./types";
 import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { defaultRelays, fetchUserProfile } from "../../nostr";
+import { publishInboxRelays } from "../../nostr/nip17";
 import {
   getBunkerUriInLocalStorage,
   getKeysFromLocalStorage,
@@ -195,6 +196,9 @@ class SignerManager {
 
     // Optionally, send kind-0 event to publish metadata on Nostr network
     await this.publishKind0(userData);
+
+    // Publish DM inbox relays (kind:10050) for NIP-17 compliance
+    await publishInboxRelays(defaultRelays);
 
     this.notify();
   }
