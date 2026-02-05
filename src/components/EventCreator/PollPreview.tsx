@@ -12,6 +12,7 @@ import { NOSTR_EVENT_KINDS } from "../../constants/nostr";
 
 // Valid 64-character hex strings for preview purposes
 const MOCK_PUBKEY = '0000000000000000000000000000000000000000000000000000000000000001';
+const MOCK_EVENT_ID = '0000000000000000000000000000000000000000000000000000000000000000';
 
 interface PollPreviewProps {
   pollEvent: Partial<Event>;
@@ -43,13 +44,13 @@ export const PollPreview: React.FC<PollPreviewProps> = ({ pollEvent }) => {
           <Box sx={{ opacity: 0.8, pointerEvents: 'none' }}>
             <PollResponseForm
               pollEvent={{
-                id: 'preview-poll-id',
+                id: MOCK_EVENT_ID,
                 pubkey: previewPubkey,
                 created_at: Math.floor(Date.now() / 1000),
                 kind: NOSTR_EVENT_KINDS.POLL,
                 tags: [...(pollEvent.tags || [])],
                 content: pollEvent.content || '',
-                sig: 'preview-poll-id',
+                sig: MOCK_EVENT_ID,
               }}
             />
           </Box>

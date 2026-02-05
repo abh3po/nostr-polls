@@ -33,6 +33,26 @@ const QUICK_EMOJIS = [
   "\u{1F525}",
 ];
 
+// Renders an emoji, supporting custom emoji shortcodes like :name:
+const RenderEmoji: React.FC<{ content: string; tags?: string[][] }> = ({ content, tags }) => {
+  const match = content.match(/^:([a-zA-Z0-9_]+):$/);
+  if (match && tags) {
+    const shortcode = match[1];
+    const emojiTag = tags.find(t => t[0] === "emoji" && t[1] === shortcode);
+    if (emojiTag && emojiTag[2]) {
+      return (
+        <img
+          src={emojiTag[2]}
+          alt={`:${shortcode}:`}
+          title={`:${shortcode}:`}
+          style={{ height: "1em", width: "auto", verticalAlign: "middle" }}
+        />
+      );
+    }
+  }
+  return <>{content}</>;
+};
+
 const ChatView: React.FC = () => {
   const { npub } = useParams<{ npub: string }>();
   const navigate = useNavigate();
@@ -213,10 +233,10 @@ const ChatView: React.FC = () => {
 
           // Group reactions by emoji with counts
           const groupedReactions = msgReactions.reduce<
-            Record<string, { emoji: string; count: number; pubkeys: string[] }>
+            Record<string, { emoji: string; count: number; pubkeys: string[]; tags?: string[][] }>
           >((acc, r) => {
             if (!acc[r.emoji]) {
-              acc[r.emoji] = { emoji: r.emoji, count: 0, pubkeys: [] };
+              acc[r.emoji] = { emoji: r.emoji, count: 0, pubkeys: [], tags: r.tags };
             }
             acc[r.emoji].count++;
             acc[r.emoji].pubkeys.push(r.pubkey);
@@ -268,7 +288,7 @@ const ChatView: React.FC = () => {
                       },
                     }}
                   >
-                    <TextWithImages content={msg.content} />
+                    <TextWithImages content={msg.content} tags={msg.tags} />
                   </Box>
                   <Typography
                     variant="caption"
@@ -304,7 +324,12 @@ const ChatView: React.FC = () => {
                   {Object.values(groupedReactions).map((r) => (
                     <Chip
                       key={r.emoji}
-                      label={`${r.emoji} ${r.count > 1 ? r.count : ""}`}
+                      label={
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <RenderEmoji content={r.emoji} tags={r.tags} />
+                          {r.count > 1 && <span>{r.count}</span>}
+                        </Box>
+                      }
                       size="small"
                       variant="outlined"
                       onClick={() => handleReaction(r.emoji, msg.id)}

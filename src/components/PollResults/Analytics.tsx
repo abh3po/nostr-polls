@@ -82,7 +82,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
               return (
                 <TableRow key={index}>
                   <TableCell>
-                    {<TextWithImages content={option[2]} />}
+                    {<TextWithImages content={option[2]} tags={pollEvent.tags} />}
                   </TableCell>
                   <TableCell>
                     {calculatePercentages(results.map((r) => r.count))[index]}%

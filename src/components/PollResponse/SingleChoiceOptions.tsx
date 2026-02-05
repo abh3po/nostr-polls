@@ -6,12 +6,14 @@ interface SingleChoiceOptionsProps {
   options: Array<[string, string, string]>;
   response: string[];
   handleResponseChange: (value: string) => void;
+  tags?: string[][];
 }
 
 export const SingleChoiceOptions: React.FC<SingleChoiceOptionsProps> = ({
   options,
   response,
   handleResponseChange,
+  tags,
 }) => (
   <RadioGroup
     value={response}
@@ -25,7 +27,7 @@ export const SingleChoiceOptions: React.FC<SingleChoiceOptionsProps> = ({
         control={<Radio />}
         style={{ flex: 1 }}
         className="radio-label"
-        label={<TextWithImages content={option[2]} />}
+        label={<TextWithImages content={option[2]} tags={tags} />}
       />
     ))}
   </RadioGroup>

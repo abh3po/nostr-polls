@@ -31,6 +31,7 @@ export interface DMMessage {
 export interface DMReaction {
   emoji: string;
   pubkey: string; // who reacted
+  tags?: string[][]; // for custom emoji support
 }
 
 export interface Conversation {
@@ -121,6 +122,7 @@ export function DMProvider({ children }: { children: ReactNode }) {
       const reaction: DMReaction = {
         emoji: rumor.content,
         pubkey: rumor.pubkey,
+        tags: rumor.tags.filter((t) => t[0] === "emoji"),
       };
 
       // Cache reaction

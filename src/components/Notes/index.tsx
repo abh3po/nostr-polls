@@ -56,11 +56,12 @@ export const Notes: React.FC<NotesProps> = ({
   let { relays } = useRelays();
   let { fetchLatestContactList } = useListContext();
   const replyingTo = event.tags.findLast((t) => t[0] === "e")?.[1] || null;
-  const replyingToNevent = replyingTo
+  const isValidHex = (s: string | null) => s && s.length === 64 && /^[0-9a-f]+$/i.test(s);
+  const replyingToNevent = replyingTo && isValidHex(replyingTo)
     ? nip19.neventEncode({ id: replyingTo })
     : null;
   const referencedEventId = event.tags.find((t) => t[0] === "e")?.[1] || null;
-  const referencedEventNevent = referencedEventId
+  const referencedEventNevent = referencedEventId && isValidHex(referencedEventId)
     ? nip19.neventEncode({ id: referencedEventId })
     : null;
 
@@ -291,7 +292,7 @@ export const Notes: React.FC<NotesProps> = ({
                 p: 2,
               }}
             >
-              <TextWithImages content={event.content} />
+              <TextWithImages content={event.content} tags={event.tags} />
 
               {replyingToNevent ? (
                 <div style={{ borderRadius: "2px", borderColor: "grey" }}>

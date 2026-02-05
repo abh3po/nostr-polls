@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -38,11 +38,21 @@ const QuotePostDialog: React.FC<QuotePostDialogProps> = ({
   const { relays } = useRelays();
   const { showNotification } = useNotification();
 
-  const neventId = nip19.neventEncode({
-    id: event.id,
-    relays: relays.slice(0, 2),
-    kind: event.kind,
-  });
+  const neventId = useMemo(() => {
+    // Validate event.id is a valid 64-char hex string
+    if (!event.id || event.id.length !== 64 || !/^[0-9a-f]+$/i.test(event.id)) {
+      return null;
+    }
+    try {
+      return nip19.neventEncode({
+        id: event.id,
+        relays: relays.slice(0, 2),
+        kind: event.kind,
+      });
+    } catch {
+      return null;
+    }
+  }, [event.id, event.kind, relays]);
 
   const extractHashtags = (text: string): string[] => {
     const hashtagRegex = /#(\w+)/g;
@@ -51,7 +61,7 @@ const QuotePostDialog: React.FC<QuotePostDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user || !neventId) return;
 
     const fullContent = content.trim()
       ? `${content}\n\nnostr:${neventId}`
@@ -112,22 +122,28 @@ const QuotePostDialog: React.FC<QuotePostDialogProps> = ({
             maxRows={6}
           />
         </Box>
-        <Paper
-          variant="outlined"
-          sx={{
-            mt: 2,
-            p: 1,
-            maxHeight: 300,
-            overflow: "auto",
-            opacity: 0.85,
-            pointerEvents: "none",
-          }}
-        >
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
-            Quoting:
+        {neventId ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              mt: 2,
+              p: 1,
+              maxHeight: 300,
+              overflow: "auto",
+              opacity: 0.85,
+              pointerEvents: "none",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+              Quoting:
+            </Typography>
+            <PrepareNote neventId={neventId} />
+          </Paper>
+        ) : (
+          <Typography color="error" sx={{ mt: 2 }}>
+            Unable to load post preview
           </Typography>
-          <PrepareNote neventId={neventId} />
-        </Paper>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={isSubmitting}>
@@ -136,7 +152,7 @@ const QuotePostDialog: React.FC<QuotePostDialogProps> = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !neventId}
         >
           {isSubmitting ? "Publishing..." : "Quote Post"}
         </Button>

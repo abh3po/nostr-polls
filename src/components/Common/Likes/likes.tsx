@@ -15,6 +15,28 @@ interface LikesProps {
   pollEvent: Event;
 }
 
+// Renders an emoji, supporting custom emoji shortcodes like :name:
+const RenderEmoji: React.FC<{ content: string; tags?: string[][] }> = ({ content, tags }) => {
+  // Check if it's a custom emoji shortcode pattern
+  const match = content.match(/^:([a-zA-Z0-9_]+):$/);
+  if (match && tags) {
+    const shortcode = match[1];
+    const emojiTag = tags.find(t => t[0] === "emoji" && t[1] === shortcode);
+    if (emojiTag && emojiTag[2]) {
+      return (
+        <img
+          src={emojiTag[2]}
+          alt={`:${shortcode}:`}
+          title={`:${shortcode}:`}
+          style={{ height: "1.2em", width: "auto", verticalAlign: "middle" }}
+        />
+      );
+    }
+  }
+  // Regular emoji or unresolved shortcode
+  return <>{content}</>;
+};
+
 const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const { likesMap, fetchLikesThrottled, addEventToMap } = useAppContext();
   const { showNotification } = useNotification();
@@ -23,10 +45,9 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
   const [showPicker, setShowPicker] = useState(false);
   const theme = useTheme();
 
-  const userReaction = () => {
+  const userReactionEvent = () => {
     if (!user) return null;
-    return likesMap?.get(pollEvent.id)?.find((r) => r.pubkey === user.pubkey)
-      ?.content;
+    return likesMap?.get(pollEvent.id)?.find((r) => r.pubkey === user.pubkey) || null;
   };
 
   const addReaction = async (emoji: string) => {
@@ -54,20 +75,24 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
     }
   }, [pollEvent.id, likesMap, fetchLikesThrottled, user]);
 
-  // Compute top 2 emojis + count
+  // Compute top emojis + count, preserving tags for custom emoji rendering
   const getTopEmojis = () => {
     const reactions = likesMap?.get(pollEvent.id) || [];
-    const counts: Record<string, number> = {};
+    const emojiData: Record<string, { count: number; tags?: string[][] }> = {};
     reactions.forEach((r) => {
-      counts[r.content] = (counts[r.content] || 0) + 1;
+      if (!emojiData[r.content]) {
+        emojiData[r.content] = { count: 0, tags: r.tags };
+      }
+      emojiData[r.content].count += 1;
     });
-    const sorted = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([emoji, count]) => ({ emoji, count }));
+    const sorted = Object.entries(emojiData)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([emoji, data]) => ({ emoji, count: data.count, tags: data.tags }));
     return sorted;
   };
 
   const topEmojis = getTopEmojis();
+  const userReaction = userReactionEvent();
 
   return (
     <Box
@@ -79,11 +104,15 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
     >
       {/* Heart / User emoji */}
       <Tooltip
-        title={userReaction() ? "Change reaction" : "React"}
+        title={userReaction ? "Change reaction" : "React"}
         onClick={() => setShowPicker(true)}
       >
         <IconButton size="small" sx={{ p: 0 }}>
-          {userReaction() || <FavoriteBorder sx={{ p: 0 }} />}
+          {userReaction ? (
+            <RenderEmoji content={userReaction.content} tags={userReaction.tags} />
+          ) : (
+            <FavoriteBorder sx={{ p: 0 }} />
+          )}
         </IconButton>
       </Tooltip>
 
@@ -91,7 +120,7 @@ const Likes: React.FC<LikesProps> = ({ pollEvent }) => {
       <Box display="flex" alignItems="center" ml={1} gap={0.5}>
         {topEmojis.slice(0, 2).map((r) => (
           <span key={r.emoji} style={{ fontSize: 18 }}>
-            {r.emoji}
+            <RenderEmoji content={r.emoji} tags={r.tags} />
           </span>
         ))}
         {topEmojis.length > 2 && (
