@@ -199,7 +199,7 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
         <form onSubmit={handleSubmitResponse}>
           <Card variant="outlined">
             <CardHeader
-              title={<TextWithImages content={label} />}
+              title={<TextWithImages content={label} tags={pollEvent.tags} />}
               subheader={
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <Typography sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}>
@@ -260,12 +260,14 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                       options={options as [string, string, string][]}
                       handleResponseChange={handleResponseChange}
                       response={responses}
+                      tags={pollEvent.tags}
                     />
                   ) : pollType === "multiplechoice" ? (
                     <MultipleChoiceOptions
                       options={options as [string, string, string][]}
                       handleResponseChange={handleResponseChange}
                       response={responses}
+                      tags={pollEvent.tags}
                     />
                   ) : null
                 ) : (

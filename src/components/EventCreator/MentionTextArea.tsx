@@ -70,9 +70,17 @@ const MentionTextArea: React.FC<MentionTextAreaProps> = ({
         name.includes(query) ||
         nip05Val.includes(query)
       ) {
+        let displayName = profile.display_name || profile.name;
+        if (!displayName) {
+          try {
+            displayName = nip19.npubEncode(pubkey).slice(0, 12);
+          } catch {
+            displayName = pubkey.slice(0, 12);
+          }
+        }
         results.push({
           pubkey,
-          displayName: profile.display_name || profile.name || nip19.npubEncode(pubkey).slice(0, 12),
+          displayName,
           picture: profile.picture || DEFAULT_IMAGE_URL,
           nip05: profile.nip05,
         });

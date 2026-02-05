@@ -142,7 +142,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
               />
               <CardContent style={{ marginLeft: "8px", padding: "8px" }}>
                 <Typography>
-                  <TextWithImages content={comment.content} />
+                  <TextWithImages content={comment.content} tags={comment.tags} />
                 </Typography>
               </CardContent>
 

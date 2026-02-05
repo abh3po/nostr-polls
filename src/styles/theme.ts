@@ -83,7 +83,26 @@ const baseThemeOptions:  Parameters<typeof createTheme>[0] = {
           overflowY: "auto",
         },
       },
-    }
+    },
+    MuiAvatar: {
+      styleOverrides: {
+        root: {
+          overflow: "hidden",
+          // Prevent text from overflowing when image fails to load
+          "& > *:not(img)": {
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+        },
+        fallback: {
+          // Ensure fallback icon stays within bounds
+          width: "75%",
+          height: "75%",
+        },
+      },
+    },
   },
 }
 

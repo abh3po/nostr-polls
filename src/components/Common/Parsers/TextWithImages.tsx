@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PrepareNote } from "../../Notes/PrepareNote";
 import { nip19 } from "nostr-tools";
 import { isImageUrl } from "../../../utils/common";
@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 
 interface TextWithImagesProps {
   content: string;
+  tags?: string[][];
 }
 
 const urlRegex = /((http|https):\/\/[^\s]+)/g;
@@ -161,13 +162,77 @@ const NostrParser = ({
   return null;
 };
 
+const CustomEmojiParser = ({
+  part,
+  index,
+  emojiMap,
+}: {
+  part: string;
+  index: number;
+  emojiMap: Map<string, string>;
+}) => {
+  if (emojiMap.size === 0) return null;
+
+  const emojiRegex = /:([a-zA-Z0-9_]+):/g;
+  const matches = Array.from(part.matchAll(emojiRegex));
+  if (matches.length === 0) return null;
+
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  matches.forEach((match, i) => {
+    const shortcode = match[1];
+    const url = emojiMap.get(shortcode);
+
+    if (url) {
+      if (match.index! > lastIndex) {
+        elements.push(part.slice(lastIndex, match.index));
+      }
+      elements.push(
+        <img
+          key={`${index}-emoji-${i}`}
+          src={url}
+          alt={`:${shortcode}:`}
+          title={`:${shortcode}:`}
+          style={{
+            height: "1.2em",
+            width: "auto",
+            verticalAlign: "middle",
+            display: "inline",
+          }}
+        />
+      );
+      lastIndex = match.index! + match[0].length;
+    }
+  });
+
+  if (elements.length === 0) return null;
+
+  if (lastIndex < part.length) {
+    elements.push(part.slice(lastIndex));
+  }
+
+  return <React.Fragment key={index}>{elements}</React.Fragment>;
+};
+
 const PlainTextRenderer = ({ part }: { part: string; key?: string }) => {
   return <React.Fragment>{part}</React.Fragment>;
 };
 
 // ---- Main Component ----
 
-export const TextWithImages: React.FC<TextWithImagesProps> = ({ content }) => {
+export const TextWithImages: React.FC<TextWithImagesProps> = ({ content, tags }) => {
+  const emojiMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (tags) {
+      for (const tag of tags) {
+        if (tag[0] === "emoji" && tag[1] && tag[2]) {
+          map.set(tag[1], tag[2]);
+        }
+      }
+    }
+    return map;
+  }, [tags]);
   const [displayedText, setDisplayedText] = useState<string>(content);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [shouldShowTranslate, setShouldShowTranslate] = useState(false);
@@ -259,7 +324,8 @@ Text:\n\n${content}`;
                 index,
                 profiles,
                 fetchUserProfileThrottled,
-              });
+              }) ||
+              CustomEmojiParser({ part, index, emojiMap });
 
             return parserResult ?? <PlainTextRenderer part={part} key={key} />;
           })}

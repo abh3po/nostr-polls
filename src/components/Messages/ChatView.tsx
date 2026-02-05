@@ -268,7 +268,7 @@ const ChatView: React.FC = () => {
                       },
                     }}
                   >
-                    <TextWithImages content={msg.content} />
+                    <TextWithImages content={msg.content} tags={msg.tags} />
                   </Box>
                   <Typography
                     variant="caption"

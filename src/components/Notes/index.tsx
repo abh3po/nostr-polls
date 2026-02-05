@@ -291,7 +291,7 @@ export const Notes: React.FC<NotesProps> = ({
                 p: 2,
               }}
             >
-              <TextWithImages content={event.content} />
+              <TextWithImages content={event.content} tags={event.tags} />
 
               {replyingToNevent ? (
                 <div style={{ borderRadius: "2px", borderColor: "grey" }}>
