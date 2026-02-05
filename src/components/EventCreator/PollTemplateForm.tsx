@@ -12,6 +12,7 @@ import {
   Collapse,
   Chip,
 } from "@mui/material";
+import MentionTextArea, { extractMentionTags } from "./MentionTextArea";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import Grid from "@mui/material/Grid2";
@@ -120,13 +121,15 @@ const PollTemplateForm: React.FC<{
         return;
       }
 
+      const mentionTags = extractMentionTags(eventContent);
       const pollEvent = {
         kind: NOSTR_EVENT_KINDS.POLL,
         content: eventContent,
         tags: [
           ...options.map((option: Option) => ["option", option[0], option[1]]),
           ...relays.map((relay) => ["relay", relay]),
-          ...topics.map((tag) => ["t", tag]), // Add topic tags
+          ...topics.map((tag) => ["t", tag]),
+          ...mentionTags,
         ],
         created_at: Math.floor(Date.now() / 1000),
       };
@@ -178,16 +181,12 @@ const PollTemplateForm: React.FC<{
     <form onSubmit={handleSubmit}>
       <Stack spacing={4}>
         <Box>
-          <TextField
+          <MentionTextArea
             label="Poll Question"
             value={eventContent}
-            onChange={(e) => setEventContent(e.target.value)}
+            onChange={setEventContent}
             required
-            multiline
-            minRows={4}
-            maxRows={8}
-            fullWidth
-            placeholder="Ask a question. Use #hashtags to tag topics."
+            placeholder="Ask a question. Use @mentions and #hashtags."
           />
         </Box>
 

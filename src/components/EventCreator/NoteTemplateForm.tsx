@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Stack,
-  TextField,
   Collapse,
   Typography,
   Chip,
@@ -20,6 +19,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { NotePreview } from "./NotePreview";
 import { pool } from "../../singletons";
+import MentionTextArea, { extractMentionTags } from "./MentionTextArea";
 
 const NoteTemplateForm: React.FC<{
   eventContent: string;
@@ -56,12 +56,14 @@ const NoteTemplateForm: React.FC<{
         showNotification(NOTIFICATION_MESSAGES.EMPTY_NOTE_CONTENT, "error");
         return;
       }
+      const mentionTags = extractMentionTags(eventContent);
       const noteEvent = {
         kind: NOSTR_EVENT_KINDS.TEXT_NOTE,
         content: eventContent,
         tags: [
           ...relays.map((relay) => ["relay", relay]),
           ...topics.map((tag) => ["t", tag]),
+          ...mentionTags,
         ],
         created_at: Math.floor(Date.now() / 1000),
       };
@@ -91,16 +93,12 @@ const NoteTemplateForm: React.FC<{
     <form onSubmit={handleSubmit}>
       <Stack spacing={4}>
         <Box>
-          <TextField
+          <MentionTextArea
             label="Note Content"
             value={eventContent}
-            onChange={(e) => setEventContent(e.target.value)}
+            onChange={setEventContent}
             required
-            multiline
-            minRows={4}
-            maxRows={8}
-            fullWidth
-            placeholder="Share your thoughts. Use #hashtags to tag topics."
+            placeholder="Share your thoughts. Use @mentions and #hashtags."
           />
         </Box>
 

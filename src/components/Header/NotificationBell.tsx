@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Badge,
   IconButton,
@@ -17,15 +17,68 @@ import { useAppContext } from "../../hooks/useAppContext";
 import { Event, nip19 } from "nostr-tools";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 import { useNavigate } from "react-router-dom";
+import { nostrRuntime } from "../../singletons";
+import { useRelays } from "../../hooks/useRelays";
 
 export const NotificationBell: React.FC = () => {
   const { notifications, unreadCount, markAllAsRead, pollMap } =
     useNostrNotifications();
   const { profiles, fetchUserProfileThrottled } = useAppContext();
+  const { relays } = useRelays();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
+
+  // Cache for resolved post content snippets
+  const [postSnippets, setPostSnippets] = useState<Map<string, string>>(
+    new Map()
+  );
+  const fetchingRef = useRef<Set<string>>(new Set());
+
+  const resolvePostContent = useCallback(
+    (postId: string) => {
+      if (postSnippets.has(postId) || fetchingRef.current.has(postId)) return;
+      fetchingRef.current.add(postId);
+
+      // Try cache first
+      const cached = nostrRuntime.get(postId);
+      if (cached) {
+        setPostSnippets((prev) => {
+          const next = new Map(prev);
+          next.set(postId, cached.content?.slice(0, 80) || "");
+          return next;
+        });
+        fetchingRef.current.delete(postId);
+        return;
+      }
+
+      nostrRuntime.fetchBatched(relays, postId).then((event) => {
+        if (event) {
+          setPostSnippets((prev) => {
+            const next = new Map(prev);
+            next.set(postId, event.content?.slice(0, 80) || "");
+            return next;
+          });
+        }
+        fetchingRef.current.delete(postId);
+      });
+    },
+    [relays, postSnippets]
+  );
+
+  // Resolve post content for reactions/zaps when notifications change
+  useEffect(() => {
+    notifications.forEach((ev) => {
+      const parsed = parseNotification(ev);
+      if (
+        (parsed.type === "reaction" || parsed.type === "zap") &&
+        parsed.postId
+      ) {
+        resolvePostContent(parsed.postId);
+      }
+    });
+  }, [notifications, resolvePostContent]);
 
   const sorted = Array.from(notifications.values()).sort(
     (a, b) => b.created_at - a.created_at
@@ -93,6 +146,19 @@ export const NotificationBell: React.FC = () => {
   };
 
   // -------------------------------
+  // UTIL: format post snippet for display
+  // -------------------------------
+  const getPostSnippet = (postId: string | undefined) => {
+    if (!postId) return "";
+    const snippet = postSnippets.get(postId);
+    if (snippet) {
+      const display = snippet.length > 60 ? snippet.slice(0, 60) + "\u2026" : snippet;
+      return `To your post: "${display}"`;
+    }
+    return `To your post ${postId.slice(0, 8)}\u2026`;
+  };
+
+  // -------------------------------
   // NOTIFICATION TEXT BUILDER
   // -------------------------------
   const renderItem = (ev: Event) => {
@@ -122,15 +188,15 @@ export const NotificationBell: React.FC = () => {
       case "reaction":
         return {
           title: `${name} reacted ${parsed.reaction}`,
-          body: parsed.postId
-            ? `To your post ${parsed.postId.slice(0, 8)}…`
-            : "",
+          body: getPostSnippet(parsed.postId),
         };
 
       case "zap":
         return {
           title: `${name} zapped you ⚡`,
-          body: parsed.sats ? `${parsed.sats} sats` : "Zap received",
+          body: parsed.sats
+            ? `${parsed.sats} sats${parsed.postId ? ` · ${getPostSnippet(parsed.postId)}` : ""}`
+            : "Zap received",
         };
 
       default:

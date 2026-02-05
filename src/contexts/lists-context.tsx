@@ -3,6 +3,7 @@ import { Event, EventTemplate, Filter } from "nostr-tools";
 import { parseContacts, getATagFromEvent } from "../nostr";
 import { useRelays } from "../hooks/useRelays";
 import { useUserContext } from "../hooks/useUserContext";
+import { useAppContext } from "../hooks/useAppContext";
 import { User } from "./user-context";
 import { pool, nostrRuntime } from "../singletons";
 import { signerManager } from "../singletons/Signer/SignerManager";
@@ -31,6 +32,7 @@ export function ListProvider({ children }: { children: ReactNode }) {
   >();
   const { user, setUser, requestLogin } = useUserContext();
   const { relays } = useRelays();
+  const { profiles, fetchUserProfileThrottled } = useAppContext();
   const [isFetchingWoT, setIsFetchingWoT] = useState(false);
 
   const fetchLatestContactList = (): Promise<Event | null> => {
@@ -281,6 +283,17 @@ export function ListProvider({ children }: { children: ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, myTopics, user]);
+
+  // Warm profile cache with followed pubkeys
+  useEffect(() => {
+    if (!user?.follows?.length) return;
+    for (const pubkey of user.follows) {
+      if (!profiles.has(pubkey)) {
+        fetchUserProfileThrottled(pubkey);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.follows]);
 
   const addTopicToMyTopics = async (topic: string): Promise<void> => {
     const signer = await signerManager.getSigner();
