@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Tooltip } from "@mui/material";
+import {
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+} from "@mui/material";
 import RepeatIcon from "@mui/icons-material/Repeat";
+import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import { Event, EventTemplate } from "nostr-tools";
 import { useUserContext } from "../../../hooks/useUserContext";
 import { useNotification } from "../../../contexts/notification-context";
@@ -9,6 +15,7 @@ import { useAppContext } from "../../../hooks/useAppContext";
 import { useRelays } from "../../../hooks/useRelays";
 import { pool } from "../../../singletons";
 import { signEvent } from "../../../nostr";
+import QuotePostDialog from "./QuotePostDialog";
 
 interface RepostButtonProps {
   event: Event;
@@ -21,6 +28,8 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
   const { repostsMap, fetchRepostsThrottled, addEventToMap } = useAppContext();
 
   const [reposted, setReposted] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
 
   useEffect(() => {
     const checkAndFetch = async () => {
@@ -37,11 +46,20 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
     checkAndFetch();
   }, [event.id, repostsMap, fetchRepostsThrottled, user]);
 
-  const handleRepost = async () => {
+  const handleIconClick = (e: React.MouseEvent<HTMLElement>) => {
     if (!user) {
       showNotification(NOTIFICATION_MESSAGES.LOGIN_TO_REPOST, "warning");
       return;
     }
+    setMenuAnchor(e.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+  };
+
+  const handleRepost = async () => {
+    handleMenuClose();
 
     if (reposted) return;
 
@@ -62,7 +80,7 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
     }
 
     try {
-      const signedEvent = await signEvent(repostTemplate, user.privateKey);
+      const signedEvent = await signEvent(repostTemplate, user!.privateKey);
       pool.publish(relays, signedEvent);
       addEventToMap(signedEvent);
       setReposted(true);
@@ -72,39 +90,62 @@ const RepostButton: React.FC<RepostButtonProps> = ({ event }) => {
     }
   };
 
+  const handleQuotePost = () => {
+    handleMenuClose();
+    setQuoteDialogOpen(true);
+  };
+
   return (
     <div style={{ marginLeft: 20 }}>
-      <Tooltip
-        onClick={handleRepost}
-        style={{ color: "black" }}
-        title={reposted ? "Reposted" : "Repost"}
+      <span
+        onClick={handleIconClick}
+        style={{
+          cursor: "pointer",
+          display: "flex",
+          flexDirection: "row",
+          padding: 2,
+        }}
       >
-        <span
-          style={{
-            cursor: reposted ? "default" : "pointer",
-            display: "flex",
-            flexDirection: "row",
-            padding: 2,
-          }}
-        >
-          <RepeatIcon
-            sx={
-              reposted
-                ? {
-                    fontSize: 28, // 🔍 bigger icon
-                    color: "#4CAF50",
-                    "& path": {
-                      stroke: "#4CAF50",
-                      strokeWidth: 2,
-                    },
-                  }
-                : {
-                    fontSize: 20, // normal size when not reposted
-                  }
-            }
-          />
-        </span>
-      </Tooltip>
+        <RepeatIcon
+          sx={
+            reposted
+              ? {
+                  fontSize: 28,
+                  color: "#4CAF50",
+                  "& path": {
+                    stroke: "#4CAF50",
+                    strokeWidth: 2,
+                  },
+                }
+              : {
+                  fontSize: 20,
+                }
+          }
+        />
+      </span>
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleRepost} disabled={reposted}>
+          <ListItemIcon>
+            <RepeatIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{reposted ? "Reposted" : "Repost"}</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleQuotePost}>
+          <ListItemIcon>
+            <FormatQuoteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Quote Post</ListItemText>
+        </MenuItem>
+      </Menu>
+      <QuotePostDialog
+        open={quoteDialogOpen}
+        onClose={() => setQuoteDialogOpen(false)}
+        event={event}
+      />
     </div>
   );
 };

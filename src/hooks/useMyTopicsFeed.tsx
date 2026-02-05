@@ -1,11 +1,15 @@
 // src/hooks/useMyTopicsFeed.ts
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Event } from "nostr-tools";
 import { pool, nostrRuntime } from "../singletons";
 import { useRelays } from "./useRelays";
 import { useUserContext } from "./useUserContext";
 import { signEvent } from "../nostr";
+import {
+  loadModeratorPrefs,
+  saveModeratorPrefs,
+} from "../utils/localStorage";
 
 export const OFFTOPIC_KIND = 1011;
 
@@ -29,6 +33,10 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
   const [feedMode, setFeedMode] = useState<FeedMode>("global");
   const [showAnyway, setShowAnyway] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [moderationVersion, setModerationVersion] = useState(0);
+  const [selectedModsByTopic, setSelectedModsByTopic] = useState<
+    Map<string, string[]>
+  >(new Map());
 
   const moderationByTopic = useRef<Map<string, TopicModeration>>(new Map());
   const seenNotes = useRef<Set<string>>(new Set());
@@ -79,7 +87,63 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
 
     // force rerender
     setNotes((prev) => new Map(prev));
+    setModerationVersion((v) => v + 1);
   };
+
+  /* ------------------ derive moderators by topic ------------------ */
+
+  const moderatorsByTopic = useMemo(() => {
+    const result = new Map<string, string[]>();
+    moderationByTopic.current.forEach((mod, topic) => {
+      const modSet = new Set<string>();
+      mod.offTopicNotes.forEach((moderators) => {
+        moderators.forEach((m) => modSet.add(m));
+      });
+      mod.blockedUsers.forEach((moderators) => {
+        moderators.forEach((m) => modSet.add(m));
+      });
+      if (modSet.size > 0) {
+        result.set(topic, Array.from(modSet));
+      }
+    });
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moderationVersion]);
+
+  // Initialize selected moderators from localStorage when moderators change
+  useEffect(() => {
+    setSelectedModsByTopic((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      moderatorsByTopic.forEach((mods, topic) => {
+        if (!next.has(topic)) {
+          next.set(topic, loadModeratorPrefs(topic, mods));
+          changed = true;
+        } else {
+          // Add any new moderators that appeared
+          const current = next.get(topic)!;
+          const newMods = mods.filter((m) => !current.includes(m));
+          if (newMods.length > 0) {
+            next.set(topic, [...current, ...newMods]);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [moderatorsByTopic]);
+
+  const setSelectedModeratorsForTopic = useCallback(
+    (topic: string, selected: string[]) => {
+      setSelectedModsByTopic((prev) => {
+        const next = new Map(prev);
+        next.set(topic, selected);
+        return next;
+      });
+      saveModeratorPrefs(topic, selected);
+    },
+    []
+  );
 
   /* ------------------ subscriptions ------------------ */
 
@@ -157,12 +221,24 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
               ...Array.from(blocked || []),
             ]);
 
-            const visibleMods =
-              feedMode === "contacts" && user?.follows
-                ? Array.from(relevantMods).filter((m) =>
-                    user.follows!.includes(m)
-                  )
-                : Array.from(relevantMods);
+            // Filter by selected moderators for this topic
+            const selectedForTopic = selectedModsByTopic.get(topic);
+
+            let visibleMods = Array.from(relevantMods);
+
+            // Apply contacts filter
+            if (feedMode === "contacts" && user?.follows) {
+              visibleMods = visibleMods.filter((m) =>
+                user.follows!.includes(m)
+              );
+            }
+
+            // Apply per-topic moderator selection
+            if (selectedForTopic) {
+              visibleMods = visibleMods.filter((m) =>
+                selectedForTopic.includes(m)
+              );
+            }
 
             if (visibleMods.length > 0) {
               hidden = true;
@@ -183,7 +259,7 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
         };
       })
       .sort((a, b) => b.event.created_at - a.event.created_at);
-  }, [notes, feedMode, showAnyway, user?.follows]);
+  }, [notes, feedMode, showAnyway, user?.follows, selectedModsByTopic]);
 
   /* ------------------ actions ------------------ */
 
@@ -250,6 +326,7 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
 
     // Force re-render for immediate UI feedback
     setNotes((prev) => new Map(prev));
+    setModerationVersion((v) => v + 1);
 
     // Refetch own moderation events to ensure consistency
     try {
@@ -274,5 +351,8 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
     toggleShowAnyway,
     publishModeration,
     loading,
+    moderatorsByTopic,
+    selectedModsByTopic,
+    setSelectedModeratorsForTopic,
   };
 }
