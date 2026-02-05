@@ -10,6 +10,26 @@ interface ReactedNoteCardProps {
   reactions: Event[];
 }
 
+// Renders an emoji, supporting custom emoji shortcodes like :name:
+const RenderEmoji: React.FC<{ content: string; tags?: string[][] }> = ({ content, tags }) => {
+  const match = content.match(/^:([a-zA-Z0-9_]+):$/);
+  if (match && tags) {
+    const shortcode = match[1];
+    const emojiTag = tags.find(t => t[0] === "emoji" && t[1] === shortcode);
+    if (emojiTag && emojiTag[2]) {
+      return (
+        <img
+          src={emojiTag[2]}
+          alt={`:${shortcode}:`}
+          title={`:${shortcode}:`}
+          style={{ height: "1.2em", width: "auto", verticalAlign: "middle" }}
+        />
+      );
+    }
+  }
+  return <>{content}</>;
+};
+
 const ReactedNoteCard: React.FC<ReactedNoteCardProps> = ({
   note,
   reactions,
@@ -21,12 +41,14 @@ const ReactedNoteCard: React.FC<ReactedNoteCardProps> = ({
     return taggedNoteId === note.id;
   });
 
-  // Group by emoji
-  const emojiGroups: Record<string, string[]> = {};
+  // Group by emoji, preserving tags for custom emoji rendering
+  const emojiGroups: Record<string, { pubkeys: string[]; tags?: string[][] }> = {};
   matchingReactions.forEach((r) => {
     const emoji = r.content?.trim() || "👍";
-    if (!emojiGroups[emoji]) emojiGroups[emoji] = [];
-    emojiGroups[emoji].push(r.pubkey);
+    if (!emojiGroups[emoji]) {
+      emojiGroups[emoji] = { pubkeys: [], tags: r.tags };
+    }
+    emojiGroups[emoji].pubkeys.push(r.pubkey);
 
     // Pre-fetch profile if not already fetched
     if (!profiles?.get(r.pubkey)) {
@@ -36,7 +58,7 @@ const ReactedNoteCard: React.FC<ReactedNoteCardProps> = ({
 
   return (
     <div style={{ marginBottom: "1.5rem" }}>
-      {Object.entries(emojiGroups).map(([emoji, pubkeys]) => (
+      {Object.entries(emojiGroups).map(([emoji, data]) => (
         <div
           key={emoji}
           style={{
@@ -46,8 +68,10 @@ const ReactedNoteCard: React.FC<ReactedNoteCardProps> = ({
             marginBottom: 6,
           }}
         >
-          <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
-          {pubkeys.slice(0, 3).map((pubkey) => {
+          <span style={{ fontSize: "1.2rem" }}>
+            <RenderEmoji content={emoji} tags={data.tags} />
+          </span>
+          {data.pubkeys.slice(0, 3).map((pubkey) => {
             const profile = profiles?.get(pubkey);
             const displayName =
               profile?.name || nip19.npubEncode(pubkey).substring(0, 8) + "...";
@@ -62,9 +86,9 @@ const ReactedNoteCard: React.FC<ReactedNoteCardProps> = ({
               </Tooltip>
             );
           })}
-          {pubkeys.length > 3 && (
+          {data.pubkeys.length > 3 && (
             <Typography variant="caption">
-              +{pubkeys.length - 3} more
+              +{data.pubkeys.length - 3} more
             </Typography>
           )}
         </div>
