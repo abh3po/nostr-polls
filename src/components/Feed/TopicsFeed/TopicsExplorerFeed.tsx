@@ -339,6 +339,22 @@ const TopicExplorer: React.FC = () => {
               </Button>
             </Box>
           );
+        } else {
+          showReason = (
+            <Box>
+              <Typography style={{ margin: 10 }}>
+                User removed from this topic.
+              </Typography>
+              <Button
+                size="small"
+                variant="text"
+                sx={{ mt: 1 }}
+                onClick={() => toggleShowAnyway(event.id)}
+              >
+                <Typography style={{ marginTop: 10 }}>Show Anyway</Typography>
+              </Button>
+            </Box>
+          );
         }
       }
 

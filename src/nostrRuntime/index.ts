@@ -341,6 +341,14 @@ export class NostrRuntime {
   };
 
   /**
+   * Reconnect all active subscriptions.
+   * Call after the app returns from background/idle to refresh stale connections.
+   */
+  reconnect(): void {
+    this.subscriptionManager.reconnectAll();
+  }
+
+  /**
    * Cleanup - close all subscriptions and clear store
    * Useful for testing or app shutdown
    */

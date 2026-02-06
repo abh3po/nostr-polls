@@ -176,13 +176,25 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
                 event={event}
                 hidden={hidden}
                 showReason={
-                  hidden && moderators.size > 0 ? (
+                  hidden ? (
                     <Box>
-                      <Typography variant="body2">Moderated by:</Typography>
-                      <OverlappingAvatars
-                        ids={Array.from(moderators)}
-                        maxAvatars={4}
-                      />
+                      {moderators.size > 0 && (
+                        <>
+                          <Typography variant="body2">Moderated by:</Typography>
+                          <OverlappingAvatars
+                            ids={Array.from(moderators)}
+                            maxAvatars={4}
+                          />
+                        </>
+                      )}
+                      <Button
+                        size="small"
+                        variant="text"
+                        sx={{ mt: 1 }}
+                        onClick={() => toggleShowAnyway(event.id)}
+                      >
+                        Show anyway
+                      </Button>
                     </Box>
                   ) : null
                 }
@@ -212,11 +224,15 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
                       Remove user from topic
                     </MenuItem>
 
-                    {hidden && (
+                    {hidden ? (
                       <MenuItem onClick={() => toggleShowAnyway(event.id)}>
                         Show anyway
                       </MenuItem>
-                    )}
+                    ) : moderators.size > 0 ? (
+                      <MenuItem onClick={() => toggleShowAnyway(event.id)}>
+                        Hide again
+                      </MenuItem>
+                    ) : null}
                   </>
                 }
               />
