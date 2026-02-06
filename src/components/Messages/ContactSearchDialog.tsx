@@ -23,6 +23,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
+import { nip19 } from "nostr-tools";
 import { useAppContext } from "../../hooks/useAppContext";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useDMContext } from "../../hooks/useDMContext";
@@ -123,6 +124,40 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
     });
   }, [followPubkeys, profiles]);
 
+  // Try to decode the search input as an npub or hex pubkey
+  const npubContact = useMemo((): Contact | null => {
+    const trimmed = search.trim();
+    if (!trimmed) return null;
+    let pubkey: string | null = null;
+    if (trimmed.startsWith("npub1")) {
+      try {
+        const decoded = nip19.decode(trimmed);
+        if (decoded.type === "npub") pubkey = decoded.data;
+      } catch {
+        return null;
+      }
+    } else if (/^[0-9a-f]{64}$/i.test(trimmed)) {
+      pubkey = trimmed.toLowerCase();
+    }
+    if (!pubkey) return null;
+    // Don't show if already in follow list
+    if (followPubkeys.includes(pubkey)) return null;
+    const profile = profiles?.get(pubkey);
+    return {
+      pubkey,
+      name: profile?.display_name || profile?.name || "",
+      nip05: profile?.nip05 || "",
+      picture: profile?.picture || DEFAULT_IMAGE_URL,
+    };
+  }, [search, followPubkeys, profiles]);
+
+  // Fetch profile for npub contact
+  useEffect(() => {
+    if (npubContact && !profiles?.get(npubContact.pubkey)) {
+      fetchUserProfileThrottled(npubContact.pubkey);
+    }
+  }, [npubContact, profiles, fetchUserProfileThrottled]);
+
   // Rank contacts by DM conversation message count
   const frequentPubkeys = useMemo(() => {
     if (!user) return new Map<string, number>();
@@ -155,12 +190,17 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
       );
     }
     // Sort frequent contacts to the top
-    return list.slice().sort((a, b) => {
+    const sorted = list.slice().sort((a, b) => {
       const aFreq = frequentPubkeys.get(a.pubkey) || 0;
       const bFreq = frequentPubkeys.get(b.pubkey) || 0;
       return bFreq - aFreq;
     });
-  }, [contacts, search, frequentPubkeys]);
+    // Prepend npub contact if resolved and not already in list
+    if (npubContact && !sorted.some((c) => c.pubkey === npubContact.pubkey)) {
+      return [npubContact, ...sorted];
+    }
+    return sorted;
+  }, [contacts, search, frequentPubkeys, npubContact]);
 
   const selectedSet = useMemo(
     () => new Set(selectedContacts.map((c) => c.pubkey)),
@@ -367,7 +407,7 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by name or NIP-05..."
+              placeholder="Search by name, NIP-05, or npub..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -384,9 +424,9 @@ const ContactSearchDialog: React.FC<ContactSearchDialogProps> = ({
             {filtered.length === 0 ? (
               <Box textAlign="center" py={3}>
                 <Typography variant="body2" color="text.secondary">
-                  {contacts.length === 0
+                  {contacts.length === 0 && !search.trim()
                     ? "No contacts found. Follow people to see them here."
-                    : "No matches found."}
+                    : "No matches. Try pasting an npub."}
                 </Typography>
               </Box>
             ) : (
