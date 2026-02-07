@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { nostrRuntime } from "./singletons";
 
 import { EventCreator } from "./components/EventCreator";
 import { PollResponse } from "./components/PollResponse";
@@ -65,6 +66,20 @@ const App: React.FC = () => {
     };
 
     setupStatusBar();
+  }, []);
+
+  // Reconnect relay subscriptions when the app returns from background/idle
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else if (hiddenAt && Date.now() - hiddenAt > 30_000) {
+        nostrRuntime.reconnect();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
   return (

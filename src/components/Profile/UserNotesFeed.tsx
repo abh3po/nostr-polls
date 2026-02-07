@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Event, Filter } from "nostr-tools";
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { Virtuoso } from "react-virtuoso";
+import { Box, Typography } from "@mui/material";
 import { nostrRuntime } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
 import { Notes } from "../Notes";
+import UnifiedFeed from "../Feed/UnifiedFeed";
 
 interface UserNotesFeedProps {
   pubkey: string;
@@ -51,35 +51,18 @@ const UserNotesFeed: React.FC<UserNotesFeedProps> = ({ pubkey, scrollContainerRe
     return cleanup;
   }, [fetchNotes]);
 
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "200px",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (notes.length === 0) {
-    return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="body1" color="text.secondary">
-          No notes yet
-        </Typography>
-      </Box>
-    );
-  }
-
   return (
-    <Virtuoso
+    <UnifiedFeed
       data={notes}
+      loading={loading}
       customScrollParent={scrollContainerRef?.current ?? undefined}
+      emptyState={
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography variant="body1" color="text.secondary">
+            No notes yet
+          </Typography>
+        </Box>
+      }
       itemContent={(index, note) => (
         <Box key={note.id} sx={{ mb: 2 }}>
           <Notes event={note} />

@@ -2,8 +2,11 @@ export const NOTIFICATION_MESSAGES = {
   // Clipboard operations
   POLL_URL_COPIED: "Poll URL copied to clipboard!",
   EVENT_COPIED: "Event copied to clipboard!",
+  NEVENT_COPIED: "Event ID copied to clipboard!",
+  NPUB_COPIED: "Author npub copied to clipboard!",
   POLL_URL_COPY_FAILED: "Failed to copy poll URL.",
   EVENT_COPY_FAILED: "Failed to copy event.",
+  COPY_FAILED: "Failed to copy to clipboard.",
 
   // Authentication
   ANONYMOUS_LOGIN: "Login not found, submitting anonymously",

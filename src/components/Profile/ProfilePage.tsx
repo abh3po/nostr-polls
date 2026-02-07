@@ -6,7 +6,6 @@ import {
   CircularProgress,
   Avatar,
   Card,
-  CardContent,
   Tabs,
   Tab,
   Button,
@@ -15,6 +14,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  Tooltip,
+  Divider,
 } from "@mui/material";
 import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { useRelays } from "../../hooks/useRelays";
@@ -28,8 +30,10 @@ import { useUserContext } from "../../hooks/useUserContext";
 import { useListContext } from "../../hooks/useListContext";
 import { pool, nostrRuntime } from "../../singletons";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PeopleIcon from "@mui/icons-material/People";
+import DownloadIcon from "@mui/icons-material/Download";
 import MailIcon from "@mui/icons-material/Mail";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { useNotification } from "../../contexts/notification-context";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -53,6 +57,11 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+function compactNpub(npub: string): string {
+  if (npub.length <= 16) return npub;
+  return `${npub.slice(0, 12)}...${npub.slice(-4)}`;
+}
+
 const ProfilePage: React.FC = () => {
   const { npubOrNprofile } = useParams<{ npubOrNprofile: string }>();
   const [loading, setLoading] = useState(true);
@@ -65,108 +74,94 @@ const ProfilePage: React.FC = () => {
   const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
-  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const followersSetRef = useRef(new Set<string>());
   const { relays } = useRelays();
   const { user, requestLogin, setUser } = useUserContext();
   const { fetchLatestContactList } = useListContext();
+  const { showNotification } = useNotification();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const checkIfFollowsYou = useCallback(async (profilePubkey: string) => {
-    if (!user) return;
+  const followersHandleRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-    try {
-      const filter = {
-        kinds: [3],
-        authors: [profilePubkey],
-        limit: 1,
-      };
+  // Auto-subscribe to following count + follows-you check (lightweight: single contact list).
+  useEffect(() => {
+    if (!pubkey) return;
 
-      let latestEvent: Event | null = null;
+    setFollowingCount(null);
+    setFollowsYou(false);
 
-      const handle = nostrRuntime.subscribe(relays, [filter], {
+    let latestFollowingEvent: Event | null = null;
+
+    const followingHandle = nostrRuntime.subscribe(
+      relays,
+      [
+        {
+          kinds: [3],
+          authors: [pubkey],
+          limit: 1,
+        },
+      ],
+      {
         onEvent: (event: Event) => {
-          // Keep track of the most recent event
-          if (!latestEvent || event.created_at > latestEvent.created_at) {
-            latestEvent = event;
+          if (
+            !latestFollowingEvent ||
+            event.created_at > latestFollowingEvent.created_at
+          ) {
+            latestFollowingEvent = event;
+            const pTags = event.tags.filter((t) => t[0] === "p");
+            setFollowingCount(pTags.length);
+            if (user && pTags.some((t) => t[1] === user.pubkey)) {
+              setFollowsYou(true);
+            }
           }
         },
-      });
+      },
+    );
 
-      // Wait for responses, then check the latest event
-      setTimeout(() => {
-        handle.unsubscribe();
-        if (latestEvent) {
-          const follows = latestEvent.tags
-            .filter((tag) => tag[0] === "p")
-            .map((tag) => tag[1]);
+    return () => {
+      followingHandle.unsubscribe();
+    };
+  }, [pubkey, relays, user]);
 
-          if (follows.includes(user.pubkey)) {
-            setFollowsYou(true);
-          }
-        }
-      }, 2000);
-    } catch (err) {
-      console.error("Error checking if follows you:", err);
-    }
-  }, [user, relays]);
+  // Reset followers state when pubkey changes, clean up any active subscription.
+  useEffect(() => {
+    followersSetRef.current = new Set();
+    setFollowerCount(null);
+    followersHandleRef.current?.unsubscribe();
+    followersHandleRef.current = null;
 
-  const fetchFollowerStats = useCallback(async (profilePubkey: string) => {
-    setLoadingFollowers(true);
+    return () => {
+      followersHandleRef.current?.unsubscribe();
+      followersHandleRef.current = null;
+    };
+  }, [pubkey, relays]);
 
-    try {
-      // Fetch who this profile follows (their contact list)
-      const followingFilter = {
-        kinds: [3],
-        authors: [profilePubkey],
-        limit: 1,
-      };
+  // Manually trigger followers subscription — streams counts as events arrive,
+  // only cleaned up on unmount or pubkey change (pool EOSE fires early).
+  const loadFollowers = useCallback(() => {
+    if (!pubkey || followersHandleRef.current) return;
 
-      let followingEvent: Event | null = null;
-      const followingHandle = nostrRuntime.subscribe(relays, [followingFilter], {
-        onEvent: (event: Event) => {
-          if (!followingEvent || event.created_at > followingEvent.created_at) {
-            followingEvent = event;
-          }
+    followersSetRef.current = new Set();
+    setFollowerCount(0);
+
+    followersHandleRef.current = nostrRuntime.subscribe(
+      relays,
+      [
+        {
+          kinds: [3],
+          "#p": [pubkey],
+          limit: 500,
         },
-      });
-
-      // Fetch who follows this profile (search for contact lists that include this pubkey)
-      const followersFilter = {
-        kinds: [3],
-        "#p": [profilePubkey],
-        limit: 500,
-      };
-
-      const followers = new Set<string>();
-      const followersHandle = nostrRuntime.subscribe(relays, [followersFilter], {
+      ],
+      {
         onEvent: (event: Event) => {
-          followers.add(event.pubkey);
+          followersSetRef.current.add(event.pubkey);
+          setFollowerCount(followersSetRef.current.size);
         },
-      });
-
-      // Wait for responses
-      setTimeout(() => {
-        followingHandle.unsubscribe();
-        followersHandle.unsubscribe();
-
-        // Count following
-        if (followingEvent) {
-          const followingList = followingEvent.tags.filter((tag) => tag[0] === "p");
-          setFollowingCount(followingList.length);
-        } else {
-          setFollowingCount(0);
-        }
-
-        // Count followers
-        setFollowerCount(followers.size);
-        setLoadingFollowers(false);
-      }, 3000);
-    } catch (err) {
-      console.error("Error fetching follower stats:", err);
-      setLoadingFollowers(false);
-    }
-  }, [relays]);
+      },
+    );
+  }, [pubkey, relays]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -179,9 +174,6 @@ const ProfilePage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        setFollowerCount(null);
-        setFollowingCount(null);
-        setFollowsYou(false);
 
         // Decode npub or nprofile to get pubkey
         const decoded = nip19.decode(npubOrNprofile);
@@ -192,7 +184,9 @@ const ProfilePage: React.FC = () => {
         } else if (decoded.type === "nprofile") {
           extractedPubkey = decoded.data.pubkey;
         } else {
-          throw new Error("Invalid profile identifier. Must be npub or nprofile.");
+          throw new Error(
+            "Invalid profile identifier. Must be npub or nprofile.",
+          );
         }
 
         setPubkey(extractedPubkey);
@@ -204,11 +198,6 @@ const ProfilePage: React.FC = () => {
           setProfile(profileData);
         }
 
-        // Check if this profile follows the current user
-        if (user) {
-          checkIfFollowsYou(extractedPubkey);
-        }
-
         setLoading(false);
       } catch (err) {
         console.error("Error loading profile:", err);
@@ -218,7 +207,7 @@ const ProfilePage: React.FC = () => {
     };
 
     loadProfile();
-  }, [npubOrNprofile, relays, user, checkIfFollowsYou]);
+  }, [npubOrNprofile, relays]);
 
   const addToContacts = async () => {
     if (!user) {
@@ -241,7 +230,7 @@ const ProfilePage: React.FC = () => {
 
   const updateContactList = async (
     contactEvent: Event | null,
-    pubkeyToAdd: string
+    pubkeyToAdd: string,
   ) => {
     const existingTags = contactEvent?.tags || [];
     const pTags = existingTags.filter(([t]) => t === "p").map(([, pk]) => pk);
@@ -295,6 +284,9 @@ const ProfilePage: React.FC = () => {
     );
   }
 
+  const npub = nip19.npubEncode(pubkey);
+  const isOwnProfile = user?.pubkey === pubkey;
+
   return (
     <Box
       ref={scrollContainerRef}
@@ -308,127 +300,187 @@ const ProfilePage: React.FC = () => {
       }}
     >
       {/* Profile Header */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      <Card sx={{ mb: 3, overflow: "visible" }}>
+        {/* Banner */}
+        <Box
+          sx={{
+            height: 120,
+            borderRadius: "4px 4px 0 0",
+            background: profile?.banner
+              ? `url(${profile.banner}) center/cover no-repeat`
+              : "linear-gradient(135deg, #FAD13F 0%, transparent 100%)",
+          }}
+        />
+
+        {/* Identity section */}
+        <Box sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
           <Box
             sx={{
               display: "flex",
               flexDirection: { xs: "column", sm: "row" },
               alignItems: { xs: "center", sm: "flex-start" },
               gap: 2,
+              mt: "-40px",
             }}
           >
+            {/* Avatar overlapping banner */}
             <Avatar
               src={profile?.picture || DEFAULT_IMAGE_URL}
               alt={profile?.name || "Profile"}
-              sx={{ width: 80, height: 80 }}
+              sx={{
+                width: 80,
+                height: 80,
+                border: "3px solid white",
+                boxShadow: 1,
+                flexShrink: 0,
+              }}
             />
-            <Box sx={{ flex: 1, textAlign: { xs: "center", sm: "left" } }}>
+
+            {/* Name, nip05, npub */}
+            <Box
+              sx={{
+                flex: 1,
+                textAlign: { xs: "center", sm: "left" },
+                mt: { xs: 0, sm: "44px" },
+              }}
+            >
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
                   justifyContent: { xs: "center", sm: "flex-start" },
-                  mb: 1,
+                  flexWrap: "wrap",
                 }}
               >
-                <Typography variant="h5">
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   {profile?.name || profile?.username || "Unnamed"}
                 </Typography>
-                {user && user.pubkey !== pubkey && (
-                  <>
-                    {user.follows?.includes(pubkey) ? (
-                      <Chip
-                        label="Following"
-                        icon={<CheckCircleIcon />}
-                        color="primary"
-                        size="small"
-                      />
-                    ) : (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={addToContacts}
-                      >
-                        {followsYou ? "Follow Back" : "Follow"}
-                      </Button>
-                    )}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<MailIcon />}
-                      onClick={() =>
-                        navigate(`/messages/${nip19.npubEncode(pubkey)}`)
-                      }
-                    >
-                      Message
-                    </Button>
-                  </>
+                {followsYou && (
+                  <Chip label="Follows you" size="small" variant="outlined" />
                 )}
               </Box>
-              {followsYou && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ mb: 1, display: "block" }}
-                >
-                  Follows you
+
+              {profile?.nip05 && (
+                <Typography variant="body2" color="text.secondary">
+                  @{profile.nip05}
                 </Typography>
               )}
-              {/* Follower/Following Stats */}
+
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 2,
-                  mb: 1,
+                  gap: 0.5,
                   justifyContent: { xs: "center", sm: "flex-start" },
                 }}
               >
-                {followerCount !== null && followingCount !== null ? (
-                  <>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>{followerCount}</strong> followers
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>{followingCount}</strong> following
-                    </Typography>
-                  </>
-                ) : (
-                  <Button
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontFamily: "monospace" }}
+                >
+                  {compactNpub(npub)}
+                </Typography>
+                <Tooltip title="Copy npub">
+                  <IconButton
                     size="small"
-                    variant="outlined"
-                    startIcon={loadingFollowers ? <CircularProgress size={16} /> : <PeopleIcon />}
-                    onClick={() => pubkey && fetchFollowerStats(pubkey)}
-                    disabled={loadingFollowers}
+                    onClick={() => {
+                      navigator.clipboard.writeText(npub);
+                      showNotification("npub copied to clipboard", "success");
+                    }}
                   >
-                    {loadingFollowers ? "Loading..." : "Load followers"}
-                  </Button>
-                )}
+                    <ContentCopyIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
               </Box>
-              {profile?.nip05 && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  {profile.nip05}
-                </Typography>
-              )}
-              {profile?.about && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
-                  {profile.about}
-                </Typography>
-              )}
-              <Rate entityId={pubkey} entityType="profile" />
             </Box>
           </Box>
-        </CardContent>
+
+          {/* Action buttons */}
+          {!isOwnProfile && user && (
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                mt: 2,
+                justifyContent: { xs: "center", sm: "flex-start" },
+              }}
+            >
+              {user.follows?.includes(pubkey) ? (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<CheckCircleIcon />}
+                  disableElevation
+                >
+                  Following
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={addToContacts}
+                >
+                  {followsYou ? "Follow Back" : "Follow"}
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<MailIcon />}
+                onClick={() => navigate(`/messages/${npub}`)}
+              >
+                Message
+              </Button>
+            </Box>
+          )}
+
+          {/* Bio */}
+          {profile?.about && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                {profile.about}
+              </Typography>
+            </>
+          )}
+
+          {/* Stats + Rate */}
+          <Divider sx={{ my: 2 }} />
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              mb: 1,
+              justifyContent: { xs: "center", sm: "flex-start" },
+            }}
+          >
+            {followerCount !== null ? (
+              <Typography variant="body2" color="text.secondary">
+                <strong>{followerCount}</strong> followers
+              </Typography>
+            ) : (
+              <Tooltip title="Load followers">
+                <IconButton size="small" onClick={loadFollowers}>
+                  <DownloadIcon sx={{ fontSize: 18 }} />{" "}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    style={{ marginLeft: 2 }}
+                  >
+                    followers{" "}
+                  </Typography>
+                </IconButton>
+              </Tooltip>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              <strong>{followingCount ?? "–"}</strong> following
+            </Typography>
+          </Box>
+          <Rate entityId={pubkey} entityType="profile" />
+        </Box>
       </Card>
 
       {/* Tabs */}
@@ -447,13 +499,22 @@ const ProfilePage: React.FC = () => {
 
       {/* Tab Content */}
       <TabPanel value={tabValue} index={0}>
-        <UserPollsFeed pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
+        <UserPollsFeed
+          pubkey={pubkey}
+          scrollContainerRef={scrollContainerRef}
+        />
       </TabPanel>
       <TabPanel value={tabValue} index={1}>
-        <UserNotesFeed pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
+        <UserNotesFeed
+          pubkey={pubkey}
+          scrollContainerRef={scrollContainerRef}
+        />
       </TabPanel>
       <TabPanel value={tabValue} index={2}>
-        <UserRatingsGiven pubkey={pubkey} scrollContainerRef={scrollContainerRef} />
+        <UserRatingsGiven
+          pubkey={pubkey}
+          scrollContainerRef={scrollContainerRef}
+        />
       </TabPanel>
 
       <Dialog

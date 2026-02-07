@@ -4,7 +4,9 @@ import { nip19 } from "nostr-tools";
 import { isImageUrl } from "../../../utils/common";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
-import { IconButton, Tooltip } from "@mui/material";
+import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import BoltIcon from "@mui/icons-material/Bolt";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { TranslationPopover } from "./../TranslationPopover";
 import TranslateIcon from "@mui/icons-material/Translate";
 import { isEmbeddableYouTubeUrl } from "../Utils";
@@ -84,6 +86,92 @@ const HashtagParser = ({ part, index }: { part: string; index: number }) => {
   ) : null;
 };
 
+function decodeBolt11Amount(invoice: string): number | null {
+  const lower = invoice.toLowerCase();
+  const match = lower.match(/^ln(?:bc|tb|ts)(\d+)([munp]?)1/);
+  if (!match) return null;
+
+  const num = parseInt(match[1], 10);
+  const multiplier = match[2] || "";
+
+  const satMultipliers: Record<string, number> = {
+    "": 1e8,
+    m: 1e5,
+    u: 100,
+    n: 0.1,
+    p: 0.0001,
+  };
+
+  return num * (satMultipliers[multiplier] ?? 1e8);
+}
+
+const LightningInvoiceParser = ({
+  part,
+  index,
+}: {
+  part: string;
+  index: number;
+}) => {
+  const lower = part.toLowerCase();
+  const isBolt11 = lower.startsWith("lnbc") || lower.startsWith("lntb");
+  const isLnurl = lower.startsWith("lnurl");
+  if (!isBolt11 && !isLnurl) return null;
+
+  const sats = isBolt11 ? decodeBolt11Amount(part) : null;
+  const amountText =
+    sats !== null
+      ? sats >= 1
+        ? `${Math.round(sats).toLocaleString()} sats`
+        : `${Math.round(sats * 1000)} msats`
+      : isLnurl
+        ? "LNURL"
+        : "Any amount";
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(part);
+  };
+
+  return (
+    <Box
+      key={index}
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.75,
+        border: "1px solid #FAD13F",
+        borderRadius: 1,
+        px: 1.5,
+        py: 0.5,
+        my: 0.5,
+      }}
+    >
+      <BoltIcon sx={{ color: "#FAD13F", fontSize: 18 }} />
+      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        {amountText}
+      </Typography>
+      <IconButton size="small" onClick={handleCopy} title="Copy invoice">
+        <ContentCopyIcon sx={{ fontSize: 14 }} />
+      </IconButton>
+      <Button
+        size="small"
+        variant="contained"
+        component="a"
+        href={`lightning:${part}`}
+        sx={{
+          minWidth: 0,
+          px: 1.5,
+          py: 0.25,
+          fontSize: "0.75rem",
+          textTransform: "none",
+        }}
+      >
+        Pay
+      </Button>
+    </Box>
+  );
+};
+
 const NostrParser = ({
   part,
   index,
@@ -98,13 +186,22 @@ const NostrParser = ({
   if (!part.startsWith("nostr:")) return null;
 
   try {
-    const encoded = part.replace("nostr:", "");
+    const raw = part.replace("nostr:", "");
+    // Strip trailing non-bech32 characters (e.g. 's possessive, punctuation)
+    const bech32Match = raw.match(/^([a-zA-Z0-9]+)(.*)/);
+    if (!bech32Match) return null;
+    const encoded = bech32Match[1];
+    const suffix = bech32Match[2]; // e.g. "'s", ".", ",", etc.
+
     const { type, data } = nip19.decode(encoded);
     if (type === "nevent") {
       return (
-        <div key={index} style={{ marginTop: "0.5rem", zoom: 0.85 }}>
-          <PrepareNote neventId={encoded} />
-        </div>
+        <React.Fragment key={index}>
+          <div style={{ marginTop: "0.5rem", zoom: 0.85 }}>
+            <PrepareNote neventId={encoded} />
+          </div>
+          {suffix}
+        </React.Fragment>
       );
     }
     if (type === "note") {
@@ -113,9 +210,12 @@ const NostrParser = ({
         kind: 1,
       });
       return (
-        <div key={index} style={{ marginTop: "0.5rem", zoom: 0.85 }}>
-          <PrepareNote neventId={neventId} />
-        </div>
+        <React.Fragment key={index}>
+          <div style={{ marginTop: "0.5rem", zoom: 0.85 }}>
+            <PrepareNote neventId={neventId} />
+          </div>
+          {suffix}
+        </React.Fragment>
       );
     }
 
@@ -133,26 +233,28 @@ const NostrParser = ({
         pubkey.slice(0, 8) + "...";
 
       return (
-        <Link
-          key={index}
-          to={`/profile/${encoded}`}
-          style={{
-            color: "#FAD13F",
-            textDecoration: "underline",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.3rem",
-          }}
-        >
-          <img
-            src={profile?.picture || DEFAULT_IMAGE_URL}
-            alt={name}
-            width={18}
-            height={18}
-            style={{ borderRadius: "50%" }}
-          />
-          {name}
-        </Link>
+        <React.Fragment key={index}>
+          <Link
+            to={`/profile/${encoded}`}
+            style={{
+              color: "#FAD13F",
+              textDecoration: "underline",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+            }}
+          >
+            <img
+              src={profile?.picture || DEFAULT_IMAGE_URL}
+              width={18}
+              height={18}
+              style={{ borderRadius: "50%" }}
+              alt=""
+            />
+            {name}
+          </Link>
+          {suffix}
+        </React.Fragment>
       );
     }
   } catch (err) {
@@ -200,7 +302,7 @@ const CustomEmojiParser = ({
             verticalAlign: "middle",
             display: "inline",
           }}
-        />
+        />,
       );
       lastIndex = match.index! + match[0].length;
     }
@@ -221,7 +323,10 @@ const PlainTextRenderer = ({ part }: { part: string; key?: string }) => {
 
 // ---- Main Component ----
 
-export const TextWithImages: React.FC<TextWithImagesProps> = ({ content, tags }) => {
+export const TextWithImages: React.FC<TextWithImagesProps> = ({
+  content,
+  tags,
+}) => {
   const emojiMap = useMemo(() => {
     const map = new Map<string, string>();
     if (tags) {
@@ -325,6 +430,7 @@ Text:\n\n${content}`;
                 profiles,
                 fetchUserProfileThrottled,
               }) ||
+              LightningInvoiceParser({ part, index }) ||
               CustomEmojiParser({ part, index, emojiMap });
 
             return parserResult ?? <PlainTextRenderer part={part} key={key} />;
@@ -344,7 +450,9 @@ Text:\n\n${content}`;
         minWidth: 0,
       }}
     >
-      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>{renderContent(displayedText)}</div>
+      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+        {renderContent(displayedText)}
+      </div>
       {hasOllama && shouldShowTranslate && (
         <div>
           <Tooltip title="Translate">

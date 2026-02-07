@@ -162,6 +162,32 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
     setShowResults(!showResults);
   };
 
+  const handleCopyNevent = async () => {
+    const nevent = nip19.neventEncode({ id: pollEvent.id });
+    try {
+      await navigator.clipboard.writeText(nevent);
+      showNotification(NOTIFICATION_MESSAGES.NEVENT_COPIED, "success");
+    } catch (error) {
+      console.error("Failed to copy nevent:", error);
+      showNotification(NOTIFICATION_MESSAGES.COPY_FAILED, "error");
+    }
+    setAnchorEl(null);
+    setIsDetailsOpen(false);
+  };
+
+  const handleCopyNpub = async () => {
+    const npub = nip19.npubEncode(pollEvent.pubkey);
+    try {
+      await navigator.clipboard.writeText(npub);
+      showNotification(NOTIFICATION_MESSAGES.NPUB_COPIED, "success");
+    } catch (error) {
+      console.error("Failed to copy npub:", error);
+      showNotification(NOTIFICATION_MESSAGES.COPY_FAILED, "error");
+    }
+    setAnchorEl(null);
+    setIsDetailsOpen(false);
+  };
+
   const copyRawEvent = async () => {
     const rawEvent = JSON.stringify(pollEvent, null, 2);
     try {
@@ -242,7 +268,9 @@ const PollResponseForm: React.FC<PollResponseFormProps> = ({
                       setIsDetailsOpen(false);
                     }}
                   >
+                    <MenuItem onClick={handleCopyNevent}>Copy Event Id</MenuItem>
                     <MenuItem onClick={copyPollUrl}>Copy URL</MenuItem>
+                    <MenuItem onClick={handleCopyNpub}>Copy Author npub</MenuItem>
                     <MenuItem onClick={copyRawEvent}>Copy Raw Event</MenuItem>
                   </Menu>
                 </div>

@@ -1,5 +1,5 @@
 export const isImageUrl = (url: string): boolean => {
-  return url.match(/\.(jpeg|jpg|gif|png|webp)$/) != null;
+  return url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/) != null;
 };
 
 export const calculateTimeAgo = (timestamp: number): string => {

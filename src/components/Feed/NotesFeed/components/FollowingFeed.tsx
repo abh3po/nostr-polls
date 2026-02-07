@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import { useUserContext } from "../../../../hooks/useUserContext";
-import { Virtuoso } from "react-virtuoso";
-import type { VirtuosoHandle } from "react-virtuoso";
-import useImmersiveScroll from "../../../../hooks/useImmersiveScroll";
 import RepostsCard from "./RepostedNoteCard";
 import { useFollowingNotes } from "../hooks/useFollowingNotes";
 import type { NoteMode } from "./index";
+import UnifiedFeed from "../../UnifiedFeed";
 
 const isRootNote = (event: { tags: string[][] }) =>
   !event.tags.some((t) => t[0] === "e");
@@ -15,10 +13,6 @@ const FollowingFeed = ({ noteMode }: { noteMode: NoteMode }) => {
   const { user, requestLogin } = useUserContext();
   const { notes, reposts, fetchNotes, loadingMore, fetchNewerNotes } =
     useFollowingNotes();
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   // Merge notes and reposts for sorting by created_at
   // Each item: { note: Event, reposts: Event[] }
@@ -68,28 +62,18 @@ const FollowingFeed = ({ noteMode }: { noteMode: NoteMode }) => {
         </div>
       ) : null}
       {loadingMore ? <CircularProgress /> : null}
-      <div ref={containerRef} style={{ height: "100vh" }}>
-        <Virtuoso
-          ref={virtuosoRef}
-          data={mergedNotes}
-          itemContent={(index, item) => {
-            return (
-              <RepostsCard
-                note={item.note}
-                reposts={reposts.get(item.note.id) || []}
-              />
-            );
-          }}
-          style={{ height: "100%" }}
-          followOutput={false}
-          startReached={() => {
-            fetchNewerNotes();
-          }}
-          endReached={() => {
-            fetchNotes();
-          }}
-        />
-      </div>
+      <UnifiedFeed
+        data={mergedNotes}
+        followOutput={false}
+        onStartReached={fetchNewerNotes}
+        onEndReached={fetchNotes}
+        itemContent={(index, item) => (
+          <RepostsCard
+            note={item.note}
+            reposts={reposts.get(item.note.id) || []}
+          />
+        )}
+      />
     </div>
   );
 };

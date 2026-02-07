@@ -157,6 +157,18 @@ export const Notes: React.FC<NotesProps> = ({
     handleCloseMenu();
   };
 
+  const handleCopyNpub = async () => {
+    const npub = nip19.npubEncode(event.pubkey);
+    try {
+      await navigator.clipboard.writeText(npub);
+      showNotification(NOTIFICATION_MESSAGES.NPUB_COPIED, "success");
+    } catch (error) {
+      console.error("Failed to copy npub:", error);
+      showNotification(NOTIFICATION_MESSAGES.COPY_FAILED, "error");
+    }
+    handleCloseMenu();
+  };
+
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
@@ -271,6 +283,7 @@ export const Notes: React.FC<NotesProps> = ({
           >
             <MenuItem onClick={handleCopyNevent}>Copy Event Id</MenuItem>
             <MenuItem onClick={copyNoteUrl}>Copy Link</MenuItem>
+            <MenuItem onClick={handleCopyNpub}>Copy Author npub</MenuItem>
             {extras}
           </Menu>
 

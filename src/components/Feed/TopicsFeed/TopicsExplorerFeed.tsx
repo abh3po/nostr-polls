@@ -23,9 +23,7 @@ import { useRelays } from "../../../hooks/useRelays";
 import { Notes } from "../../Notes";
 import PollResponseForm from "../../PollResponse/PollResponseForm";
 import Rate from "../../../components/Ratings/Rate";
-import { Virtuoso } from "react-virtuoso";
-import type { VirtuosoHandle } from "react-virtuoso";
-import useTopicExplorerScroll from "../../../hooks/useTopicExplorerScroll";
+import UnifiedFeed from "../UnifiedFeed";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { signEvent } from "../../../nostr";
 import { pool, nostrRuntime } from "../../../singletons";
@@ -193,13 +191,7 @@ const TopicExplorer: React.FC = () => {
   };
 
   const subRef = useRef<ReturnType<SimplePool["subscribeMany"]> | null>(null);
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-
-  useTopicExplorerScroll(containerRef, virtuosoRef, scrollContainerRef, {
-    smooth: true,
-  });
 
   useEffect(() => {
     if (!tag || relays.length === 0) return;
@@ -329,6 +321,22 @@ const TopicExplorer: React.FC = () => {
                 User removed from topic by:
               </Typography>
               <OverlappingAvatars ids={visibleBlockers} maxAvatars={3} />
+              <Button
+                size="small"
+                variant="text"
+                sx={{ mt: 1 }}
+                onClick={() => toggleShowAnyway(event.id)}
+              >
+                <Typography style={{ marginTop: 10 }}>Show Anyway</Typography>
+              </Button>
+            </Box>
+          );
+        } else {
+          showReason = (
+            <Box>
+              <Typography style={{ margin: 10 }}>
+                User removed from this topic.
+              </Typography>
               <Button
                 size="small"
                 variant="text"
@@ -520,23 +528,14 @@ const TopicExplorer: React.FC = () => {
         <Tab label="Polls" />
       </Tabs>
 
-      <div ref={containerRef} style={{ height: "100vh" }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" py={6}>
-            <CircularProgress />
-          </Box>
-        ) : sortedEvents.length === 0 ? (
-          <Typography>No content found for this topic.</Typography>
-        ) : (
-          <Virtuoso
-            ref={virtuosoRef}
-            data={sortedEvents}
-            itemContent={itemContent}
-            style={{ height: "100%", width: "100%" }}
-            followOutput={false}
-          />
-        )}
-      </div>
+      <UnifiedFeed
+        data={sortedEvents}
+        loading={loading}
+        emptyState={<Typography>No content found for this topic.</Typography>}
+        scrollContainerRef={scrollContainerRef}
+        followOutput={false}
+        itemContent={itemContent}
+      />
       <ModeratorSelectorDialog
         open={moderatorDialogOpen}
         moderators={allModerators}

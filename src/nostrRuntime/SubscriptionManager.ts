@@ -251,4 +251,89 @@ export class SubscriptionManager {
       this.closeSubscription(subscriptionId);
     }
   }
+
+  /**
+   * Reconnect all active subscriptions.
+   * Closes existing pool subscriptions and re-creates them, preserving
+   * callbacks and refCounts. Useful after idle/background periods where
+   * WebSocket connections may have silently dropped.
+   */
+  reconnectAll(): void {
+    for (const sub of Array.from(this.subscriptions.values())) {
+      // Close existing pool subscription(s)
+      if (sub.chunks) {
+        for (const closer of sub.chunks) {
+          closer.close();
+        }
+      } else if (sub.closer) {
+        sub.closer.close();
+      }
+
+      // Reset EOSE state
+      sub.eoseReceived = false;
+
+      // Re-create pool subscription(s)
+      const needsChunking = sub.filters.some(
+        f => f.authors && f.authors.length > 1000
+      );
+
+      if (needsChunking) {
+        sub.chunks = [];
+        const totalChunks = sub.filters.reduce((acc, f) => {
+          const chunks = chunkFilter(f, 1000);
+          return acc + chunks.length;
+        }, 0);
+        const eoseState = { count: 0 };
+
+        for (const filter of sub.filters) {
+          const chunks = chunkFilter(filter, 1000);
+          for (const cf of chunks) {
+            const closer = this.pool.subscribeMany(
+              sub.relays,
+              [cf],
+              {
+                onevent: (event) => {
+                  this.eventStore.addEvent(event);
+                  for (const callback of Array.from(sub.callbacks)) {
+                    callback(event);
+                  }
+                },
+                oneose: () => {
+                  eoseState.count++;
+                  if (eoseState.count === totalChunks) {
+                    sub.eoseReceived = true;
+                    for (const eoseCallback of Array.from(sub.eoseCallbacks)) {
+                      eoseCallback();
+                    }
+                    sub.eoseCallbacks.clear();
+                  }
+                },
+              }
+            );
+            sub.chunks.push(closer);
+          }
+        }
+      } else {
+        sub.closer = this.pool.subscribeMany(
+          sub.relays,
+          sub.filters,
+          {
+            onevent: (event) => {
+              this.eventStore.addEvent(event);
+              for (const callback of Array.from(sub.callbacks)) {
+                callback(event);
+              }
+            },
+            oneose: () => {
+              sub.eoseReceived = true;
+              for (const eoseCallback of Array.from(sub.eoseCallbacks)) {
+                eoseCallback();
+              }
+              sub.eoseCallbacks.clear();
+            },
+          }
+        );
+      }
+    }
+  }
 }
