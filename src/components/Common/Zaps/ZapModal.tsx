@@ -168,7 +168,7 @@ const ZapModal: React.FC<ZapModalProps> = ({
             mb={2}
           >
             <Typography variant="h6" fontWeight={700}>
-              {invoice ? "Pay Invoice" : `Zap ${recipientName}`}
+              {invoice ? "Pay Invoice" : `Zap ${recipientName || "this post"}`}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <Close />
