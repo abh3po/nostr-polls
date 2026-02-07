@@ -146,7 +146,6 @@ const NostrParser = ({
         >
           <img
             src={profile?.picture || DEFAULT_IMAGE_URL}
-            alt={name}
             width={18}
             height={18}
             style={{ borderRadius: "50%" }}
@@ -200,7 +199,7 @@ const CustomEmojiParser = ({
             verticalAlign: "middle",
             display: "inline",
           }}
-        />
+        />,
       );
       lastIndex = match.index! + match[0].length;
     }
@@ -221,7 +220,10 @@ const PlainTextRenderer = ({ part }: { part: string; key?: string }) => {
 
 // ---- Main Component ----
 
-export const TextWithImages: React.FC<TextWithImagesProps> = ({ content, tags }) => {
+export const TextWithImages: React.FC<TextWithImagesProps> = ({
+  content,
+  tags,
+}) => {
   const emojiMap = useMemo(() => {
     const map = new Map<string, string>();
     if (tags) {
@@ -344,7 +346,9 @@ Text:\n\n${content}`;
         minWidth: 0,
       }}
     >
-      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>{renderContent(displayedText)}</div>
+      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+        {renderContent(displayedText)}
+      </div>
       {hasOllama && shouldShowTranslate && (
         <div>
           <Tooltip title="Translate">

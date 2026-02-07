@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Event, Filter } from "nostr-tools";
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { Virtuoso } from "react-virtuoso";
+import { Box, Typography } from "@mui/material";
 import { nostrRuntime } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
 import PollResponseForm from "../PollResponse/PollResponseForm";
+import UnifiedFeed from "../Feed/UnifiedFeed";
 
 interface UserPollsFeedProps {
   pubkey: string;
@@ -51,40 +51,21 @@ const UserPollsFeed: React.FC<UserPollsFeedProps> = ({ pubkey, scrollContainerRe
     return cleanup;
   }, [fetchPolls]);
 
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "200px",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (polls.length === 0) {
-    return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="body1" color="text.secondary">
-          No polls yet
-        </Typography>
-      </Box>
-    );
-  }
-
   return (
-    <Virtuoso
+    <UnifiedFeed
       data={polls}
+      loading={loading}
       customScrollParent={scrollContainerRef?.current ?? undefined}
+      emptyState={
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography variant="body1" color="text.secondary">
+            No polls yet
+          </Typography>
+        </Box>
+      }
       itemContent={(index, poll) => (
         <Box key={poll.id} sx={{ mb: 2 }}>
-          <PollResponseForm
-            pollEvent={poll}
-          />
+          <PollResponseForm pollEvent={poll} />
         </Box>
       )}
     />

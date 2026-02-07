@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Event, Filter } from "nostr-tools";
 import { verifyEvent } from "nostr-tools";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -6,7 +6,6 @@ import { useRelays } from "../../hooks/useRelays";
 import {
   Select,
   MenuItem,
-  CircularProgress,
   Container,
   Box,
 } from "@mui/material";
@@ -14,10 +13,8 @@ import Grid from "@mui/material/Grid2";
 import { styled } from "@mui/system";
 import { nostrRuntime } from "../../singletons";
 import { SubscriptionHandle } from "../../nostrRuntime/types";
-import { Virtuoso } from "react-virtuoso";
-import type { VirtuosoHandle } from "react-virtuoso";
-import useImmersiveScroll from "../../hooks/useImmersiveScroll";
 import { Feed } from "./Feed";
+import UnifiedFeed from "./UnifiedFeed";
 
 const KIND_POLL = 1068;
 const KIND_RESPONSE = [1018, 1070];
@@ -53,11 +50,6 @@ export const PollFeed = () => {
 
   const { user } = useUserContext();
   const { relays } = useRelays();
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // enable immersive behavior (smooth)
-  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   const mergeEvents = (existing: Event[], incoming: Event[]): Event[] => {
     const map = new Map(existing.map((e) => [e.id, e]));
@@ -329,36 +321,21 @@ export const PollFeed = () => {
         </Grid>
 
         <Grid size={12}>
-          <div ref={containerRef} style={{ height: "100vh" }}>
-            {loadingInitial ? (
-              <CenteredBox sx={{ mt: 4 }}>
-                <CircularProgress />
-              </CenteredBox>
-            ) : (
-              <Virtuoso
-                ref={virtuosoRef}
-                data={combinedEvents}
-                itemContent={(index, event) => (
-                  <div key={event.id}>
-                    <Feed
-                      events={[event]}
-                      userResponses={latestResponses}
-                      reposts={repostsByPollId}
-                    />
-                  </div>
-                )}
-                endReached={loadMore}
-                components={{
-                  Footer: () =>
-                    loadingMore ? (
-                      <CenteredBox sx={{ mt: 2, mb: 2 }}>
-                        <CircularProgress size={24} />
-                      </CenteredBox>
-                    ) : null,
-                }}
-              />
+          <UnifiedFeed
+            data={combinedEvents}
+            loading={loadingInitial}
+            loadingMore={loadingMore}
+            onEndReached={loadMore}
+            itemContent={(index, event) => (
+              <div key={event.id}>
+                <Feed
+                  events={[event]}
+                  userResponses={latestResponses}
+                  reposts={repostsByPollId}
+                />
+              </div>
             )}
-          </div>
+          />
         </Grid>
       </Grid>
     </Container>

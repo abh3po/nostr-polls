@@ -13,16 +13,14 @@ import {
   IconButton,
 } from "@mui/material";
 import ShieldIcon from "@mui/icons-material/Shield";
-import { Virtuoso } from "react-virtuoso";
-import { useEffect, useRef, useState } from "react";
-import type { VirtuosoHandle } from "react-virtuoso";
+import { useEffect, useState } from "react";
 import { useListContext } from "../../../hooks/useListContext";
 import { useMyTopicsFeed } from "../../../hooks/useMyTopicsFeed";
 import { Notes } from "../../../components/Notes";
 import OverlappingAvatars from "../../../components/Common/OverlappingAvatars";
 import { useUserContext } from "../../../hooks/useUserContext";
-import useImmersiveScroll from "../../../hooks/useImmersiveScroll";
 import TopicModeratorsDialog from "../../../components/Moderator/TopicModeratorsDialog";
+import UnifiedFeed from "../UnifiedFeed";
 
 interface MyTopicsFeedProps {
   onNavigateToDiscover?: () => void;
@@ -40,11 +38,6 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
     setSelectedModeratorsForTopic,
   } = useMyTopicsFeed(myTopics || new Set());
   const { user, requestLogin } = useUserContext();
-
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   const [dialog, setDialog] = useState<{
     note: any;
@@ -105,7 +98,6 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
   }
 
   if (loading) {
-    // Show loader while fetching notes
     return (
       <Box
         sx={{
@@ -124,37 +116,36 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
 
   return (
     <>
-      <div ref={containerRef} style={{ height: "100vh" }}>
-      {hasModerators && (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: 1,
-            py: 0.5,
-          }}
-        >
-          <IconButton
-            size="small"
-            onClick={() => setModeratorDialogOpen(true)}
-            title="Manage moderators"
-          >
-            <ShieldIcon fontSize="small" />
-          </IconButton>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ ml: 0.5, cursor: "pointer" }}
-            onClick={() => setModeratorDialogOpen(true)}
-          >
-            Moderators
-          </Typography>
-        </Box>
-      )}
-      <Virtuoso
-        ref={virtuosoRef}
+      <UnifiedFeed
         data={notes}
-        style={{ height: "100%" }}
+        headerContent={
+          hasModerators ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                px: 1,
+                py: 0.5,
+              }}
+            >
+              <IconButton
+                size="small"
+                onClick={() => setModeratorDialogOpen(true)}
+                title="Manage moderators"
+              >
+                <ShieldIcon fontSize="small" />
+              </IconButton>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ ml: 0.5, cursor: "pointer" }}
+                onClick={() => setModeratorDialogOpen(true)}
+              >
+                Moderators
+              </Typography>
+            </Box>
+          ) : undefined
+        }
         itemContent={(_, item) => {
           const { event, topics, hidden, moderators, moderatedTopics } = item;
 
@@ -240,7 +231,6 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
           );
         }}
       />
-      </div>
 
       {dialog && (
         <ModerationDialog

@@ -1,21 +1,14 @@
-import { useEffect, useRef } from "react";
-import { CircularProgress } from "@mui/material";
+import { useEffect } from "react";
 import { useUserContext } from "../../../../hooks/useUserContext";
 import { useReactedNotes } from "../hooks/useReactedNotes";
 import ReactedNoteCard from "./ReactedNoteCard";
 import { Event } from "nostr-tools";
-import { Virtuoso } from "react-virtuoso";
-import type { VirtuosoHandle } from "react-virtuoso";
-import useImmersiveScroll from "../../../../hooks/useImmersiveScroll";
+import UnifiedFeed from "../../UnifiedFeed";
 
 const ReactedFeed = () => {
   const { user } = useUserContext();
   const { reactedEvents, reactionEvents, fetchReactedNotes, loading } =
     useReactedNotes(user);
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useImmersiveScroll(containerRef, virtuosoRef, { smooth: true });
 
   useEffect(() => {
     if (reactedEvents.size === 0) {
@@ -28,30 +21,18 @@ const ReactedFeed = () => {
   );
 
   return (
-    <div ref={containerRef} style={{ height: "100vh" }}>
-      <Virtuoso
-        ref={virtuosoRef}
-        data={sorted}
-        itemContent={(index, note: Event) => (
-          <ReactedNoteCard
-            key={note.id}
-            note={note}
-            reactions={Array.from(reactionEvents.values())}
-          />
-        )}
-        endReached={() => {
-          fetchReactedNotes();
-        }}
-        components={{
-          Footer: () =>
-            loading ? (
-              <div style={{ textAlign: "center", padding: 20 }}>
-                <CircularProgress size={24} />
-              </div>
-            ) : null,
-        }}
-      />
-    </div>
+    <UnifiedFeed
+      data={sorted}
+      loadingMore={loading}
+      onEndReached={fetchReactedNotes}
+      itemContent={(index, note: Event) => (
+        <ReactedNoteCard
+          key={note.id}
+          note={note}
+          reactions={Array.from(reactionEvents.values())}
+        />
+      )}
+    />
   );
 };
 

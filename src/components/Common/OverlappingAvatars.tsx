@@ -1,6 +1,9 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar, Box, Typography } from "@mui/material";
+import { nip19 } from "nostr-tools";
 import { useAppContext } from "../../hooks/useAppContext";
+import { openProfileTab } from "../../nostr";
 import { DEFAULT_IMAGE_URL } from "../../utils/constants";
 
 interface OverlappingAvatarsProps {
@@ -12,6 +15,7 @@ const OverlappingAvatars: React.FC<OverlappingAvatarsProps> = ({
   ids,
   maxAvatars = 5,
 }) => {
+  const navigate = useNavigate();
   let { profiles, fetchUserProfileThrottled } = useAppContext();
 
   useEffect(() => {
@@ -48,8 +52,10 @@ const OverlappingAvatars: React.FC<OverlappingAvatarsProps> = ({
             border: "1px solid #fff",
             margin: 0,
             padding: 0,
+            cursor: "pointer",
           }}
           src={profiles?.get(id)?.picture || DEFAULT_IMAGE_URL}
+          onClick={() => openProfileTab(nip19.npubEncode(id), navigate)}
         />
       ))}
       {excessIds > 0 ? (
