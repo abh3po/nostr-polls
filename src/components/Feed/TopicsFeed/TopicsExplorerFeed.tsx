@@ -58,14 +58,16 @@ const TopicExplorer: React.FC = () => {
   const [loadingPolls, setLoadingPolls] = useState(false);
   const [isAddingToMyTopics, setIsAddingToMyTopics] = useState(false);
 
-  const curatedByMap = useRef<Map<string, Set<string>>>(new Map());
+  const curatedByMap = useRef<Map<string, Map<string, string>>>(new Map()); // noteId -> (moderatorPubkey -> moderationEventId)
   const [curatedIds, setCuratedIds] = useState<Set<string>>(new Set());
   const [showAnywaySet, setShowAnywaySet] = useState<Set<string>>(new Set());
 
   const seenNoteIds = useRef<Set<string>>(new Set());
   const seenPollIds = useRef<Set<string>>(new Set());
-  const blockedUsersMap = useRef<Map<string, Set<string>>>(new Map());
+  const blockedUsersMap = useRef<Map<string, Map<string, string>>>(new Map()); // targetPubkey -> (moderatorPubkey -> moderationEventId)
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const deletedModerationIds = useRef<Set<string>>(new Set());
+  const [moderationVersion, setModerationVersion] = useState(0);
   const [moderatorDialogOpen, setModeratorDialogOpen] = useState(false);
   const [visibleModerators, setVisibleModerators] = useState<string[]>([]);
 
@@ -134,14 +136,22 @@ const TopicExplorer: React.FC = () => {
   const allModerators = useMemo(() => {
     const modSet = new Set<string>();
     curatedByMap.current.forEach((curators) => {
-      curators.forEach((id) => modSet.add(id));
+      curators.forEach((eventId, pubkey) => {
+        if (!deletedModerationIds.current.has(eventId)) {
+          modSet.add(pubkey);
+        }
+      });
     });
     blockedUsersMap.current.forEach((blockers) => {
-      blockers.forEach((id) => modSet.add(id));
+      blockers.forEach((eventId, pubkey) => {
+        if (!deletedModerationIds.current.has(eventId)) {
+          modSet.add(pubkey);
+        }
+      });
     });
     return Array.from(modSet);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [curatedIds, blockedUserIds]);
+  }, [curatedIds, blockedUserIds, moderationVersion]);
 
   useEffect(() => {
     if (!tag) return;
@@ -176,18 +186,58 @@ const TopicExplorer: React.FC = () => {
 
     if (type === "off-topic") {
       if (!curatedByMap.current.has(noteEvent.id)) {
-        curatedByMap.current.set(noteEvent.id, new Set());
+        curatedByMap.current.set(noteEvent.id, new Map());
       }
-      curatedByMap.current.get(noteEvent.id)!.add(user.pubkey);
+      curatedByMap.current.get(noteEvent.id)!.set(user.pubkey, signed.id);
       setCuratedIds(new Set(curatedByMap.current.keys()));
     } else {
       const blocked = blockedUsersMap.current;
       if (!blocked.has(noteEvent.pubkey)) {
-        blocked.set(noteEvent.pubkey, new Set());
+        blocked.set(noteEvent.pubkey, new Map());
       }
-      blocked.get(noteEvent.pubkey)!.add(user.pubkey);
+      blocked.get(noteEvent.pubkey)!.set(user.pubkey, signed.id);
       setBlockedUserIds(new Set(blocked.keys()));
     }
+  };
+
+  const handleUnmoderationEvent = async (
+    noteEvent: Event,
+    type: "off-topic" | "remove-user"
+  ) => {
+    if (!user) return requestLogin();
+    if (!tag) return;
+
+    let moderationEventId: string | undefined;
+    if (type === "off-topic") {
+      moderationEventId = curatedByMap.current.get(noteEvent.id)?.get(user.pubkey);
+    } else {
+      moderationEventId = blockedUsersMap.current.get(noteEvent.pubkey)?.get(user.pubkey);
+    }
+
+    if (!moderationEventId || deletedModerationIds.current.has(moderationEventId)) return;
+
+    const signed = await signEvent({
+      kind: 5,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ["e", moderationEventId],
+        ["k", String(OFFTOPIC_KIND)],
+      ],
+      content: "Undo moderation",
+    });
+
+    await pool.publish(relays, signed);
+
+    // Optimistic local update
+    deletedModerationIds.current.add(moderationEventId);
+    if (type === "off-topic") {
+      curatedByMap.current.get(noteEvent.id)?.delete(user.pubkey);
+    } else {
+      blockedUsersMap.current.get(noteEvent.pubkey)?.delete(user.pubkey);
+    }
+    setCuratedIds(new Set(curatedByMap.current.keys()));
+    setBlockedUserIds(new Set(blockedUsersMap.current.keys()));
+    setModerationVersion((v) => v + 1);
   };
 
   const subRef = useRef<ReturnType<SimplePool["subscribeMany"]> | null>(null);
@@ -202,26 +252,61 @@ const TopicExplorer: React.FC = () => {
       { kinds: [OFFTOPIC_KIND], "#t": [tag], limit: 200 },
       { kinds: [1], "#t": [tag], limit: 50 },
       { kinds: [1068], "#t": [tag], limit: 50 },
+      { kinds: [5], "#k": [String(OFFTOPIC_KIND)], limit: 500 },
     ];
 
 
     const handle = nostrRuntime.subscribe(relays, filters, {
       onEvent: (event: Event) => {
+        if (event.kind === 5) {
+          const targetIds = new Set(
+            event.tags.filter((t) => t[0] === "e").map((t) => t[1])
+          );
+
+          let changed = false;
+          curatedByMap.current.forEach((moderators) => {
+            moderators.forEach((eventId, pubkey) => {
+              if (targetIds.has(eventId) && pubkey === event.pubkey) {
+                moderators.delete(pubkey);
+                changed = true;
+              }
+            });
+          });
+          blockedUsersMap.current.forEach((moderators) => {
+            moderators.forEach((eventId, pubkey) => {
+              if (targetIds.has(eventId) && pubkey === event.pubkey) {
+                moderators.delete(pubkey);
+                changed = true;
+              }
+            });
+          });
+          targetIds.forEach((id) => deletedModerationIds.current.add(id));
+
+          if (changed) {
+            setCuratedIds(new Set(curatedByMap.current.keys()));
+            setBlockedUserIds(new Set(blockedUsersMap.current.keys()));
+            setModerationVersion((v) => v + 1);
+          }
+          return;
+        }
+
         if (event.kind === OFFTOPIC_KIND) {
+          if (deletedModerationIds.current.has(event.id)) return;
+
           const eTags = event.tags.filter((t) => t[0] === "e").map((t) => t[1]);
           for (const e of eTags) {
             if (!curatedByMap.current.has(e)) {
-              curatedByMap.current.set(e, new Set());
+              curatedByMap.current.set(e, new Map());
             }
-            curatedByMap.current.get(e)!.add(event.pubkey);
+            curatedByMap.current.get(e)!.set(event.pubkey, event.id);
           }
 
           const pTags = event.tags.filter((t) => t[0] === "p").map((t) => t[1]);
           for (const pubkey of pTags) {
             if (!blockedUsersMap.current.has(pubkey)) {
-              blockedUsersMap.current.set(pubkey, new Set());
+              blockedUsersMap.current.set(pubkey, new Map());
             }
-            blockedUsersMap.current.get(pubkey)!.add(event.pubkey);
+            blockedUsersMap.current.get(pubkey)!.set(event.pubkey, event.id);
           }
 
           setCuratedIds(new Set(curatedByMap.current.keys()));
@@ -268,18 +353,35 @@ const TopicExplorer: React.FC = () => {
 
   const itemContent = useMemo(
     () => (_: any, event: Event) => {
-      const allCurators =
-        curatedByMap.current.get(event.id) ?? new Set<string>();
+      const curatorMap =
+        curatedByMap.current.get(event.id) ?? new Map<string, string>();
+
+      // Get active (non-deleted) curator pubkeys
+      const activeCurators: string[] = [];
+      curatorMap.forEach((eventId, pubkey) => {
+        if (!deletedModerationIds.current.has(eventId)) {
+          activeCurators.push(pubkey);
+        }
+      });
 
       // Filter curators based on feed mode
       const visibleCurators =
         feedMode === "contacts" && user?.follows
-          ? Array.from(allCurators).filter((id) => user.follows!.includes(id))
-          : Array.from(allCurators);
+          ? activeCurators.filter((id) => user.follows!.includes(id))
+          : activeCurators;
+
+      // Check if the user has active blocked-user moderations
+      const blockerMap = blockedUsersMap.current.get(event.pubkey) ?? new Map<string, string>();
+      const activeBlockers: string[] = [];
+      blockerMap.forEach((eventId, pubkey) => {
+        if (!deletedModerationIds.current.has(eventId)) {
+          activeBlockers.push(pubkey);
+        }
+      });
 
       const isUserBlocked =
         feedMode !== "unfiltered" &&
-        blockedUserIds.has(event.pubkey) &&
+        activeBlockers.length > 0 &&
         !showAnywaySet.has(event.id);
 
       const isHidden =
@@ -287,6 +389,20 @@ const TopicExplorer: React.FC = () => {
           visibleCurators.length > 0 &&
           !showAnywaySet.has(event.id)) ||
         isUserBlocked;
+
+      // Check if current user has active moderations on this note
+      const userHasOffTopic = user?.pubkey
+        ? (() => {
+            const eid = curatorMap.get(user.pubkey);
+            return eid ? !deletedModerationIds.current.has(eid) : false;
+          })()
+        : false;
+      const userHasBlockedUser = user?.pubkey
+        ? (() => {
+            const eid = blockerMap.get(user.pubkey);
+            return eid ? !deletedModerationIds.current.has(eid) : false;
+          })()
+        : false;
 
       let showReason: React.ReactNode;
 
@@ -308,11 +424,10 @@ const TopicExplorer: React.FC = () => {
           </Box>
         );
       } else if (isUserBlocked) {
-        const blockers = blockedUsersMap.current.get(event.pubkey) ?? new Set();
         const visibleBlockers =
           feedMode === "contacts" && user?.follows
-            ? Array.from(blockers).filter((id) => user.follows!.includes(id))
-            : Array.from(blockers);
+            ? activeBlockers.filter((id) => user.follows!.includes(id))
+            : activeBlockers;
 
         if (visibleBlockers.length > 0) {
           showReason = (
@@ -359,18 +474,26 @@ const TopicExplorer: React.FC = () => {
               showReason={showReason}
               extras={
                 <>
-                  {!curatedByMap.current
-                    .get(event.id)
-                    ?.has(user?.pubkey || "") && (
+                  {userHasOffTopic ? (
+                    <MenuItem
+                      onClick={() => handleUnmoderationEvent(event, "off-topic")}
+                    >
+                      Unmark Off-Topic
+                    </MenuItem>
+                  ) : (
                     <MenuItem
                       onClick={() => handleModerationEvent(event, "off-topic")}
                     >
                       Mark Off-Topic
                     </MenuItem>
                   )}
-                  {!blockedUsersMap.current
-                    .get(event.pubkey)
-                    ?.has(user?.pubkey || "") && (
+                  {userHasBlockedUser ? (
+                    <MenuItem
+                      onClick={() => handleUnmoderationEvent(event, "remove-user")}
+                    >
+                      Unblock User From Topic
+                    </MenuItem>
+                  ) : (
                     <MenuItem
                       onClick={() =>
                         handleModerationEvent(event, "remove-user")
@@ -398,7 +521,7 @@ const TopicExplorer: React.FC = () => {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey]
+    [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey, moderationVersion]
   );
 
   return (
