@@ -18,7 +18,7 @@ import { Event } from "nostr-tools";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { NotePreview } from "./NotePreview";
-import { pool } from "../../singletons";
+import { waitForPublish } from "../../utils/publish";
 import MentionTextArea, { extractMentionTags } from "./MentionTextArea";
 
 const NoteTemplateForm: React.FC<{
@@ -69,14 +69,25 @@ const NoteTemplateForm: React.FC<{
       };
       setIsSubmitting(true);
       const signedEvent = await signEvent(noteEvent, user?.privateKey);
-      setIsSubmitting(false);
       if (!signedEvent) {
+        setIsSubmitting(false);
         showNotification(NOTIFICATION_MESSAGES.NOTE_SIGN_FAILED, "error");
         return;
       }
-      pool.publish(relays, signedEvent);
-      showNotification(NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS, "success");
-      navigate("/feeds/notes");
+      const result = await waitForPublish(relays, signedEvent);
+      setIsSubmitting(false);
+      if (result.ok) {
+        showNotification(
+          NOTIFICATION_MESSAGES.NOTE_PUBLISHED_SUCCESS,
+          "success"
+        );
+        navigate("/feeds/notes");
+      } else {
+        showNotification(
+          NOTIFICATION_MESSAGES.NOTE_PUBLISH_NO_RELAY,
+          "error"
+        );
+      }
     } catch (error) {
       setIsSubmitting(false);
       console.error("Error publishing note:", error);

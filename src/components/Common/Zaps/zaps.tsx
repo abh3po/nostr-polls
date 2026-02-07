@@ -108,8 +108,7 @@ const Zap: React.FC<ZapProps> = ({ pollEvent }) => {
   };
 
   const recipientName =
-    recipient?.event?.tags?.find((t) => t[0] === "name")?.[1] ||
-    recipient?.event?.tags?.find((t) => t[0] === "display_name")?.[1];
+    recipient?.name || recipient?.display_name;
 
   return (
     <Wrapper style={{ marginLeft: 20 }}>

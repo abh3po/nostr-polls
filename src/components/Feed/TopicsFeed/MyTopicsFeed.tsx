@@ -32,6 +32,7 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
     notes,
     toggleShowAnyway,
     publishModeration,
+    publishUnmoderation,
     loading,
     moderatorsByTopic,
     selectedModsByTopic,
@@ -147,7 +148,7 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
           ) : undefined
         }
         itemContent={(_, item) => {
-          const { event, topics, hidden, moderators, moderatedTopics } = item;
+          const { event, topics, hidden, moderators, moderatedTopics, myOffTopicTopics, myBlockedUserTopics } = item;
 
           return (
             <Box sx={{ mb: 2 }}>
@@ -191,29 +192,49 @@ const MyTopicsFeed = ({ onNavigateToDiscover }: MyTopicsFeedProps) => {
                 }
                 extras={
                   <>
-                    <MenuItem
-                      onClick={() =>
-                        setDialog({
-                          note: event,
-                          type: "off-topic",
-                          topics,
-                        })
-                      }
-                    >
-                      Mark off-topic
-                    </MenuItem>
+                    {myOffTopicTopics.length > 0 ? (
+                      <MenuItem
+                        onClick={() =>
+                          publishUnmoderation("off-topic", event, myOffTopicTopics)
+                        }
+                      >
+                        Unmark off-topic
+                      </MenuItem>
+                    ) : (
+                      <MenuItem
+                        onClick={() =>
+                          setDialog({
+                            note: event,
+                            type: "off-topic",
+                            topics,
+                          })
+                        }
+                      >
+                        Mark off-topic
+                      </MenuItem>
+                    )}
 
-                    <MenuItem
-                      onClick={() =>
-                        setDialog({
-                          note: event,
-                          type: "remove-user",
-                          topics,
-                        })
-                      }
-                    >
-                      Remove user from topic
-                    </MenuItem>
+                    {myBlockedUserTopics.length > 0 ? (
+                      <MenuItem
+                        onClick={() =>
+                          publishUnmoderation("remove-user", event, myBlockedUserTopics)
+                        }
+                      >
+                        Unblock user from topic
+                      </MenuItem>
+                    ) : (
+                      <MenuItem
+                        onClick={() =>
+                          setDialog({
+                            note: event,
+                            type: "remove-user",
+                            topics,
+                          })
+                        }
+                      >
+                        Remove user from topic
+                      </MenuItem>
+                    )}
 
                     {hidden ? (
                       <MenuItem onClick={() => toggleShowAnyway(event.id)}>
