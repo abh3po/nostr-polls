@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
-  CircularProgress,
   Typography,
   Tabs,
   Tab,
@@ -160,7 +159,7 @@ const TopicExplorer: React.FC = () => {
 
   const handleModerationEvent = async (
     noteEvent: Event,
-    type: "off-topic" | "remove-user"
+    type: "off-topic" | "remove-user",
   ) => {
     if (!user) return requestLogin();
     if (!tag) return;
@@ -202,19 +201,27 @@ const TopicExplorer: React.FC = () => {
 
   const handleUnmoderationEvent = async (
     noteEvent: Event,
-    type: "off-topic" | "remove-user"
+    type: "off-topic" | "remove-user",
   ) => {
     if (!user) return requestLogin();
     if (!tag) return;
 
     let moderationEventId: string | undefined;
     if (type === "off-topic") {
-      moderationEventId = curatedByMap.current.get(noteEvent.id)?.get(user.pubkey);
+      moderationEventId = curatedByMap.current
+        .get(noteEvent.id)
+        ?.get(user.pubkey);
     } else {
-      moderationEventId = blockedUsersMap.current.get(noteEvent.pubkey)?.get(user.pubkey);
+      moderationEventId = blockedUsersMap.current
+        .get(noteEvent.pubkey)
+        ?.get(user.pubkey);
     }
 
-    if (!moderationEventId || deletedModerationIds.current.has(moderationEventId)) return;
+    if (
+      !moderationEventId ||
+      deletedModerationIds.current.has(moderationEventId)
+    )
+      return;
 
     const signed = await signEvent({
       kind: 5,
@@ -255,12 +262,11 @@ const TopicExplorer: React.FC = () => {
       { kinds: [5], "#k": [String(OFFTOPIC_KIND)], limit: 500 },
     ];
 
-
     const handle = nostrRuntime.subscribe(relays, filters, {
       onEvent: (event: Event) => {
         if (event.kind === 5) {
           const targetIds = new Set(
-            event.tags.filter((t) => t[0] === "e").map((t) => t[1])
+            event.tags.filter((t) => t[0] === "e").map((t) => t[1]),
           );
 
           let changed = false;
@@ -371,7 +377,8 @@ const TopicExplorer: React.FC = () => {
           : activeCurators;
 
       // Check if the user has active blocked-user moderations
-      const blockerMap = blockedUsersMap.current.get(event.pubkey) ?? new Map<string, string>();
+      const blockerMap =
+        blockedUsersMap.current.get(event.pubkey) ?? new Map<string, string>();
       const activeBlockers: string[] = [];
       blockerMap.forEach((eventId, pubkey) => {
         if (!deletedModerationIds.current.has(eventId)) {
@@ -476,7 +483,9 @@ const TopicExplorer: React.FC = () => {
                 <>
                   {userHasOffTopic ? (
                     <MenuItem
-                      onClick={() => handleUnmoderationEvent(event, "off-topic")}
+                      onClick={() =>
+                        handleUnmoderationEvent(event, "off-topic")
+                      }
                     >
                       Unmark Off-Topic
                     </MenuItem>
@@ -489,7 +498,9 @@ const TopicExplorer: React.FC = () => {
                   )}
                   {userHasBlockedUser ? (
                     <MenuItem
-                      onClick={() => handleUnmoderationEvent(event, "remove-user")}
+                      onClick={() =>
+                        handleUnmoderationEvent(event, "remove-user")
+                      }
                     >
                       Unblock User From Topic
                     </MenuItem>
@@ -521,7 +532,14 @@ const TopicExplorer: React.FC = () => {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [curatedIds, feedMode, showAnywaySet, user?.follows, user?.pubkey, moderationVersion]
+    [
+      curatedIds,
+      feedMode,
+      showAnywaySet,
+      user?.follows,
+      user?.pubkey,
+      moderationVersion,
+    ],
   );
 
   return (
