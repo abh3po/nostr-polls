@@ -48,11 +48,7 @@ const AmountButton = styled(Button)<{ selected?: boolean }>(
       : theme.palette.mode === "dark"
       ? "rgba(255, 255, 255, 0.1)"
       : "rgba(0, 0, 0, 0.05)",
-    color: selected
-      ? "#000"
-      : theme.palette.mode === "dark"
-      ? "#fff"
-      : "#000",
+    color: selected ? "#000" : theme.palette.mode === "dark" ? "#fff" : "#000",
     "&:hover": {
       backgroundColor: selected
         ? "#e6c039"
@@ -60,7 +56,7 @@ const AmountButton = styled(Button)<{ selected?: boolean }>(
         ? "rgba(255, 255, 255, 0.15)"
         : "rgba(0, 0, 0, 0.1)",
     },
-  })
+  }),
 );
 
 const ZapButton = styled(Button)({
@@ -84,7 +80,8 @@ const ActionButton = styled(Button)(({ theme }) => ({
   padding: "10px 16px",
   flex: 1,
   fontWeight: 600,
-  borderColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)",
+  borderColor:
+    theme.palette.mode === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)",
   color: theme.palette.mode === "dark" ? "#fff" : "#000",
 }));
 
@@ -171,7 +168,7 @@ const ZapModal: React.FC<ZapModalProps> = ({
             mb={2}
           >
             <Typography variant="h6" fontWeight={700}>
-              {invoice ? "Pay Invoice" : `Zap ${recipientName || "this poll"}`}
+              {invoice ? "Pay Invoice" : `Zap ${recipientName || "this post"}`}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <Close />

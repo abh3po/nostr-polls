@@ -40,6 +40,10 @@ export const NOTIFICATION_MESSAGES = {
   POLL_SIGN_FAILED: "Failed to sign the poll.",
   POLL_PUBLISHED_SUCCESS: "Poll published successfully!",
   POLL_PUBLISH_FAILED: "Failed to publish poll. Please try again.",
+  NOTE_PUBLISH_NO_RELAY:
+    "None of the relays accepted your note within 5 seconds.",
+  POLL_PUBLISH_NO_RELAY:
+    "None of the relays accepted your poll within 5 seconds.",
 } as const;
 
 export type NotificationMessageKey = keyof typeof NOTIFICATION_MESSAGES;

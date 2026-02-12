@@ -34,7 +34,7 @@ import { signEvent } from "../../nostr";
 import { useRelays } from "../../hooks/useRelays";
 import { PollPreview } from "./PollPreview";
 import { Event } from "nostr-tools";
-import { pool } from "../../singletons";
+import { waitForPublish } from "../../utils/publish";
 
 const generateOptionId = (): string => {
   return Math.random().toString(36).substr(2, 9);
@@ -140,16 +140,26 @@ const PollTemplateForm: React.FC<{
 
       setIsSubmitting(true);
       const signedEvent = await signEvent(pollEvent, user?.privateKey);
-      setIsSubmitting(false);
-
       if (!signedEvent) {
+        setIsSubmitting(false);
         showNotification(NOTIFICATION_MESSAGES.POLL_SIGN_FAILED, "error");
         return;
       }
 
-      pool.publish(relays, signedEvent);
-      showNotification(NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS, "success");
-      navigate("/feeds/polls");
+      const result = await waitForPublish(relays, signedEvent);
+      setIsSubmitting(false);
+      if (result.ok) {
+        showNotification(
+          NOTIFICATION_MESSAGES.POLL_PUBLISHED_SUCCESS,
+          "success"
+        );
+        navigate("/feeds/polls");
+      } else {
+        showNotification(
+          NOTIFICATION_MESSAGES.POLL_PUBLISH_NO_RELAY,
+          "error"
+        );
+      }
     } catch (error) {
       setIsSubmitting(false);
       console.error("Error publishing poll:", error);

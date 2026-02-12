@@ -14,8 +14,8 @@ import {
 export const OFFTOPIC_KIND = 1011;
 
 type TopicModeration = {
-  offTopicNotes: Map<string, Set<string>>; // noteId -> moderators
-  blockedUsers: Map<string, Set<string>>; // pubkey -> moderators
+  offTopicNotes: Map<string, Map<string, string>>; // noteId -> (moderatorPubkey -> moderationEventId)
+  blockedUsers: Map<string, Map<string, string>>; // targetPubkey -> (moderatorPubkey -> moderationEventId)
 };
 
 type TopicNote = {
@@ -41,12 +41,15 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
   const moderationByTopic = useRef<Map<string, TopicModeration>>(new Map());
   const seenNotes = useRef<Set<string>>(new Set());
   const seenModeration = useRef<Set<string>>(new Set());
+  const deletedModerationIds = useRef<Set<string>>(new Set());
 
   /* ------------------ moderation processing ------------------ */
 
   const processModerationEvent = (event: Event) => {
     if (seenModeration.current.has(event.id)) return;
     seenModeration.current.add(event.id);
+
+    if (deletedModerationIds.current.has(event.id)) return;
 
     const topicTags = event.tags
       .filter((t) => t[0] === "t")
@@ -72,22 +75,57 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
 
       for (const noteId of eTags) {
         if (!mod.offTopicNotes.has(noteId)) {
-          mod.offTopicNotes.set(noteId, new Set());
+          mod.offTopicNotes.set(noteId, new Map());
         }
-        mod.offTopicNotes.get(noteId)!.add(event.pubkey);
+        mod.offTopicNotes.get(noteId)!.set(event.pubkey, event.id);
       }
 
       for (const pubkey of pTags) {
         if (!mod.blockedUsers.has(pubkey)) {
-          mod.blockedUsers.set(pubkey, new Set());
+          mod.blockedUsers.set(pubkey, new Map());
         }
-        mod.blockedUsers.get(pubkey)!.add(event.pubkey);
+        mod.blockedUsers.get(pubkey)!.set(event.pubkey, event.id);
       }
     }
 
     // force rerender
     setNotes((prev) => new Map(prev));
     setModerationVersion((v) => v + 1);
+  };
+
+  const processDeletionEvent = (event: Event) => {
+    const targetIds = new Set(
+      event.tags.filter((t) => t[0] === "e").map((t) => t[1])
+    );
+
+    let changed = false;
+
+    // Scan all topics' moderation data for targeted event IDs
+    moderationByTopic.current.forEach((mod) => {
+      mod.offTopicNotes.forEach((moderators) => {
+        moderators.forEach((eventId, pubkey) => {
+          if (targetIds.has(eventId) && pubkey === event.pubkey) {
+            moderators.delete(pubkey);
+            changed = true;
+          }
+        });
+      });
+      mod.blockedUsers.forEach((moderators) => {
+        moderators.forEach((eventId, pubkey) => {
+          if (targetIds.has(eventId) && pubkey === event.pubkey) {
+            moderators.delete(pubkey);
+            changed = true;
+          }
+        });
+      });
+    });
+
+    targetIds.forEach((id) => deletedModerationIds.current.add(id));
+
+    if (changed) {
+      setNotes((prev) => new Map(prev));
+      setModerationVersion((v) => v + 1);
+    }
   };
 
   /* ------------------ derive moderators by topic ------------------ */
@@ -97,10 +135,18 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
     moderationByTopic.current.forEach((mod, topic) => {
       const modSet = new Set<string>();
       mod.offTopicNotes.forEach((moderators) => {
-        moderators.forEach((m) => modSet.add(m));
+        moderators.forEach((eventId, pubkey) => {
+          if (!deletedModerationIds.current.has(eventId)) {
+            modSet.add(pubkey);
+          }
+        });
       });
       mod.blockedUsers.forEach((moderators) => {
-        moderators.forEach((m) => modSet.add(m));
+        moderators.forEach((eventId, pubkey) => {
+          if (!deletedModerationIds.current.has(eventId)) {
+            modSet.add(pubkey);
+          }
+        });
       });
       if (modSet.size > 0) {
         result.set(topic, Array.from(modSet));
@@ -160,9 +206,16 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
       [
         { kinds: [1], "#t": topics, limit: 200 },
         { kinds: [OFFTOPIC_KIND], "#t": topics, limit: 500 },
+        { kinds: [5], "#k": [String(OFFTOPIC_KIND)], limit: 500 },
       ],
       {
         onEvent: (event) => {
+          /* ---- deletion events ---- */
+          if (event.kind === 5) {
+            processDeletionEvent(event);
+            return;
+          }
+
           /* ---- moderation events ---- */
           if (event.kind === OFFTOPIC_KIND) {
             processModerationEvent(event);
@@ -207,19 +260,49 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
         let hidden = false;
         let moderators = new Set<string>();
         let moderatedTopics = new Set<string>();
+        let myOffTopicTopics: string[] = [];
+        let myBlockedUserTopics: string[] = [];
 
-        if (feedMode !== "unfiltered") {
-          for (const topic of topics) {
-            const mod = moderationByTopic.current.get(topic);
-            if (!mod) continue;
+        for (const topic of topics) {
+          const mod = moderationByTopic.current.get(topic);
+          if (!mod) continue;
 
-            const offTopic = mod.offTopicNotes.get(event.id);
-            const blocked = mod.blockedUsers.get(event.pubkey);
+          const offTopic = mod.offTopicNotes.get(event.id);
+          const blocked = mod.blockedUsers.get(event.pubkey);
 
-            const relevantMods = new Set<string>([
-              ...Array.from(offTopic || []),
-              ...Array.from(blocked || []),
-            ]);
+          // Track topics where current user has active (non-deleted) off-topic moderations
+          if (user && offTopic) {
+            const myEventId = offTopic.get(user.pubkey);
+            if (myEventId && !deletedModerationIds.current.has(myEventId)) {
+              myOffTopicTopics.push(topic);
+            }
+          }
+
+          // Track topics where current user has active (non-deleted) blocked-user moderations
+          if (user && blocked) {
+            const myEventId = blocked.get(user.pubkey);
+            if (myEventId && !deletedModerationIds.current.has(myEventId)) {
+              myBlockedUserTopics.push(topic);
+            }
+          }
+
+          if (feedMode !== "unfiltered") {
+            // Collect active (non-deleted) moderator pubkeys
+            const relevantMods = new Set<string>();
+            if (offTopic) {
+              offTopic.forEach((eventId, pubkey) => {
+                if (!deletedModerationIds.current.has(eventId)) {
+                  relevantMods.add(pubkey);
+                }
+              });
+            }
+            if (blocked) {
+              blocked.forEach((eventId, pubkey) => {
+                if (!deletedModerationIds.current.has(eventId)) {
+                  relevantMods.add(pubkey);
+                }
+              });
+            }
 
             // Filter by selected moderators for this topic
             const selectedForTopic = selectedModsByTopic.get(topic);
@@ -256,10 +339,13 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
           hidden,
           moderators,
           moderatedTopics,
+          myOffTopicTopics,
+          myBlockedUserTopics,
         };
       })
       .sort((a, b) => b.event.created_at - a.event.created_at);
-  }, [notes, feedMode, showAnyway, user?.follows, selectedModsByTopic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, feedMode, showAnyway, user?.follows, selectedModsByTopic, user, moderationVersion]);
 
   /* ------------------ actions ------------------ */
 
@@ -315,12 +401,12 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
       const mod = moderationByTopic.current.get(topic)!;
       if (type === "off-topic") {
         if (!mod.offTopicNotes.has(note.id))
-          mod.offTopicNotes.set(note.id, new Set());
-        mod.offTopicNotes.get(note.id)!.add(user.pubkey);
+          mod.offTopicNotes.set(note.id, new Map());
+        mod.offTopicNotes.get(note.id)!.set(user.pubkey, signed.id);
       } else {
         if (!mod.blockedUsers.has(note.pubkey))
-          mod.blockedUsers.set(note.pubkey, new Set());
-        mod.blockedUsers.get(note.pubkey)!.add(user.pubkey);
+          mod.blockedUsers.set(note.pubkey, new Map());
+        mod.blockedUsers.get(note.pubkey)!.set(user.pubkey, signed.id);
       }
     }
 
@@ -344,12 +430,78 @@ export function useMyTopicsFeed(myTopics: Set<string>) {
     }
   };
 
+  const publishUnmoderation = async (
+    type: "off-topic" | "remove-user",
+    note: Event,
+    topics: string[]
+  ) => {
+    if (!user) {
+      requestLogin();
+      return;
+    }
+
+    const moderationEventIds: string[] = [];
+
+    for (const topic of topics) {
+      const mod = moderationByTopic.current.get(topic);
+      if (!mod) continue;
+
+      let eventId: string | undefined;
+      if (type === "off-topic") {
+        eventId = mod.offTopicNotes.get(note.id)?.get(user.pubkey);
+      } else {
+        eventId = mod.blockedUsers.get(note.pubkey)?.get(user.pubkey);
+      }
+
+      if (eventId && !deletedModerationIds.current.has(eventId)) {
+        moderationEventIds.push(eventId);
+      }
+    }
+
+    if (moderationEventIds.length === 0) return;
+
+    const tags: string[][] = [
+      ...moderationEventIds.map((id) => ["e", id]),
+      ["k", String(OFFTOPIC_KIND)],
+    ];
+
+    const signed = await signEvent({
+      kind: 5,
+      created_at: Math.floor(Date.now() / 1000),
+      tags,
+      content: "Undo moderation",
+    });
+
+    await pool.publish(relays, signed);
+
+    // Optimistic local update
+    for (const id of moderationEventIds) {
+      deletedModerationIds.current.add(id);
+    }
+
+    // Remove from moderation maps
+    for (const topic of topics) {
+      const mod = moderationByTopic.current.get(topic);
+      if (!mod) continue;
+
+      if (type === "off-topic") {
+        mod.offTopicNotes.get(note.id)?.delete(user.pubkey);
+      } else {
+        mod.blockedUsers.get(note.pubkey)?.delete(user.pubkey);
+      }
+    }
+
+    setNotes((prev) => new Map(prev));
+    setModerationVersion((v) => v + 1);
+  };
+
   return {
     notes: resolvedNotes,
     feedMode,
     setFeedMode,
     toggleShowAnyway,
     publishModeration,
+    publishUnmoderation,
     loading,
     moderatorsByTopic,
     selectedModsByTopic,
