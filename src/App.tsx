@@ -27,6 +27,7 @@ import { NotificationProvider } from "./contexts/notification-context";
 import { RelayProvider } from "./contexts/relay-context";
 import { NostrNotificationsProvider } from "./contexts/nostr-notification-context";
 import { DMProvider } from "./contexts/dm-context";
+import { TranslationBatchProvider } from "./contexts/translation-batch-context";
 
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material";
@@ -93,11 +94,12 @@ const App: React.FC = () => {
             <RelayProvider>
               <DMProvider>
               <NostrNotificationsProvider>
-                <ListProvider>
-                  <RatingProvider>
-                    <CssBaseline />
-                    <MetadataProvider>
-                      <Router>
+                <TranslationBatchProvider>
+                  <ListProvider>
+                    <RatingProvider>
+                      <CssBaseline />
+                      <MetadataProvider>
+                        <Router>
                         {/* ✅ Safe-area header wrapper */}
                         <div className="header-safe-area">
                           <Header />
@@ -155,6 +157,7 @@ const App: React.FC = () => {
                     </MetadataProvider>
                   </RatingProvider>
                 </ListProvider>
+              </TranslationBatchProvider>
               </NostrNotificationsProvider>
               </DMProvider>
             </RelayProvider>

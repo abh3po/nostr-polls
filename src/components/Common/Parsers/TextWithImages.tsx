@@ -12,6 +12,12 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import { isEmbeddableYouTubeUrl } from "../Utils";
 import { YouTubePlayer } from "../Youtube";
 import { Link } from "react-router-dom";
+import { aiService } from "../../../services/ai-service";
+import { useTranslationBatch } from "../../../contexts/translation-batch-context";
+import {
+  getCachedTranslation,
+  setCachedTranslation,
+} from "../../../utils/translation-cache";
 
 interface TextWithImagesProps {
   content: string;
@@ -345,39 +351,32 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
   const translateButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const { aiSettings, fetchUserProfileThrottled, profiles } = useAppContext();
+  const { detectLanguage } = useTranslationBatch();
   const browserLang = navigator.language.slice(0, 2).toLowerCase();
 
-  const hasOllama =
-    typeof window !== "undefined" &&
-    window.ollama &&
-    typeof window.ollama.generate === "function";
+  const hasAI = true; // AI service available via nRPC
 
   useEffect(() => {
     setDisplayedText(content);
-    if (!hasOllama) return;
+    if (!hasAI || !aiSettings.model) {
+      console.log("[TextWithImages] Skipping language detection - hasAI:", hasAI, "model:", aiSettings.model);
+      return;
+    }
 
     const detectLang = async () => {
       try {
-        const prompt = `Determine the language of the following text. Only respond with the ISO 639-1 language code (e.g., "en", "es", "fr").
-Ignore:
-- URLs (http links)
-- Hashes
-- Random alphanumeric strings or identifiers
+        console.log("[TextWithImages] Starting language detection for:", content.substring(0, 50));
+        // Use batched language detection
+        const lang = await detectLanguage(content, aiSettings.model || "llama3");
 
-Default to "en" unless you're very confident it's another language.
-Text:\n\n${content}`;
+        console.log("[TextWithImages] Detected language:", lang, "browserLang:", browserLang);
 
-        const result = await window.ollama!.generate!({
-          model: aiSettings.model || "llama3",
-          prompt,
-          stream: false,
-        });
-
-        const rawLang = result?.data?.response?.trim();
-        if (rawLang && /^[a-z]{2}$/.test(rawLang.toLowerCase())) {
-          const lang = rawLang.toLowerCase();
-          setShouldShowTranslate(lang !== browserLang);
+        if (lang && /^[a-z]{2}$/.test(lang.toLowerCase())) {
+          const needsTranslate = lang.toLowerCase() !== browserLang;
+          console.log("[TextWithImages] Setting shouldShowTranslate:", needsTranslate);
+          setShouldShowTranslate(needsTranslate);
         } else {
+          console.log("[TextWithImages] Invalid language code, hiding translate");
           setShouldShowTranslate(false);
         }
       } catch (err) {
@@ -387,21 +386,40 @@ Text:\n\n${content}`;
     };
 
     detectLang();
-  }, [content, aiSettings.model, browserLang, hasOllama]);
+  }, [content, aiSettings.model, browserLang, hasAI, detectLanguage]);
 
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
-      const prompt = `Translate the following text to ${browserLang}. You may skip or preserve hashes, URLs, and nostr identifiers:\n\n${content}`;
+      // Check cache first
+      const cached = getCachedTranslation(content, browserLang);
+      if (cached) {
+        console.log("[TextWithImages] Using cached translation");
+        setTranslatedText(cached);
+        setIsTranslating(false);
+        return;
+      }
 
-      const result = await window.ollama!.generate!({
+      console.log("[TextWithImages] No cache, fetching translation...");
+
+      // Use batched translateText method (detects language + translates in one call)
+      const result = await aiService.translateText({
         model: aiSettings.model || "llama3",
-        prompt,
-        stream: false,
+        text: content,
+        targetLang: browserLang,
       });
 
-      const translated = result?.data?.response?.trim();
-      setTranslatedText(translated || "⚠️ Translation failed.");
+      if (result.success && result.data) {
+        const translation = result.data.translation || "⚠️ Translation failed.";
+        setTranslatedText(translation);
+
+        // Cache the translation
+        if (translation && !translation.startsWith("⚠️")) {
+          setCachedTranslation(content, browserLang, translation);
+        }
+      } else {
+        setTranslatedText(result.error || "⚠️ Translation failed.");
+      }
     } catch (err) {
       console.error("Translation failed:", err);
       setTranslatedText("⚠️ Translation failed.");
@@ -453,7 +471,7 @@ Text:\n\n${content}`;
       <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
         {renderContent(displayedText)}
       </div>
-      {hasOllama && shouldShowTranslate && (
+      {hasAI && shouldShowTranslate && (
         <div>
           <Tooltip title="Translate">
             <span>

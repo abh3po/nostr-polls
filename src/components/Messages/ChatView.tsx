@@ -388,7 +388,11 @@ const ChatView: React.FC = () => {
                     boxShadow: 24,
                     p: 2,
                     borderRadius: 2,
+                    overscrollBehavior: "contain",
+                    touchAction: "pan-y",
                   }}
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
                 >
                   <EmojiPicker
                     theme={
