@@ -13,6 +13,9 @@ import {
   Dialog,
   DialogContent,
   DialogActions,
+  Collapse,
+  Box,
+  CircularProgress,
 } from "@mui/material";
 import { Event, EventTemplate, nip19 } from "nostr-tools";
 import { TextWithImages } from "../Common/Parsers/TextWithImages";
@@ -29,6 +32,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useResizeObserver } from "../../hooks/useResizeObserver";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import SummarizeIcon from "@mui/icons-material/Summarize";
 import RateEventModal from "../../components/Ratings/RateEventModal";
 import { useUserContext } from "../../hooks/useUserContext";
 import { useListContext } from "../../hooks/useListContext";
@@ -36,6 +40,7 @@ import { pool } from "../../singletons";
 import { useRelays } from "../../hooks/useRelays";
 import { useNotification } from "../../contexts/notification-context";
 import { NOTIFICATION_MESSAGES } from "../../constants/notifications";
+import { aiService } from "../../services/ai-service";
 
 interface NotesProps {
   event: Event;
@@ -51,7 +56,7 @@ export const Notes: React.FC<NotesProps> = ({
   showReason,
 }) => {
   const navigate = useNavigate();
-  const { profiles, fetchUserProfileThrottled } = useAppContext();
+  const { profiles, fetchUserProfileThrottled, aiSettings } = useAppContext();
   let { user, requestLogin, setUser } = useUserContext();
   let { relays } = useRelays();
   let { fetchLatestContactList } = useListContext();
@@ -76,6 +81,14 @@ export const Notes: React.FC<NotesProps> = ({
   const [showContactListWarning, setShowContactListWarning] = useState(false);
   const [pendingFollowKey, setPendingFollowKey] = useState<string | null>(null);
   const { showNotification } = useNotification();
+
+  // Summarization state
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Check if post is long enough to warrant summarization (500+ chars)
+  const isLongPost = event.content.length > 500;
 
   const addToContacts = async () => {
     if (!user) {
@@ -171,6 +184,42 @@ export const Notes: React.FC<NotesProps> = ({
 
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
+  };
+
+  const handleSummarize = async () => {
+    if (!aiSettings.model) {
+      showNotification("Please configure AI settings first", "warning");
+      return;
+    }
+
+    // If already have summary, just toggle display
+    if (summary) {
+      setShowSummary(!showSummary);
+      handleCloseMenu();
+      return;
+    }
+
+    setIsSummarizing(true);
+    handleCloseMenu();
+
+    try {
+      const result = await aiService.summarizePost({
+        model: aiSettings.model,
+        text: event.content,
+      });
+
+      if (result.success && result.data) {
+        setSummary(result.data.summary);
+        setShowSummary(true);
+      } else {
+        showNotification(result.error || "Failed to summarize", "error");
+      }
+    } catch (error) {
+      console.error("Summarization error:", error);
+      showNotification("Failed to summarize post", "error");
+    } finally {
+      setIsSummarizing(false);
+    }
   };
 
   const theme = useTheme();
@@ -281,6 +330,16 @@ export const Notes: React.FC<NotesProps> = ({
             open={Boolean(menuAnchor)}
             onClose={handleCloseMenu}
           >
+            {isLongPost && aiSettings.model && (
+              <MenuItem onClick={handleSummarize} disabled={isSummarizing}>
+                <SummarizeIcon fontSize="small" sx={{ mr: 1 }} />
+                {isSummarizing
+                  ? "Summarizing..."
+                  : summary
+                  ? (showSummary ? "Hide Summary" : "Show Summary")
+                  : "Summarize"}
+              </MenuItem>
+            )}
             <MenuItem onClick={handleCopyNevent}>Copy Event Id</MenuItem>
             <MenuItem onClick={copyNoteUrl}>Copy Link</MenuItem>
             <MenuItem onClick={handleCopyNpub}>Copy Author npub</MenuItem>
@@ -293,6 +352,40 @@ export const Notes: React.FC<NotesProps> = ({
             onClose={handleCloseSnackbar}
             message="Copied nevent to clipboard"
           />
+
+          {/* AI Summary */}
+          {isSummarizing && (
+            <Box display="flex" alignItems="center" gap={1} sx={{ ml: 2, mt: 1, mb: 1 }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption" color="text.secondary">
+                Generating summary...
+              </Typography>
+            </Box>
+          )}
+
+          <Collapse in={showSummary && !isSummarizing}>
+            <Box
+              sx={{
+                ml: 2,
+                mr: 2,
+                mt: 1,
+                mb: 1,
+                p: 2,
+                bgcolor: "action.hover",
+                borderRadius: 1,
+                borderLeft: 3,
+                borderColor: "primary.main",
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <SummarizeIcon fontSize="small" color="primary" />
+                <Typography variant="subtitle2" fontWeight="bold">
+                  AI Summary
+                </Typography>
+              </Box>
+              <Typography variant="body2">{summary}</Typography>
+            </Box>
+          </Collapse>
 
           <Card variant="outlined" sx={{ position: "relative", overflow: "hidden" }}>
             <CardContent

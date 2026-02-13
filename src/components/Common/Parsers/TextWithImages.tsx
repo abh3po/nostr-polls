@@ -5,6 +5,7 @@ import { isImageUrl } from "../../../utils/common";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import BoltIcon from "@mui/icons-material/Bolt";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { TranslationPopover } from "./../TranslationPopover";
@@ -12,6 +13,12 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import { isEmbeddableYouTubeUrl } from "../Utils";
 import { YouTubePlayer } from "../Youtube";
 import { Link } from "react-router-dom";
+import { aiService } from "../../../services/ai-service";
+import { useTranslationBatch } from "../../../contexts/translation-batch-context";
+import {
+  getCachedTranslation,
+  setCachedTranslation,
+} from "../../../utils/translation-cache";
 
 interface TextWithImagesProps {
   content: string;
@@ -59,7 +66,7 @@ const VideoParser = ({ part, index }: { part: string; index: number }) => {
   ) : null;
 };
 
-const URLParser = ({ part, index }: { part: string; index: number }) => {
+const URLParser = ({ part, index, color }: { part: string; index: number; color: string }) => {
   const url = part.match(urlRegex)?.[0];
   return url ? (
     <a
@@ -67,19 +74,19 @@ const URLParser = ({ part, index }: { part: string; index: number }) => {
       key={index}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ color: "#FAD13F" }}
+      style={{ color }}
     >
       {part}
     </a>
   ) : null;
 };
 
-const HashtagParser = ({ part, index }: { part: string; index: number }) => {
+const HashtagParser = ({ part, index, color }: { part: string; index: number; color: string }) => {
   return hashtagRegex.test(part) ? (
     <a
       key={index}
       href={`/feeds/topics/${part.replace("#", "")}`}
-      style={{ color: "#FAD13F", textDecoration: "underline" }}
+      style={{ color, textDecoration: "underline" }}
     >
       {part}
     </a>
@@ -327,6 +334,7 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
   content,
   tags,
 }) => {
+  const theme = useTheme();
   const emojiMap = useMemo(() => {
     const map = new Map<string, string>();
     if (tags) {
@@ -345,63 +353,62 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
   const translateButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const { aiSettings, fetchUserProfileThrottled, profiles } = useAppContext();
+  const { detectLanguage } = useTranslationBatch();
   const browserLang = navigator.language.slice(0, 2).toLowerCase();
 
-  const hasOllama =
-    typeof window !== "undefined" &&
-    window.ollama &&
-    typeof window.ollama.generate === "function";
+  const hasAI = true; // AI service available via nRPC
 
   useEffect(() => {
     setDisplayedText(content);
-    if (!hasOllama) return;
+    if (!hasAI || !aiSettings.model) return;
 
     const detectLang = async () => {
       try {
-        const prompt = `Determine the language of the following text. Only respond with the ISO 639-1 language code (e.g., "en", "es", "fr").
-Ignore:
-- URLs (http links)
-- Hashes
-- Random alphanumeric strings or identifiers
+        // Use batched language detection
+        const lang = await detectLanguage(content, aiSettings.model || "llama3");
 
-Default to "en" unless you're very confident it's another language.
-Text:\n\n${content}`;
-
-        const result = await window.ollama!.generate!({
-          model: aiSettings.model || "llama3",
-          prompt,
-          stream: false,
-        });
-
-        const rawLang = result?.data?.response?.trim();
-        if (rawLang && /^[a-z]{2}$/.test(rawLang.toLowerCase())) {
-          const lang = rawLang.toLowerCase();
-          setShouldShowTranslate(lang !== browserLang);
+        if (lang && /^[a-z]{2}$/.test(lang.toLowerCase())) {
+          setShouldShowTranslate(lang.toLowerCase() !== browserLang);
         } else {
           setShouldShowTranslate(false);
         }
       } catch (err) {
-        console.warn("Language detection failed:", err);
         setShouldShowTranslate(false);
       }
     };
 
     detectLang();
-  }, [content, aiSettings.model, browserLang, hasOllama]);
+  }, [content, aiSettings.model, browserLang, hasAI, detectLanguage]);
 
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
-      const prompt = `Translate the following text to ${browserLang}. You may skip or preserve hashes, URLs, and nostr identifiers:\n\n${content}`;
+      // Check cache first
+      const cached = getCachedTranslation(content, browserLang);
+      if (cached) {
+        setTranslatedText(cached);
+        setIsTranslating(false);
+        return;
+      }
 
-      const result = await window.ollama!.generate!({
+      // Use batched translateText method (detects language + translates in one call)
+      const result = await aiService.translateText({
         model: aiSettings.model || "llama3",
-        prompt,
-        stream: false,
+        text: content,
+        targetLang: browserLang,
       });
 
-      const translated = result?.data?.response?.trim();
-      setTranslatedText(translated || "⚠️ Translation failed.");
+      if (result.success && result.data) {
+        const translation = result.data.translation || "⚠️ Translation failed.";
+        setTranslatedText(translation);
+
+        // Cache the translation
+        if (translation && !translation.startsWith("⚠️")) {
+          setCachedTranslation(content, browserLang, translation);
+        }
+      } else {
+        setTranslatedText(result.error || "⚠️ Translation failed.");
+      }
     } catch (err) {
       console.error("Translation failed:", err);
       setTranslatedText("⚠️ Translation failed.");
@@ -422,8 +429,8 @@ Text:\n\n${content}`;
               YouTubeParser({ part }) ||
               ImageParser({ part, index }) ||
               VideoParser({ part, index }) ||
-              URLParser({ part, index }) ||
-              HashtagParser({ part, index }) ||
+              URLParser({ part, index, color: theme.palette.primary.main }) ||
+              HashtagParser({ part, index, color: theme.palette.primary.main }) ||
               NostrParser({
                 part,
                 index,
@@ -453,7 +460,7 @@ Text:\n\n${content}`;
       <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
         {renderContent(displayedText)}
       </div>
-      {hasOllama && shouldShowTranslate && (
+      {hasAI && shouldShowTranslate && (
         <div>
           <Tooltip title="Translate">
             <span>
