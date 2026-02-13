@@ -17,7 +17,7 @@ import { aiService } from "../../services/ai-service";
 
 const LOCAL_STORAGE_KEY = "ai-settings";
 const NRPC_CONFIG_KEY = "nrpc-ai-config";
-const NRPC_DOCS_LINK = "";
+const NRPC_DOCS_LINK = "https://github.com/formstr-hq/formstr-nrpc-server";
 
 // Default values
 const DEFAULT_SERVER_PUBKEY = process.env.REACT_APP_NRPC_SERVER_PUBKEY || "";
@@ -183,7 +183,7 @@ export const AISettings: React.FC = () => {
                 underline="hover"
                 variant="body2"
               >
-                Learn more about nRPC
+                Setup your own nRPC server:
               </Link>
             </Box>
           </Box>

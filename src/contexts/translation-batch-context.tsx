@@ -57,8 +57,6 @@ export const TranslationBatchProvider: React.FC<Props> = ({ children }) => {
 
     const texts = queue.map((req) => req.text);
 
-    console.log(`[TranslationBatch] Processing batch of ${texts.length} texts with model ${model}`);
-
     try {
       // Make batched nRPC call
       const response = await aiService.batchDetectLanguages({
@@ -66,28 +64,21 @@ export const TranslationBatchProvider: React.FC<Props> = ({ children }) => {
         texts,
       });
 
-      console.log("[TranslationBatch] Batch response:", response);
-
       if (response.success && response.data) {
         const languages = response.data;
-
-        console.log(`[TranslationBatch] Got ${languages.length} language codes:`, languages);
 
         // Resolve each request with its corresponding language
         queue.forEach((req, index) => {
           const lang = languages[index] || "en";
-          console.log(`[TranslationBatch] Resolving text ${index} with language: ${lang}`);
           req.resolve(lang);
         });
       } else {
         // If batch call failed, reject all requests
-        console.error("[TranslationBatch] Batch call failed:", response.error);
         const error = new Error(response.error || "Batch detection failed");
         queue.forEach((req) => req.reject(error));
       }
     } catch (error) {
       // If batch call failed, reject all requests
-      console.error("[TranslationBatch] Batch call error:", error);
       queue.forEach((req) => req.reject(error));
     }
   }, []);
@@ -95,8 +86,6 @@ export const TranslationBatchProvider: React.FC<Props> = ({ children }) => {
   const detectLanguage = useCallback(
     (text: string, model: string): Promise<string> => {
       return new Promise((resolve, reject) => {
-        console.log(`[TranslationBatch] Queueing text for detection (${text.substring(0, 50)}...)`);
-
         // Add to queue
         const modelQueue = queueRef.current.get(model) || [];
         modelQueue.push({ text, resolve, reject });

@@ -1,6 +1,19 @@
-import { Event, EventTemplate, Filter, nip19 } from "nostr-tools";
+import {
+  Event,
+  EventTemplate,
+  Filter,
+  nip19,
+  nip44,
+  UnsignedEvent,
+  generateSecretKey,
+  getPublicKey,
+  finalizeEvent,
+} from "nostr-tools";
+import { bytesToHex } from "@noble/hashes/utils";
+import { sha256 } from "@noble/hashes/sha256";
 import { pool } from "../singletons";
 import { NostrSigner } from "../singletons/Signer/types";
+import { signerManager } from "../singletons/Signer/SignerManager";
 
 export interface NRPCConfig {
   serverPubkey: string;
@@ -13,12 +26,149 @@ export interface NRPCError {
   message: string;
 }
 
+// nRPC event kinds
+const KIND_NRPC_REQUEST = 22068; // Plain request
+const KIND_NRPC_RESPONSE = 22069; // Plain response
+const KIND_NRPC_GIFTWRAP = 21169; // Encrypted request/response (gift wrap) - used for BOTH
+const KIND_NRPC_REQUEST_RUMOR = 68; // Encrypted request rumor (inside gift wrap)
+const KIND_SEAL = 25; // Seal (NIP-59)
+
+/**
+ * Get current timestamp.
+ */
+function currentTimestamp(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+/**
+ * Compute a deterministic rumor ID from an unsigned event.
+ */
+function computeRumorId(rumor: UnsignedEvent): string {
+  const serialized = JSON.stringify([
+    0,
+    rumor.pubkey,
+    rumor.created_at,
+    rumor.kind,
+    rumor.tags,
+    rumor.content,
+  ]);
+  return bytesToHex(sha256(new TextEncoder().encode(serialized)));
+}
+
+/**
+ * Create an encrypted nRPC request using signer's nip44Encrypt.
+ * Works for both LocalSigner and external signers.
+ * Returns both the wrap event and the rumor ID.
+ */
+async function createEncryptedRequestForSigner(
+  signer: NostrSigner,
+  senderPubkey: string,
+  serverPubkey: string,
+  method: string,
+  params: Record<string, string>
+): Promise<{ wrap: Event; rumorId: string }> {
+  console.log(`[nRPC] createEncryptedRequest - method: ${method}, params:`, params);
+
+  if (!signer.nip44Encrypt) {
+    throw new Error("Signer does not support NIP-44 encryption");
+  }
+
+  // Step 1: Create rumor (kind 68)
+  const tags: string[][] = [
+    ["method", method],
+    ["p", serverPubkey],
+    ...Object.entries(params).map(([key, value]) => ["param", key, value]),
+  ];
+
+  const rumor: UnsignedEvent = {
+    kind: KIND_NRPC_REQUEST_RUMOR,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: "",
+    pubkey: senderPubkey,
+  };
+
+  const rumorWithId = {
+    ...rumor,
+    id: computeRumorId(rumor),
+  };
+  console.log(`[nRPC] Created rumor with ID: ${rumorWithId.id}`);
+
+  // Step 2: Encrypt rumor into a seal
+  const rumorJson = JSON.stringify(rumorWithId);
+  console.log(`[nRPC] Encrypting rumor for server...`);
+  const encryptedRumor = await signer.nip44Encrypt(serverPubkey, rumorJson);
+  console.log(`[nRPC] Rumor encrypted, length: ${encryptedRumor.length}`);
+
+  // Step 3: Create and sign the seal (kind 25)
+  const sealTemplate: EventTemplate = {
+    kind: KIND_SEAL,
+    created_at: currentTimestamp(),
+    tags: [],
+    content: encryptedRumor,
+  };
+  console.log(`[nRPC] Signing seal...`);
+  const seal = await signer.signEvent(sealTemplate);
+  console.log(`[nRPC] Seal signed, ID: ${seal.id}`);
+
+  // Step 4: Create gift wrap with ephemeral key
+  const ephemeralKey = generateSecretKey();
+  const ephemeralPubkey = getPublicKey(ephemeralKey);
+  console.log(`[nRPC] Creating gift wrap with ephemeral key: ${ephemeralPubkey}`);
+
+  const sealJson = JSON.stringify(seal);
+  const wrapConvKey = nip44.getConversationKey(ephemeralKey, serverPubkey);
+  const encryptedSeal = nip44.encrypt(sealJson, wrapConvKey);
+
+  const wrapEvent: UnsignedEvent = {
+    kind: KIND_NRPC_GIFTWRAP,
+    created_at: currentTimestamp(),
+    tags: [["p", serverPubkey]],
+    content: encryptedSeal,
+    pubkey: ephemeralPubkey,
+  };
+
+  const wrap = finalizeEvent(wrapEvent, ephemeralKey);
+  console.log(`[nRPC] Gift wrap created, ID: ${wrap.id}`);
+
+  return {
+    wrap,
+    rumorId: rumorWithId.id,
+  };
+}
+
+/**
+ * Decrypt an encrypted nRPC response (kind 21169 gift wrap).
+ */
+async function decryptResponse(
+  wrapEvent: Event,
+  serverPubkey: string
+): Promise<Event> {
+  const signer = await signerManager.getSigner();
+
+  if (!signer.nip44Decrypt) {
+    throw new Error("Signer does not support NIP-44 decryption");
+  }
+
+  // Step 1: Decrypt gift wrap to get seal
+  const sealJson = await signer.nip44Decrypt(wrapEvent.pubkey, wrapEvent.content);
+  const seal: Event = JSON.parse(sealJson);
+
+  // Step 2: Decrypt seal to get rumor
+  const rumorJson = await signer.nip44Decrypt(seal.pubkey, seal.content);
+  const rumor = JSON.parse(rumorJson);
+
+  return rumor;
+}
+
 /**
  * Generic nRPC client for making RPC calls over Nostr
  *
  * Implements the nRPC protocol:
- * - Request: kind 22068 with ["method"] and ["param", key, value] tags
- * - Response: kind 22069 with #e tag referencing request ID
+ * - Plain: kind 22068 request → kind 22069 response
+ * - Encrypted: kind 21169 request (gift wrap) → kind 21170 response (gift wrap)
+ *   - Request rumor: kind 68 with ["method"] and ["param", key, value] tags
+ *   - Response rumor: kind 69 with #e tag referencing request rumor ID
  * - Results: ["result", key, value] or ["result_json", json_string] tags
  * - Errors: status != 200 or ["error"] tag
  */
@@ -59,76 +209,133 @@ export class NRPCClient {
    * @param method - RPC method name (e.g., "generatePrompt", "getAIModels")
    * @param params - Parameters as key-value pairs
    * @param signer - Nostr signer to sign the request
+   * @param encrypted - Use encrypted request (default: true)
    * @returns Promise resolving to the result (parsed from response tags)
    */
   async call(
     method: string,
     params: Record<string, string>,
     signer: NostrSigner,
+    encrypted: boolean = true,
   ): Promise<any> {
-    // 1. Build request event
-    const requestTemplate: EventTemplate = {
-      kind: 22068,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [
-        ["method", method],
-        ["p", this.serverPubkeyHex],
-        ...Object.entries(params).map(([key, value]) => ["param", key, value]),
-      ],
-      content: "",
-    };
+    console.log(`[nRPC] Calling method: ${method}, encrypted: ${encrypted}`);
+    let signedRequest: Event;
+    let requestId: string; // For encrypted: rumor ID, for plain: event ID
 
-    // 2. Sign the request
-    const signedRequest: Event = await signer.signEvent(requestTemplate);
+    if (encrypted) {
+      // Create encrypted request (kind 21169 gift wrap)
+      const senderPubkey = await signer.getPublicKey();
+      console.log(`[nRPC] Sender pubkey: ${senderPubkey}`);
+      console.log(`[nRPC] Server pubkey: ${this.serverPubkeyHex}`);
 
-    // 3. Subscribe for response before publishing request
-    const responsePromise = this.waitForResponse(signedRequest.id);
+      // Use signer's nip44Encrypt method (works for both LocalSigner and external signers)
+      const result = await createEncryptedRequestForSigner(
+        signer,
+        senderPubkey,
+        this.serverPubkeyHex,
+        method,
+        params
+      );
 
-    // 4. Publish request to relays
+      signedRequest = result.wrap;
+      requestId = result.rumorId; // Track rumor ID for matching response
+      console.log(`[nRPC] Created encrypted request. Wrap ID: ${signedRequest.id}, Rumor ID: ${requestId}`);
+      console.log(`[nRPC] Wrap event:`, JSON.stringify(signedRequest, null, 2));
+    } else {
+      // Plain request (kind 22068)
+      const requestTemplate: EventTemplate = {
+        kind: KIND_NRPC_REQUEST,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["method", method],
+          ["p", this.serverPubkeyHex],
+          ...Object.entries(params).map(([key, value]) => ["param", key, value]),
+        ],
+        content: "",
+      };
+
+      signedRequest = await signer.signEvent(requestTemplate);
+      requestId = signedRequest.id; // Track event ID for plain requests
+    }
+
+    // Subscribe for response before publishing request
+    console.log(`[nRPC] Subscribing for response with requestId: ${requestId}`);
+    const responsePromise = this.waitForResponse(requestId, encrypted);
+
+    // Publish request to relays
+    console.log(`[nRPC] Publishing to relays:`, this.config.relays);
     try {
-      await Promise.allSettled(pool.publish(this.config.relays, signedRequest));
+      const results = await Promise.allSettled(pool.publish(this.config.relays, signedRequest));
+      console.log(`[nRPC] Publish results:`, results);
     } catch (error) {
+      console.error(`[nRPC] Publish error:`, error);
       throw new Error(`Failed to publish request: ${error}`);
     }
 
-    // 5. Wait for response (with timeout)
+    // Wait for response (with timeout)
+    console.log(`[nRPC] Waiting for response (timeout: ${this.config.timeout}ms)...`);
     const response = await this.withTimeout(
       responsePromise,
       this.config.timeout!,
       `nRPC call to ${method} timed out after ${this.config.timeout}ms`,
     );
 
+    console.log(`[nRPC] Received response:`, response);
     return response;
   }
 
   /**
    * Wait for nRPC response event
    */
-  private waitForResponse(requestId: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const filter: Filter = {
-        kinds: [22069],
-        "#e": [requestId],
-        authors: [this.serverPubkeyHex],
-      };
+  private waitForResponse(requestId: string, encrypted: boolean): Promise<any> {
+    return new Promise(async (resolve, reject) => {
+      const filter: Filter = encrypted
+        ? {
+            // For encrypted responses, wait for kind 21169 gift wrap with #e = rumor ID
+            kinds: [KIND_NRPC_GIFTWRAP],
+            "#e": [requestId], // Server puts ["e", rumorId] on the response wrap
+          }
+        : {
+            // For plain responses, wait for kind 22069 with #e = request ID
+            kinds: [KIND_NRPC_RESPONSE],
+            "#e": [requestId],
+            authors: [this.serverPubkeyHex],
+          };
+
+      console.log(`[nRPC] Subscribing with filter:`, JSON.stringify(filter, null, 2));
       let resolved = false;
 
       const sub = pool.subscribeMany(this.config.relays, [filter], {
-        onevent: (event: Event) => {
+        onevent: async (event: Event) => {
+          console.log(`[nRPC] Received event:`, event);
           if (resolved) return;
-          resolved = true;
 
           try {
+            let responseEvent = event;
+
+            // Decrypt if encrypted
+            if (encrypted && event.kind === KIND_NRPC_GIFTWRAP) {
+              console.log(`[nRPC] Decrypting response...`);
+              responseEvent = await decryptResponse(event, this.serverPubkeyHex);
+              console.log(`[nRPC] Decrypted response:`, responseEvent);
+              // No need to verify #e tag - already filtered by it
+            }
+
+            resolved = true;
+
             // Parse response
-            const result = this.parseResponse(event);
+            const result = this.parseResponse(responseEvent);
+            console.log(`[nRPC] Parsed result:`, result);
             sub.close();
             resolve(result);
           } catch (error) {
+            console.error(`[nRPC] Error processing response:`, error);
             sub.close();
             reject(error);
           }
         },
         oneose: () => {
+          console.log(`[nRPC] EOSE received`);
           // EOSE received but no response yet - keep waiting
           // The timeout will handle this if the response never arrives
         },

@@ -6,6 +6,7 @@ import {
   Collapse,
   Typography,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import { useNotification } from "../../contexts/notification-context";
 import { useUserContext } from "../../hooks/useUserContext";
@@ -17,9 +18,13 @@ import { useRelays } from "../../hooks/useRelays";
 import { Event } from "nostr-tools";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { NotePreview } from "./NotePreview";
 import { waitForPublish } from "../../utils/publish";
 import MentionTextArea, { extractMentionTags } from "./MentionTextArea";
+import { PostEnhancementDialog } from "./PostEnhancementDialog";
+import { aiService } from "../../services/ai-service";
+import { useAppContext } from "../../hooks/useAppContext";
 
 const NoteTemplateForm: React.FC<{
   eventContent: string;
@@ -28,9 +33,13 @@ const NoteTemplateForm: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [topics, setTopics] = useState<string[]>([]);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [showEnhancementDialog, setShowEnhancementDialog] = useState(false);
+  const [enhancementSuggestions, setEnhancementSuggestions] = useState<any>(null);
   const { showNotification } = useNotification();
   const { user } = useUserContext();
   const { relays } = useRelays();
+  const { aiSettings } = useAppContext();
   const navigate = useNavigate();
 
   // Extract hashtags like #example from the text
@@ -100,6 +109,42 @@ const NoteTemplateForm: React.FC<{
     publishNoteEvent(user?.privateKey);
   };
 
+  const handleProofread = async () => {
+    if (!eventContent.trim()) {
+      showNotification("Please write some content first", "info");
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      const result = await aiService.enhancePost({
+        model: aiSettings.model!,
+        text: eventContent,
+      });
+
+      if (result.success && result.data) {
+        setEnhancementSuggestions(result.data);
+        setShowEnhancementDialog(true);
+      } else {
+        showNotification(
+          result.error || "Failed to proofread",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Proofread error:", error);
+      showNotification("Failed to proofread post", "error");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleApplySuggestions = (newText: string, hashtags: string[]) => {
+    setEventContent(newText);
+    setShowEnhancementDialog(false);
+    showNotification("Suggestions applied!", "success");
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <Stack spacing={4}>
@@ -133,9 +178,39 @@ const NoteTemplateForm: React.FC<{
 
         <Box sx={{ pt: 2 }}>
           <Box display="flex" flexDirection="column" gap={2}>
+            {aiSettings.model && (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={
+                  isEnhancing ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <AutoFixHighIcon />
+                  )
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleProofread();
+                }}
+                disabled={isEnhancing || isSubmitting}
+                fullWidth
+                sx={{
+                  bgcolor: 'secondary.main',
+                  color: 'secondary.contrastText',
+                  '&:hover': {
+                    bgcolor: 'secondary.dark',
+                  },
+                }}
+              >
+                {isEnhancing ? "Proofreading..." : "Proofread with AI"}
+              </Button>
+            )}
+
             <Button type="submit" variant="contained" disabled={isSubmitting}>
               {isSubmitting ? "Creating Note..." : "Create Note"}
             </Button>
+
             <Button
               variant="outlined"
               startIcon={
@@ -149,6 +224,7 @@ const NoteTemplateForm: React.FC<{
             >
               {showPreview ? "Hide Preview" : "Show Preview"}
             </Button>
+
             <Collapse in={showPreview}>
               <Box mt={1}>
                 <NotePreview noteEvent={previewEvent} />
@@ -157,6 +233,14 @@ const NoteTemplateForm: React.FC<{
           </Box>
         </Box>
       </Stack>
+
+      <PostEnhancementDialog
+        open={showEnhancementDialog}
+        onClose={() => setShowEnhancementDialog(false)}
+        suggestions={enhancementSuggestions}
+        originalText={eventContent}
+        onApply={handleApplySuggestions}
+      />
     </form>
   );
 };

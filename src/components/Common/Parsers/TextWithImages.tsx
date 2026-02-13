@@ -5,6 +5,7 @@ import { isImageUrl } from "../../../utils/common";
 import { useAppContext } from "../../../hooks/useAppContext";
 import { DEFAULT_IMAGE_URL } from "../../../utils/constants";
 import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import BoltIcon from "@mui/icons-material/Bolt";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { TranslationPopover } from "./../TranslationPopover";
@@ -65,7 +66,7 @@ const VideoParser = ({ part, index }: { part: string; index: number }) => {
   ) : null;
 };
 
-const URLParser = ({ part, index }: { part: string; index: number }) => {
+const URLParser = ({ part, index, color }: { part: string; index: number; color: string }) => {
   const url = part.match(urlRegex)?.[0];
   return url ? (
     <a
@@ -73,19 +74,19 @@ const URLParser = ({ part, index }: { part: string; index: number }) => {
       key={index}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ color: "#FAD13F" }}
+      style={{ color }}
     >
       {part}
     </a>
   ) : null;
 };
 
-const HashtagParser = ({ part, index }: { part: string; index: number }) => {
+const HashtagParser = ({ part, index, color }: { part: string; index: number; color: string }) => {
   return hashtagRegex.test(part) ? (
     <a
       key={index}
       href={`/feeds/topics/${part.replace("#", "")}`}
-      style={{ color: "#FAD13F", textDecoration: "underline" }}
+      style={{ color, textDecoration: "underline" }}
     >
       {part}
     </a>
@@ -333,6 +334,7 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
   content,
   tags,
 }) => {
+  const theme = useTheme();
   const emojiMap = useMemo(() => {
     const map = new Map<string, string>();
     if (tags) {
@@ -358,29 +360,19 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
 
   useEffect(() => {
     setDisplayedText(content);
-    if (!hasAI || !aiSettings.model) {
-      console.log("[TextWithImages] Skipping language detection - hasAI:", hasAI, "model:", aiSettings.model);
-      return;
-    }
+    if (!hasAI || !aiSettings.model) return;
 
     const detectLang = async () => {
       try {
-        console.log("[TextWithImages] Starting language detection for:", content.substring(0, 50));
         // Use batched language detection
         const lang = await detectLanguage(content, aiSettings.model || "llama3");
 
-        console.log("[TextWithImages] Detected language:", lang, "browserLang:", browserLang);
-
         if (lang && /^[a-z]{2}$/.test(lang.toLowerCase())) {
-          const needsTranslate = lang.toLowerCase() !== browserLang;
-          console.log("[TextWithImages] Setting shouldShowTranslate:", needsTranslate);
-          setShouldShowTranslate(needsTranslate);
+          setShouldShowTranslate(lang.toLowerCase() !== browserLang);
         } else {
-          console.log("[TextWithImages] Invalid language code, hiding translate");
           setShouldShowTranslate(false);
         }
       } catch (err) {
-        console.warn("Language detection failed:", err);
         setShouldShowTranslate(false);
       }
     };
@@ -394,13 +386,10 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
       // Check cache first
       const cached = getCachedTranslation(content, browserLang);
       if (cached) {
-        console.log("[TextWithImages] Using cached translation");
         setTranslatedText(cached);
         setIsTranslating(false);
         return;
       }
-
-      console.log("[TextWithImages] No cache, fetching translation...");
 
       // Use batched translateText method (detects language + translates in one call)
       const result = await aiService.translateText({
@@ -440,8 +429,8 @@ export const TextWithImages: React.FC<TextWithImagesProps> = ({
               YouTubeParser({ part }) ||
               ImageParser({ part, index }) ||
               VideoParser({ part, index }) ||
-              URLParser({ part, index }) ||
-              HashtagParser({ part, index }) ||
+              URLParser({ part, index, color: theme.palette.primary.main }) ||
+              HashtagParser({ part, index, color: theme.palette.primary.main }) ||
               NostrParser({
                 part,
                 index,
